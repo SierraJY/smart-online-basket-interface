@@ -1,0 +1,22 @@
+# 환경 변수
+.env
+
+# 로그파일
+*.log
+
+# Python 캐시 (혹시 모듈 작성 시 대비)
+__pycache__/
+
+# Docker DB 데이터 볼륨
+db_data/
+
+# React 빌드 결과 (추후 배포 시 활성화)
+# /frontend/build/
+
+# Spring Boot 빌드 결과
+/backend/build/
+
+# OS/IDE 파일
+.DS_Store
+Thumbs.db
+.idea/
