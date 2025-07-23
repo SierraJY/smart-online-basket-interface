@@ -678,7 +678,7 @@ class RFIDReader:
         self.is_running = True
         self.thread = threading.Thread(target=self.read_loop, daemon=True)
         self.thread.start()
-        self.logger.info(f"태그 읽기 시작됨 (모드: {polling_mode})")
+        # self.logger.info(f"태그 읽기 시작됨 (모드: {polling_mode})")
         return True
 
     def stop_reading(self):
@@ -687,7 +687,7 @@ class RFIDReader:
             self.logger.warning("읽기가 진행 중이지 않습니다")
             return
 
-        self.logger.info("태그 읽기 중지 중...")
+        # self.logger.info("태그 읽기 중지 중...")
         self.is_running = False
 
         if self.thread and self.thread.is_alive():
@@ -696,7 +696,7 @@ class RFIDReader:
                 self.logger.warning("스레드가 정상적으로 종료되지 않았습니다")
 
         self.disconnect()
-        self.logger.info("태그 읽기 중지됨")
+        # self.logger.info("태그 읽기 중지됨")
 
     def __enter__(self):
         """컨텍스트 매니저 진입"""
