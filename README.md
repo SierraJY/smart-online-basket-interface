@@ -1,67 +1,69 @@
-# AIoT 스마트바스켓 EC2 인프라 구조
+# AIoT 스마트 바스켓
 
-## 서버 구성 개요
+마트 환경에서 RFID 기술을 활용한 스마트 쇼핑 솔루션입니다. 장바구니에 부착된 AIoT 디바이스를 통해 실시간 가격 합산, 상품 추천, 셀프 결제 기능을 제공합니다.
 
-| 항목 | 내용 |
-|---|---|
-| 서버 | AWS EC2 |
-| 운영체제 | Ubuntu 22.04 |
-| 접속 방식 | SSH 접속 (공유 PEM 키) |
-| 주요 작업 | Docker 실행, Git 커밋, 서비스 운영 |
+## 주요 기능
 
----
+- 실시간 장바구니 관리: RFID 태그 자동 인식 및 총액 계산
+- 상품 정보 제공: 웹/앱을 통한 상품 정보 및 위치 검색
+- 개인화 추천: 장바구니 내역 기반 연관 상품 추천
+- 간편 결제: 모바일 결제 및 셀프 계산대 연동
 
-## Docker 환경
+## 기술 스택
 
-- EC2에 Docker 및 docker-compose 설치 완료
-- 각 계정에서 `sudo` 없이 Docker 사용 가능하도록 `docker` 그룹 권한 부여
+### 하드웨어
+- IoT 디바이스: Raspberry Pi 5 / Jetson Orin Nano
+- RFID 리더: YRM1001 + 원형 편파 안테나
+- 디스플레이: LCD 패널
 
-```bash
-sudo usermod -aG docker [계정명]
+### 소프트웨어
+- IoT 펌웨어: Python
+- 백엔드: Spring Framework (Java)
+- 프론트엔드: React, React Native
+- 데이터베이스: PostgreSQL
+- 인프라: AWS (EC2, ECS, RDS, S3, IoT Core)
+
+### 통신
+- 디바이스 → 서버: MQTT
+- 서버 → 클라이언트: WebSocket
+- 클라이언트 ↔ 서버: HTTP/s
+
+## 시스템 구성도
+
+[시스템 구성도 이미지 추가 예정]
+
+## 프로젝트 구조
+```
+├── ai/ # 상품 추천 모델
+├── backend/ # Spring 백엔드 서버
+├── embedded/ # IoT 디바이스 펌웨어
+├── frontend/ # React 웹/앱 클라이언트
+└── nginx/ # 웹 서버 설정
 ```
 
----
+## 실행 방법
 
-## 계정 구조 및 작업 방식
+### 백엔드 서버
+```bash
+cd backend
+./gradlew bootRun
+```
 
-| 항목 | 내용 |
-|---|---|
-| 계정 관리 목적 | Git 커밋 작성자 구분용 계정 분리 |
-| 계정별 Git 설정 | 각자 `git config --global` 로 이름/이메일 다르게 설정 |
-| SSH 접속 방식 | 동일한 PEM 키 사용, 계정명으로 구분하여 접속 |
-| 접속 예시 | `ssh -i 키.pem [계정명]@서버주소` |
+### 프론트엔드
+```bash
+cd frontend
+npm install
+npm start
+```
 
----
+### IoT 디바이스
+```bash
+cd embedded
+python main.py
+```
 
-## 디렉토리 구조
+## 팀 정보
+[팀원 정보 추가 예정]
 
-| 경로 | 설명 |
-|---|---|
-| /home/[계정명]/ | 각자 홈 디렉토리 |
-| /home/[계정명]/S13P11B103 | 프로젝트 폴더 (공통) |
-| /home/[계정명]/.vscode-server/ | VSCode Remote-SSH 서버 설치 경로 |
-
----
-
-## 보안 및 관리
-
-| 항목 | 설명 |
-|---|---|
-| 비밀번호 로그인 | 비활성화 (SSH PEM 키만 사용) |
-| .vscode-server 캐시 | 계정별 개별 설치로 충돌 방지 |
-| Docker 실행 | 계정별 독립 실행 가능 |
-
----
-
-## 정리
-
-- Docker + 계정별 Git 커밋 구분을 위한 계정 다중 생성
-- 각자 계정으로 접속 후 Git & Docker 작업 진행
-
----
-
-## 주의 사항
-
-- 키 파일(.pem)은 **외부 공유 금지**
-- 계정명은 README에 기록하지 않음
-- `.ssh/config`는 각자 로컬에서 관리
+## 라이선스
+[라이선스 정보 추가 예정]
