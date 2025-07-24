@@ -26,3 +26,6 @@ Thumbs.db
 
 # 모델 학습용 데이터
 data/
+
+# 모델 결과
+models/
