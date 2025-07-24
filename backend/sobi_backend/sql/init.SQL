@@ -2,6 +2,7 @@
 -- Generated from ERD diagram
 
 -- Drop tables if they exist (in reverse dependency order)
+DROP TABLE IF EXISTS favorite CASCADE;
 DROP TABLE IF EXISTS receipt CASCADE;
 DROP TABLE IF EXISTS epc_map CASCADE;
 DROP TABLE IF EXISTS basket CASCADE;
@@ -22,7 +23,15 @@ CREATE TABLE product (
                          id SERIAL PRIMARY KEY,
                          name VARCHAR(255) NOT NULL,
                          price INTEGER NOT NULL,
-                         stock INTEGER NOT NULL
+                         stock INTEGER NOT NULL DEFAULT 0,
+                         category VARCHAR(255) DEFAULT NULL,
+                         image_url VARCHAR(255) DEFAULT NULL,
+                         discount_rate INTEGER DEFAULT 0,
+                         sales INTEGER DEFAULT 0,
+                         tag VARCHAR(255) DEFAULT NULL, -- "#tag1#tag2#tag3" 형식
+                         location VARCHAR(255) DEFAULT NULL,
+                         description TEXT DEFAULT NULL,
+                         brand VARCHAR(255) DEFAULT NULL -- 브랜드 (NULL 가능)
 );
 
 -- Create basket table (바구니 매핑)
@@ -47,6 +56,16 @@ CREATE TABLE epc_map (
                          product_id INTEGER NOT NULL,
                          epc_pattern VARCHAR(255) NOT NULL, -- 실제 EPC: {epc_pattern}{write_date}
                          CONSTRAINT fk_epc_map_product FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
+);
+
+-- Create favorite table (찜 매핑 테이블)
+CREATE TABLE favorite (
+                          id SERIAL PRIMARY KEY,
+                          user_id INTEGER NOT NULL,
+                          product_id INTEGER NOT NULL,
+                          UNIQUE(user_id, product_id),
+                          CONSTRAINT fk_favorite_customer FOREIGN KEY (user_id) REFERENCES customer(id) ON DELETE CASCADE,
+                          CONSTRAINT fk_favorite_product FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE CASCADE
 );
 
 -- Grant permissions to sobiuser
