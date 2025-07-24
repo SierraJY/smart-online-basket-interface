@@ -14,13 +14,24 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+
+// 토큰 기반 API 인증
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil; // JWT 토큰 처리 유틸리티
+
+    // JWT 토큰이 필요하지 않은 API 엔드포인트 목록
+    private static final List<String> EXCLUDE_URLS = Arrays.asList(
+            "/api/customers/register",
+            "/api/customers/login",
+            "/api/products",
+            "/api/epc-maps/scan"
+    );
 
     // 모든 HTTP 요청이 올 때마다 실행되는 필터 메서드
     @Override
@@ -29,6 +40,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         System.out.println("=== JWT 필터 실행됨 ===");
         System.out.println("요청 URL: " + request.getRequestURL());
+
+        // 토큰이 필요하지 않은 URL인지 확인
+        String requestURI = request.getRequestURI();
+        if (EXCLUDE_URLS.stream().anyMatch(requestURI::startsWith)) {
+            System.out.println("토큰 불필요 URL - 다음 필터로 진행");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // OPTIONS 메서드는 토큰 검증 생략 (CORS preflight 요청)
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            System.out.println("OPTIONS 요청 - 토큰 검증 생략");
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // HTTP 요청 헤더에서 Authorization 값 가져오기
         String authorizationHeader = request.getHeader("Authorization");
