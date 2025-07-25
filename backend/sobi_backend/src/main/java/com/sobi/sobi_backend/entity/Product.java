@@ -3,7 +3,8 @@ package com.sobi.sobi_backend.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product")
+@Table(name = "product",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"name", "image_url"}))
 public class Product {
 
     @Id
@@ -79,38 +80,6 @@ public class Product {
             return price;
         }
         return price - (price * discountRate / 100);
-    }
-
-    // 할인 금액 계산 메서드
-    public Integer getDiscountAmount() {
-        if (discountRate == null || discountRate == 0) {
-            return 0;
-        }
-        return price * discountRate / 100;
-    }
-
-    // 태그 리스트로 반환하는 메서드
-    public String[] getTagArray() {
-        if (tag == null || tag.trim().isEmpty()) {
-            return new String[0];
-        }
-        // "#tag1#tag2#tag3" -> ["tag1", "tag2", "tag3"]
-        return tag.replaceAll("^#|#$", "").split("#");
-    }
-
-    // 태그 배열을 문자열로 설정하는 메서드
-    public void setTagFromArray(String[] tags) {
-        if (tags == null || tags.length == 0) {
-            this.tag = null;
-            return;
-        }
-        StringBuilder sb = new StringBuilder("#");
-        for (String t : tags) {
-            if (t != null && !t.trim().isEmpty()) {
-                sb.append(t.trim()).append("#");
-            }
-        }
-        this.tag = sb.toString();
     }
 
     // Getters and Setters

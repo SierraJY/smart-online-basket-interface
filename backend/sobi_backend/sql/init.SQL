@@ -31,7 +31,10 @@ CREATE TABLE product (
                          tag VARCHAR(255) DEFAULT NULL, -- "#tag1#tag2#tag3" 형식
                          location VARCHAR(255) DEFAULT NULL,
                          description TEXT DEFAULT NULL,
-                         brand VARCHAR(255) DEFAULT NULL -- 브랜드 (NULL 가능)
+                         brand VARCHAR(255) DEFAULT NULL, -- 브랜드 (NULL 가능)
+
+    -- name과 image_url 조합의 UNIQUE 제약조건 추가
+                         CONSTRAINT unique_product_name_image UNIQUE (name, image_url)
 );
 
 -- Create basket table (바구니 매핑)
