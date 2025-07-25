@@ -1,4 +1,4 @@
-package com.sobi.sobi_backend.filter;
+package com.sobi.sobi_backend.config.filter;
 
 import com.sobi.sobi_backend.util.JwtUtil;
 import com.sobi.sobi_backend.service.TokenBlackListService;

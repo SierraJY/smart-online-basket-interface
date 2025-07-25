@@ -1,4 +1,4 @@
-package com.sobi.sobi_backend.filter;
+package com.sobi.sobi_backend.config.filter;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;

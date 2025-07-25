@@ -3,7 +3,7 @@ package com.sobi.sobi_backend.controller;
 import com.sobi.sobi_backend.entity.Customer;
 import com.sobi.sobi_backend.service.CustomerService;
 import com.sobi.sobi_backend.util.JwtUtil;
-import com.sobi.sobi_backend.filter.JwtAuthenticationFilter;
+import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -90,14 +90,8 @@ public class CustomerController {
         }
     }
 
-    // 로그아웃 처리 (POST /api/customers/logout) - JWT에서는 단순히 성공 메시지만
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
-        // JWT는 서버에 저장되지 않으므로 클라이언트에서 토큰만 삭제하면 됨
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "로그아웃 되었습니다.");
-        return ResponseEntity.ok(response);
-    }
+    // 로그아웃 메서드 제거 - SecurityConfig의 CustomLogoutHandler에서 처리
+    // POST /api/customers/logout 요청은 이제 Spring Security의 로그아웃 필터에서 자동 처리
 
     // 현재 로그인한 사용자 정보 조회 (GET /api/customers/profile)
     @GetMapping("/profile")

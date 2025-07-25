@@ -1,8 +1,9 @@
 package com.sobi.sobi_backend.config;
 
-import com.sobi.sobi_backend.filter.CustomAuthenticationFilter;
-import com.sobi.sobi_backend.filter.JwtAuthenticationFilter;
+import com.sobi.sobi_backend.config.filter.CustomAuthenticationFilter;
+import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import com.sobi.sobi_backend.service.CustomerService;
+import com.sobi.sobi_backend.config.handler.CustomLogoutHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -33,6 +35,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter; // JWT 인증 필터
+
+    @Autowired
+    private CustomLogoutHandler customLogoutHandler; // 커스텀 로그아웃 핸들러 추가
 
     // 비밀번호 암호화/검증을 위한 인코더 (BCrypt 알고리즘 사용)
     @Bean
@@ -151,20 +156,37 @@ public class SecurityConfig {
                 .addFilterBefore(customAuthenticationFilter(config), UsernamePasswordAuthenticationFilter.class)
                 // 기본 폼 로그인 비활성화 (JSON 로그인 사용)
                 .formLogin(form -> form.disable())
-                // 로그아웃 처리 설정
-                .logout(logout -> logout
-                        .logoutUrl("/api/customers/logout") // 로그아웃 URL
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            // 로그아웃 성공 시 JSON 응답
-                            response.setStatus(HttpServletResponse.SC_OK);
-                            response.setContentType("application/json;charset=UTF-8");
-                            response.setCharacterEncoding("UTF-8");
-                            response.getWriter().write("{\"message\":\"로그아웃 되었습니다.\"}");
-                        })
-                        .permitAll() // 로그아웃은 누구나 가능
-                );
+                // 로그아웃 처리 설정 (참고 블로그 방식 적용)
+                .logout(this::configureLogout) // 메서드 참조로 로그아웃 설정 위임
+        ;
 
         return http.build();
+    }
+
+    /**
+     * 로그아웃에 대한 설정을 관리합니다.
+     * 참고 블로그 방식을 우리 프로젝트에 맞게 적용
+     *
+     * @param logout LogoutConfigurer
+     */
+    private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
+        logout
+                // 1. 로그아웃 엔드포인트를 지정
+                .logoutUrl("/api/customers/logout") // 우리 프로젝트 URL 패턴 유지
+
+                // 2. 엔드포인트 호출에 대한 처리 Handler를 구성
+                .addLogoutHandler(customLogoutHandler) // CustomLogoutHandler 연결
+
+                // 3. 로그아웃 처리가 완료되었을때 처리를 수행합니다.
+                // CustomLogoutHandler에서 이미 응답을 처리하므로 추가 처리 없음
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    // CustomLogoutHandler에서 이미 JSON 응답을 보냈으므로
+                    // 여기서는 HTTP 상태만 확인 (이미 설정되어 있음)
+                    System.out.println("로그아웃 성공 핸들러 실행 완료");
+                })
+
+                // 로그아웃은 누구나 가능
+                .permitAll();
     }
 
     // CORS 설정: 다른 도메인에서 API 호출을 허용하는 정책
