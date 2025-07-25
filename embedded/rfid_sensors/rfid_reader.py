@@ -11,8 +11,37 @@ import logging
 from datetime import datetime
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, List
 import struct
+
+
+class SensorEvent:
+    """센서 이벤트 타입 상수"""
+
+    STARTED = "started"
+    COMPLETED = "completed"
+    ERROR = "error"
+    TIMEOUT = "timeout"
+    TAG_DETECTED = "tag_detected"
+    CONNECTION_LOST = "connection_lost"
+    CONNECTION_RESTORED = "connection_restored"
+
+
+class SensorObserver:
+    """센서 이벤트 옵저버 인터페이스"""
+
+    def on_sensor_event(
+        self, event_type: str, sensor_id: str, data: Any = None
+    ) -> None:
+        """
+        센서 이벤트 발생시 호출되는 메서드
+
+        Args:
+            event_type: 이벤트 타입 (SensorEvent 상수)
+            sensor_id: 센서 식별자
+            data: 이벤트 관련 데이터 (선택사항)
+        """
+        pass
 
 
 class YRM100Constants:
@@ -30,6 +59,9 @@ class YRM100Constants:
     CMD_SINGLE_POLLING = 0x22
     CMD_MULTIPLE_POLLING = 0x27
     CMD_STOP_POLLING = 0x28
+    CMD_SET_TRANSMITTING_POWER = 0xB6  # 송신 전력 설정
+    CMD_SET_FREQUENCY_HOPPING = 0xAD  # 주파수 호핑 모드 설정
+    CMD_SET_WORK_AREA = 0x07  # 작업 지역 설정
 
     # Error Codes
     ERROR_SUCCESS = 0x00
@@ -44,9 +76,10 @@ class YRM100Constants:
     RESERVED_BYTE = 0x22
 
     # Timeout Constants
-    NO_RESPONSE_TIMEOUT = 3.0  # 멀티폴링 완료 판단 시간 (초)
+    NO_RESPONSE_TIMEOUT = 0.5  # 멀티폴링 완료 판단 시간 (초)
     RECONNECT_DELAY = 5.0  # 재연결 대기 시간 (초)
-    THREAD_JOIN_TIMEOUT = 5.0  # 스레드 종료 대기 시간 (초)
+    THREAD_JOIN_TIMEOUT = 1.0  # 스레드 종료 대기 시간 (초)
+    COMMAND_RESPONSE_TIMEOUT = 0.5  # 명령 응답 대기 시간 (초)
 
 
 class PollingMode(Enum):
@@ -79,22 +112,6 @@ class TagInfo:
     rssi: int
     pc: int
     crc: int
-
-
-@dataclass
-class CallbackData:
-    """콜백으로 전달되는 데이터 구조"""
-
-    reader_id: str
-    raw_tag_id: str
-    timestamp: str
-    port: str
-    data_length: int
-    is_96bit_epc: bool
-    rssi: int
-    pc: int
-    crc: int
-    epc_info: Optional[EPCTag] = None
 
 
 class YRM100Protocol:
@@ -179,6 +196,59 @@ class YRM100Protocol:
         Header: BB, Type: 00, Command: 28, PL: 00 00, Checksum: 28, End: 7E
         """
         return self.create_command_frame(YRM100Constants.CMD_STOP_POLLING)
+
+    def create_set_transmitting_power_command(self, power_dbm: int = 26) -> bytes:
+        """
+        송신 전력 설정 명령 프레임 생성
+        Header: BB, Type: 00, Command: B6, PL: 00 02, POW_MSB: 07, POW_LSB: D0, Checksum: 8F, End: 7E
+
+        Args:
+            power_dbm: 송신 전력 (dBm) - 기본값 26dBm = 0x07D0
+        """
+        # 26dBm = 0x07D0 (2000 in decimal, 0x07D0 = 2000 = 20dBm)
+        # 매뉴얼에 따르면 0x07D0 = 2000 = 20dBm이므로 26dBm는 더 높은 값 필요
+        power_value = 2000 + (power_dbm - 20) * 100  # 근사치 계산
+        power_msb = (power_value >> 8) & 0xFF
+        power_lsb = power_value & 0xFF
+
+        parameters = bytes([power_msb, power_lsb])
+        return self.create_command_frame(
+            YRM100Constants.CMD_SET_TRANSMITTING_POWER, parameters
+        )
+
+    def create_set_frequency_hopping_command(self, enable: bool = True) -> bytes:
+        """
+        주파수 호핑 모드 설정 명령 프레임 생성
+        Header: BB, Type: 00, Command: AD, PL: 00 01, Parameter: FF, Checksum: AD, End: 7E
+
+        Args:
+            enable: True=활성화(FF), False=비활성화(00)
+        """
+        parameter = 0xFF if enable else 0x00
+        parameters = bytes([parameter])
+        return self.create_command_frame(
+            YRM100Constants.CMD_SET_FREQUENCY_HOPPING, parameters
+        )
+
+    def create_set_work_area_command(self, region: str = "Korea") -> bytes:
+        """
+        작업 지역 설정 명령 프레임 생성
+        Header: BB, Type: 00, Command: 07, PL: 00 01, Region: 06, Checksum: 09, End: 7E
+
+        Args:
+            region: 지역 설정 ("Korea", "China_900MHz", "China_800MHz", "US", "EU")
+        """
+        region_codes = {
+            "China_900MHz": 0x01,
+            "China_800MHz": 0x04,
+            "US": 0x02,
+            "EU": 0x03,
+            "Korea": 0x06,
+        }
+
+        region_code = region_codes.get(region, 0x06)  # 기본값: 한국
+        parameters = bytes([region_code])
+        return self.create_command_frame(YRM100Constants.CMD_SET_WORK_AREA, parameters)
 
     def get_error_message(self, error_code: int) -> str:
         """YRM100 오류 코드를 메시지로 변환"""
@@ -458,13 +528,15 @@ class RFIDReader:
         self.is_running = False
         self.thread: Optional[threading.Thread] = None
         self.processed_tags: set[str] = set()  # 세션 동안 처리된 고유 태그들
-        self.tag_callback: Optional[Callable[[CallbackData], None]] = None
         self.polling_mode = PollingMode.SINGLE
         self.polling_interval = 1.0  # 폴링 간격 (초)
 
         # 멀티폴링 관련 추가 변수
         self.multiple_polling_count = 0  # 멀티폴링 예상 개수
         self.last_response_time = None  # 마지막 응답 시간
+
+        # 옵저버 패턴 구현
+        self.observers: List[SensorObserver] = []
 
         # 로거 설정
         self.logger = logging.getLogger(f"RFIDReader-{self.reader_id}")
@@ -482,7 +554,7 @@ class RFIDReader:
         self.epc_handler = EPCHandler(self.logger)
 
     def connect(self) -> bool:
-        """시리얼 연결 설정"""
+        """시리얼 연결 설정 (순수하게 연결만)"""
         try:
             self.serial_conn = serial.Serial(
                 port=self.port,
@@ -490,18 +562,252 @@ class RFIDReader:
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
-                timeout=1,
+                timeout=YRM100Constants.NO_RESPONSE_TIMEOUT,
             )
             self.logger.info(f"연결됨: {self.port}")
+            self.notify_observers(SensorEvent.CONNECTION_RESTORED)
             return True
+
         except serial.SerialException as e:
             self.logger.error(f"시리얼 연결 실패: {e}")
+            self.notify_observers(SensorEvent.ERROR, str(e))
             return False
         except (OSError, ValueError) as e:
             self.logger.error(f"연결 설정 오류: {e}")
+            self.notify_observers(SensorEvent.ERROR, str(e))
             return False
         except Exception as e:
             self.logger.error(f"예상치 못한 연결 오류: {e}")
+            self.notify_observers(SensorEvent.ERROR, str(e))
+            return False
+
+    def _wait_for_response(
+        self,
+        expected_command: int,
+        timeout: float = YRM100Constants.COMMAND_RESPONSE_TIMEOUT,
+    ) -> Optional[bytes]:
+        """
+        특정 명령에 대한 응답을 대기하고 반환
+
+        Args:
+            expected_command: 기대하는 명령 코드
+            timeout: 대기 시간 (초)
+
+        Returns:
+            bytes: 응답 프레임 또는 None
+        """
+        try:
+            if not self.serial_conn or not self.serial_conn.is_open:
+                return None
+
+            start_time = time.time()
+            response_buffer = bytearray()
+
+            while (time.time() - start_time) < timeout:
+                # 데이터 읽기
+                if self.serial_conn.in_waiting > 0:
+                    new_data = self.serial_conn.read(self.serial_conn.in_waiting)
+                    response_buffer.extend(new_data)
+
+                    # 완전한 응답 프레임 찾기
+                    frame = self._extract_complete_frame(
+                        response_buffer, expected_command
+                    )
+                    if frame:
+                        return frame
+
+                time.sleep(0.01)  # CPU 사용량 조절
+
+            return None  # 타임아웃
+
+        except Exception as e:
+            self.logger.error(f"응답 대기 중 오류: {e}")
+            return None
+
+    def _extract_complete_frame(
+        self, buffer: bytearray, expected_command: int
+    ) -> Optional[bytes]:
+        """
+        버퍼에서 완전한 응답 프레임 추출 (한 번에 하나의 프레임만 검사)
+
+        Args:
+            buffer: 응답 데이터 버퍼
+            expected_command: 기대하는 명령 코드
+
+        Returns:
+            bytes: 완전한 응답 프레임 또는 None
+        """
+        try:
+            if len(buffer) < YRM100Constants.MIN_FRAME_LENGTH:
+                return None
+
+            # 프레임 헤더 효율적으로 찾기
+            start_idx = buffer.find(YRM100Constants.FRAME_HEADER)
+
+            if start_idx == -1:
+                buffer.clear()  # 헤더가 없으면 전체 버퍼 클리어
+                return None
+
+            # 프레임 시작 전 데이터 제거
+            if start_idx > 0:
+                del buffer[:start_idx]
+
+            if len(buffer) < YRM100Constants.MIN_FRAME_LENGTH:
+                return None
+
+            # 프레임 타입과 명령 확인
+            frame_type = buffer[1]
+            command = buffer[2]
+
+            # Response Frame이고 기대하는 명령인지 확인
+            if (
+                frame_type == YRM100Constants.FRAME_TYPE_RESPONSE
+                and command == expected_command
+            ):
+
+                # 페이로드 길이 추출
+                pl_msb = buffer[3]
+                pl_lsb = buffer[4]
+                payload_len = (pl_msb << 8) | pl_lsb
+
+                # 전체 프레임 길이 계산
+                frame_len = 5 + payload_len + 2
+
+                if len(buffer) >= frame_len:
+                    # 완전한 프레임 추출
+                    frame = bytes(buffer[:frame_len])
+                    del buffer[:frame_len]
+
+                    # 프레임 끝과 체크섬 확인
+                    if frame[-1] == YRM100Constants.FRAME_END and self._verify_checksum(
+                        frame
+                    ):
+                        return frame
+
+            # 기대하는 프레임이 아니거나 불완전한 경우, 첫 번째 바이트만 제거
+            if len(buffer) > 0:
+                del buffer[0]
+
+            return None
+
+        except Exception as e:
+            self.logger.error(f"프레임 추출 중 오류: {e}")
+            return None
+
+    def _verify_checksum(self, frame: bytes) -> bool:
+        """프레임의 체크섬 검증"""
+        try:
+            checksum_data = frame[1:-2]  # Type부터 Payload까지
+            expected_checksum = self.protocol.calculate_checksum(checksum_data)
+            actual_checksum = frame[-2]
+            return expected_checksum == actual_checksum
+        except:
+            return False
+
+    def _send_command_and_verify(
+        self, command_bytes: bytes, command_code: int, command_name: str
+    ) -> bool:
+        """
+        명령 전송 후 응답 확인
+
+        Args:
+            command_bytes: 전송할 명령 바이트
+            command_code: 명령 코드
+            command_name: 명령 이름 (로깅용)
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            if not self.serial_conn or not self.serial_conn.is_open:
+                self.logger.error(f"{command_name}: 시리얼 연결이 없습니다")
+                return False
+
+            # 명령 전송
+            self.serial_conn.write(command_bytes)
+            self.logger.debug(
+                f"{command_name} 명령 전송: {command_bytes.hex().upper()}"
+            )
+
+            # 응답 대기
+            response = self._wait_for_response(command_code)
+            if not response:
+                self.logger.error(f"{command_name}: 응답 타임아웃")
+                return False
+
+            # 응답 검증
+            success = self.protocol.parse_response_frame(response)
+            if success:
+                self.logger.info(f"{command_name} 성공")
+                return True
+            else:
+                self.logger.error(f"{command_name} 실패 - 오류 응답")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"{command_name} 중 예상치 못한 오류: {e}")
+            return False
+
+    def initialize_reader(
+        self, power_dbm: int = 26, enable_hopping: bool = True, region: str = "Korea"
+    ) -> bool:
+        """
+        리더 초기화: 송신 전력, 주파수 호핑, 작업 지역 설정 (응답 확인 포함)
+
+        Args:
+            power_dbm: 송신 전력 (dBm)
+            enable_hopping: 주파수 호핑 활성화 여부
+            region: 작업 지역
+
+        Returns:
+            bool: 초기화 성공 여부
+        """
+        try:
+            if not self.serial_conn or not self.serial_conn.is_open:
+                self.logger.error("시리얼 연결이 없어 초기화할 수 없습니다")
+                return False
+
+            self.logger.info(
+                f"리더 초기화 시작 (전력: {power_dbm}dBm, 호핑: {enable_hopping}, 지역: {region})"
+            )
+
+            # 1. 송신 전력 설정
+            power_cmd = self.protocol.create_set_transmitting_power_command(power_dbm)
+            if not self._send_command_and_verify(
+                power_cmd,
+                YRM100Constants.CMD_SET_TRANSMITTING_POWER,
+                f"송신 전력 {power_dbm}dBm 설정",
+            ):
+                return False
+
+            # 2. 주파수 호핑 모드 설정
+            hopping_cmd = self.protocol.create_set_frequency_hopping_command(
+                enable_hopping
+            )
+            hopping_status = "활성화" if enable_hopping else "비활성화"
+            if not self._send_command_and_verify(
+                hopping_cmd,
+                YRM100Constants.CMD_SET_FREQUENCY_HOPPING,
+                f"주파수 호핑 {hopping_status}",
+            ):
+                return False
+
+            # 3. 작업 지역 설정
+            region_cmd = self.protocol.create_set_work_area_command(region)
+            if not self._send_command_and_verify(
+                region_cmd,
+                YRM100Constants.CMD_SET_WORK_AREA,
+                f"작업 지역 {region} 설정",
+            ):
+                return False
+
+            self.logger.info(
+                f"리더 초기화 완료 ({power_dbm}dBm, 호핑 {hopping_status}, {region} 지역)"
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(f"리더 초기화 중 예상치 못한 오류: {e}")
             return False
 
     def disconnect(self) -> None:
@@ -515,9 +821,25 @@ class RFIDReader:
         except Exception as e:
             self.logger.error(f"예상치 못한 연결 해제 오류: {e}")
 
-    def set_tag_callback(self, callback: Callable[[CallbackData], None]) -> None:
-        """태그 감지 시 호출될 콜백 함수 설정"""
-        self.tag_callback = callback
+    def add_observer(self, observer: SensorObserver) -> None:
+        """옵저버 추가"""
+        if observer not in self.observers:
+            self.observers.append(observer)
+            self.logger.debug(f"옵저버 추가됨: {type(observer).__name__}")
+
+    def remove_observer(self, observer: SensorObserver) -> None:
+        """옵저버 제거"""
+        if observer in self.observers:
+            self.observers.remove(observer)
+            self.logger.debug(f"옵저버 제거됨: {type(observer).__name__}")
+
+    def notify_observers(self, event_type: str, data: Any = None) -> None:
+        """모든 옵저버에게 이벤트 알림"""
+        for observer in self.observers:
+            try:
+                observer.on_sensor_event(event_type, self.reader_id, data)
+            except Exception as e:
+                self.logger.error(f"옵저버 알림 오류 ({type(observer).__name__}): {e}")
 
     def set_polling_mode(
         self, mode: PollingMode = PollingMode.SINGLE, interval: float = 1.0
@@ -592,19 +914,6 @@ class RFIDReader:
         """두 EPC가 같은 상품 배치(동일 밀리초)인지 확인 (EPCHandler 위임)"""
         return self.epc_handler.is_same_product_batch(epc1, epc2)
 
-    def get_processed_tag_count(self) -> int:
-        """현재 세션에서 처리된 고유 태그 개수 반환"""
-        return len(self.processed_tags)
-
-    def get_processed_tags(self) -> set[str]:
-        """현재 세션에서 처리된 고유 태그 목록 반환 (복사본)"""
-        return self.processed_tags.copy()
-
-    def clear_processed_tags(self) -> None:
-        """처리된 태그 목록 수동 초기화 (디버깅용)"""
-        self.processed_tags.clear()
-        self.logger.info("처리된 태그 목록이 수동으로 초기화되었습니다")
-
     def parse_tag_data(self, data: bytes) -> Optional[TagInfo]:
         """
         YRM100에서 받은 데이터를 파싱하여 태그 정보 추출
@@ -665,6 +974,7 @@ class RFIDReader:
     def read_loop(self) -> None:
         """YRM100 명령 기반 태그 읽기 루프"""
         self.logger.info(f"태그 읽기 루프 시작 (모드: {self.polling_mode.name})")
+        self.notify_observers(SensorEvent.STARTED)
 
         last_command_time = 0
 
@@ -675,6 +985,8 @@ class RFIDReader:
             try:
                 if not self.serial_conn or not self.serial_conn.is_open:
                     self.logger.warning("시리얼 연결이 끊어짐. 재연결 시도...")
+                    self.notify_observers(SensorEvent.CONNECTION_LOST)
+
                     if not self.connect():
                         time.sleep(
                             YRM100Constants.RECONNECT_DELAY
@@ -703,6 +1015,13 @@ class RFIDReader:
                             f"멀티폴링 완료: {YRM100Constants.NO_RESPONSE_TIMEOUT}초 동안 응답 없음"
                         )
                         self.is_running = False
+                        self.notify_observers(
+                            SensorEvent.COMPLETED,
+                            {
+                                "total_tags": len(self.processed_tags),
+                                "completion_reason": "timeout",
+                            },
+                        )
                         break
 
                 # 데이터 읽기
@@ -721,9 +1040,11 @@ class RFIDReader:
 
             except serial.SerialException as e:
                 self.logger.error(f"시리얼 통신 오류: {e}")
+                self.notify_observers(SensorEvent.ERROR, str(e))
                 time.sleep(1)
             except Exception as e:
                 self.logger.error(f"읽기 루프 오류: {e}")
+                self.notify_observers(SensorEvent.ERROR, str(e))
                 time.sleep(1)
 
         # 다중 폴링 모드인 경우 중지 명령 전송
@@ -802,20 +1123,6 @@ class RFIDReader:
                 if self.polling_mode == PollingMode.MULTIPLE:
                     self.last_response_time = time.time()
 
-                # 콜백으로 전달할 완전한 태그 정보 구성
-                callback_data = CallbackData(
-                    reader_id=self.reader_id,
-                    raw_tag_id=tag_info.raw_tag_id,
-                    timestamp=datetime.now().isoformat(),
-                    port=self.port,
-                    data_length=tag_info.data_length,
-                    is_96bit_epc=tag_info.is_96bit_epc,
-                    rssi=tag_info.rssi,
-                    pc=tag_info.pc,
-                    crc=tag_info.crc,
-                    epc_info=tag_info.epc_info,
-                )
-
                 # 로그 출력
                 if tag_info.epc_info:
                     self.logger.info(
@@ -831,12 +1138,23 @@ class RFIDReader:
                         f"(RSSI: {tag_info.rssi})"
                     )
 
-                # 콜백 함수 호출 (안전하게)
-                if self.tag_callback:
-                    try:
-                        self.tag_callback(callback_data)
-                    except Exception as e:
-                        self.logger.error(f"콜백 함수 실행 오류: {e}")
+                # 옵저버에게 태그 감지 이벤트 알림
+                self.notify_observers(
+                    SensorEvent.TAG_DETECTED,
+                    {
+                        "tag_id": tag_info.raw_tag_id,
+                        "tag_count": len(self.processed_tags),
+                        "rssi": tag_info.rssi,
+                        "epc_info": tag_info.epc_info,
+                        "reader_id": self.reader_id,
+                        "timestamp": datetime.now().isoformat(),
+                        "port": self.port,
+                        "data_length": tag_info.data_length,
+                        "is_96bit_epc": tag_info.is_96bit_epc,
+                        "pc": tag_info.pc,
+                        "crc": tag_info.crc,
+                    },
+                )
 
     def start_reading(
         self,
@@ -902,6 +1220,79 @@ class RFIDReader:
 
         self.disconnect()
 
+    def stop_reading_and_cleanup(self) -> bool:
+        """
+        완전한 리소스 정리 - 스레드, 포트, 상태 모두 해제
+
+        Returns:
+            bool: 정리 성공 여부
+        """
+        try:
+            self.logger.debug(f"{self.reader_id} 완전한 리소스 정리 시작...")
+
+            # 1. 읽기 중단 신호
+            if self.is_running:
+                self.is_running = False
+
+                # 멀티폴링 모드인 경우 중지 명령 전송
+                if (
+                    self.polling_mode == PollingMode.MULTIPLE
+                    and self.serial_conn
+                    and self.serial_conn.is_open
+                ):
+                    try:
+                        self._send_stop_polling_command()
+                        time.sleep(0.1)  # 중지 명령 처리 대기
+                    except Exception as e:
+                        self.logger.warning(f"폴링 중지 명령 오류: {e}")
+
+            # 2. 스레드 종료 대기
+            if self.thread and self.thread.is_alive():
+                self.thread.join(timeout=3.0)  # 충분한 시간 제공
+
+                if self.thread.is_alive():
+                    self.logger.warning(
+                        f"스레드가 여전히 살아있음 - 데몬이므로 프로그램 종료시 정리됨"
+                    )
+
+            # 3. 시리얼 포트 완전 해제
+            if self.serial_conn:
+                try:
+                    if self.serial_conn.is_open:
+                        self.serial_conn.close()
+                        self.logger.debug("시리얼 포트 닫기 완료")
+
+                    # 포트 객체 완전 해제
+                    self.serial_conn = None
+
+                except Exception as e:
+                    self.logger.error(f"포트 닫기 오류: {e}")
+                    return False
+
+            # 4. 상태 변수 정리
+            self.is_running = False
+            self.thread = None
+            self.processed_tags.clear()
+            self.last_response_time = None
+
+            # 5. 포트 해제 확인을 위한 대기
+            time.sleep(0.1)
+
+            self.logger.debug(f"{self.reader_id} 완전한 리소스 정리 완료")
+            self.notify_observers(
+                SensorEvent.COMPLETED,
+                {
+                    "total_tags": len(self.processed_tags),
+                    "completion_reason": "cleanup",
+                },
+            )
+            return True
+
+        except Exception as e:
+            self.logger.error(f"리소스 정리 중 예상치 못한 오류: {e}")
+            self.notify_observers(SensorEvent.ERROR, str(e))
+            return False
+
     def __enter__(self) -> "RFIDReader":
         """컨텍스트 매니저 진입"""
         if self.start_reading():
@@ -911,5 +1302,5 @@ class RFIDReader:
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         """컨텍스트 매니저 종료"""
-        self.stop_reading()
+        self.stop_reading_and_cleanup()
         return False  # 예외를 전파
