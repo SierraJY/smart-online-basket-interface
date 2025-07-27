@@ -34,7 +34,7 @@ public class JwtUtil {
     // 리프레시 토큰 만료시간 생성
     private Date createRefreshTokenExpiredDate() {
         Calendar c = Calendar.getInstance();
-        c.add(Calendar.DATE, 1); // 7일
+        c.add(Calendar.DATE, 7); // 7일
         return c.getTime();
     }
 
