@@ -44,4 +44,28 @@ public class ProductService {
         product.setStock(product.getStock() - quantity);
         return productRepository.save(product);
     }
+
+    // 판매량 증가 (구매 완료 시 호출)
+    public Product increaseSales(Integer productId, Integer quantity) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        if (productOpt.isEmpty()) {
+            throw new IllegalArgumentException("존재하지 않는 상품입니다: " + productId);
+        }
+
+        Product product = productOpt.get();
+        product.setSales(product.getSales() + quantity);
+        return productRepository.save(product);
+    }
+
+    // 카테고리별 상품 조회
+    public List<Product> getProductsByCategory(String category) {
+        return productRepository.findByCategory(category);
+    }
+
+    // 브랜드별 상품 조회
+    public List<Product> getProductsByBrand(String brand) {
+        return productRepository.findByBrand(brand);
+    }
+
+
 }

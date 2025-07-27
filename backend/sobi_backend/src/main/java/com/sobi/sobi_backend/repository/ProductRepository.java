@@ -15,4 +15,10 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 
     // 상품명에 특정 문자열이 포함된 상품들 찾기
     List<Product> findByNameContaining(String keyword);
+
+    // 카테고리로 찾기
+    List<Product> findByCategory(String category);
+
+    // 브랜드로 찾기
+    List<Product> findByBrand(String brand);
 }

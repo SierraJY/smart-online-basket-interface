@@ -82,6 +82,7 @@ public class ReceiptService {
         for (String epcPattern : epcPatterns) {
             Optional<EpcMap> epcMapOpt = epcMapRepository.findByEpcPattern(epcPattern);
             if (epcMapOpt.isPresent()) {
+                // EpcMap에서 productId 직접 가져오기
                 String productId = epcMapOpt.get().getProductId().toString();
                 productMap.put(productId, productMap.getOrDefault(productId, 0) + 1);
             }

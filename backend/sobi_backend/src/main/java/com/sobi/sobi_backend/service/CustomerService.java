@@ -22,7 +22,7 @@ public class CustomerService {
 
         Customer customer = new Customer();
         customer.setUserId(userId);
-        customer.setUserPasswd(password); // 나중에 암호화 추가 예정
+        customer.setUserPasswd(password); // 이미 암호화된 패스워드를 받음
         customer.setGender(gender);
         customer.setAge(age);
 
@@ -32,5 +32,10 @@ public class CustomerService {
     // 로그인 (아이디로 조회)
     public Optional<Customer> loginCustomer(String userId) {
         return customerRepository.findByUserId(userId);
+    }
+
+    // ID로 고객 조회 (프로필 조회용)
+    public Optional<Customer> getCustomerById(Integer id) {
+        return customerRepository.findById(id);
     }
 }
