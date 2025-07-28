@@ -3,7 +3,9 @@ package com.sobi.sobi_backend.controller;
 import com.sobi.sobi_backend.entity.Basket;
 import com.sobi.sobi_backend.service.BasketService;
 import com.sobi.sobi_backend.service.ReceiptService;
+import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
+import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -29,6 +31,12 @@ public class BasketController {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate; // Redis 연동
+
+    @Autowired
+    private BasketCacheService basketCacheService; // 바구니 캐시 서비스
+
+    @Autowired
+    private BasketMqttHandler basketMqttHandler; // MQTT 핸들러
 
     // 바구니 사용 시작 (POST /api/baskets/start/{boardMac})
     @PostMapping("/start/{boardMac}")
@@ -129,15 +137,30 @@ public class BasketController {
 
             Basket basket = basketOpt.get();
 
-            // TODO: 실제로는 바구니에 담긴 상품 목록을 조회해야 함
-            // 현재는 임시로 빈 목록 반환 (실시간 이벤트 시스템 구현 후 수정 예정)
+            // Redis에서 실제 바구니 데이터 조회 (상품 정보 포함)
+            List<BasketCacheService.BasketItemInfo> basketItems =
+                    basketCacheService.getBasketItemsWithProductInfo(boardMac);
+
+            // 총 가격 계산
+            int totalPrice = basketItems.stream()
+                    .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
+                    .sum();
+
+            // 총 아이템 개수 계산
+            int totalCount = basketItems.stream()
+                    .mapToInt(BasketCacheService.BasketItemInfo::getQuantity)
+                    .sum();
+
+            // 응답 구성
             Map<String, Object> response = new HashMap<>();
             response.put("message", "바구니 내용 조회 완료");
             response.put("basket", basket);
-            response.put("items", List.of()); // 임시 빈 목록
-            response.put("totalCount", 0);
+            response.put("items", basketItems);           // 실제 상품 정보 리스트
+            response.put("totalCount", totalCount);       // 전체 아이템 개수
+            response.put("totalPrice", totalPrice);       // 전체 가격 (할인 적용됨)
+            response.put("boardMac", boardMac);
 
-            System.out.println("바구니 내용 조회 완료: 고객ID=" + customerId + ", MAC=" + boardMac);
+            System.out.println("바구니 내용 조회 완료: 고객ID=" + customerId + ", MAC=" + boardMac + ", 아이템수=" + totalCount);
             return ResponseEntity.ok(response); // 200 OK
         } catch (Exception e) {
             System.err.println("바구니 내용 조회 중 오류: " + e.getMessage());
@@ -191,27 +214,34 @@ public class BasketController {
                 return ResponseEntity.badRequest().body(error); // 400 Bad Request
             }
 
-            // EPC 패턴 목록 검증
-            if (request.getEpcPatterns() == null || request.getEpcPatterns().isEmpty()) {
+            // EPC 패턴 목록으로 결제 처리
+            List<String> epcPatterns = basketCacheService.getEpcPatternsForCheckout(boardMac);
+
+            // 바구니가 비어있는지 확인
+            if (epcPatterns.isEmpty()) {
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "구매할 상품이 없습니다");
                 return ResponseEntity.badRequest().body(error); // 400 Bad Request
             }
 
-            // 결제 처리 (EPC 패턴들로 자동 결제)
-            var receipt = receiptService.createReceiptFromEpcPatterns(customerId, request.getEpcPatterns());
+            // 결제 처리 (Redis에서 가져온 EPC 패턴들로 자동 결제)
+            var receipt = receiptService.createReceiptFromEpcPatterns(customerId, epcPatterns);
 
             // 바구니 반납 (결제 완료 후)
             basketService.returnBasket(boardMac);
 
-            // Redis에서 사용자-바구니 매핑 삭제 (핵심!)
+            // Redis에서 바구니 데이터 삭제 (핵심!)
+            basketCacheService.clearBasketItems(boardMac);
+
+            // Redis에서 사용자-바구니 매핑 삭제
             redisTemplate.delete("user_basket:" + customerId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "결제가 완료되었습니다");
             response.put("receipt", receipt);
             response.put("basketReturned", true);
-            response.put("boardMac", boardMac);
+            response.put("epcPatterns", epcPatterns);
+            response.put("totalItems", epcPatterns.size());
 
             System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", MAC=" + boardMac + ", 영수증ID=" + receipt.getId() + ", Redis 삭제 완료");
             return ResponseEntity.ok(response); // 200 OK
@@ -228,14 +258,32 @@ public class BasketController {
         }
     }
 
-    // 결제 요청 데이터 구조
-    public static class CheckoutRequest {
-        private List<String> epcPatterns; // 구매할 상품들의 EPC 패턴 목록
+    // MQTT 핸들러 직접 테스트 (POST /api/baskets/test/mqtt-direct)
+    @PostMapping("/test/mqtt-direct")
+    public ResponseEntity<?> testMqttHandlerDirect() {
+        try {
+            System.out.println("🧪 MQTT 핸들러 직접 테스트 시작");
 
-        // 기본 생성자
+            // BasketMqttHandler 직접 호출
+            basketMqttHandler.handleBasketUpdate(
+                    "{\"PEAC\": 5, \"BLUE\": 3}",
+                    "basket/2c:cf:67:11:93:6b/update"
+            );
+
+            return ResponseEntity.ok("MQTT 핸들러 직접 호출 성공");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("오류: " + e.getMessage());
+        }
+    }
+
+    // 결제 요청 데이터 구조 (더 이상 사용 안함 - Redis에서 자동으로 가져옴)
+    public static class CheckoutRequest {
+        // 레거시 필드 - 호환성을 위해 유지하지만 사용하지 않음
+        private List<String> epcPatterns;
+
         public CheckoutRequest() {}
 
-        // Getters and Setters
         public List<String> getEpcPatterns() {
             return epcPatterns;
         }
