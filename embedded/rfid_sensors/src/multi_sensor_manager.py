@@ -7,6 +7,7 @@
 import time
 import threading
 import logging
+import serial.tools.list_ports
 from typing import List, Dict, Set, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -211,7 +212,6 @@ class MultiSensorManager(SensorObserver):
 
     def __init__(
         self,
-        sensor_ports: List[str],
         polling_count: int,
         rssi_threshold: int,
         max_cycle_length: int = 10,
@@ -231,7 +231,7 @@ class MultiSensorManager(SensorObserver):
             consecutive_miss_threshold: 연속 미감지 임계값 (확신->의심 변경, 기본: 3)
             polling_timeout: 폴링 타임아웃 (초, 기본: 10.0)
         """
-        self.sensor_ports = sensor_ports
+        self.sensor_ports: List[str] = []  # 센서 포트 리스트
         self.polling_count = polling_count
         self.rssi_threshold = rssi_threshold
         self.readers: List[RFIDReader] = []
@@ -271,6 +271,15 @@ class MultiSensorManager(SensorObserver):
         """센서들을 초기화합니다"""
         self.readers.clear()
         self.sensor_results.clear()
+        
+        # 센서 포트 설정
+        # 가능한 포트 모두 확인
+        all_ports = serial.tools.list_ports.comports()
+        
+        # VID가 11CA인 포트들만 선택
+        self.sensor_ports = [
+            port.device for port in all_ports if port.vid == 0x11CA
+        ]
 
         for i, port in enumerate(self.sensor_ports):
             # RFID 리더 생성
@@ -802,12 +811,8 @@ class MultiSensorManager(SensorObserver):
 
 # 사용 예시
 if __name__ == "__main__":
-    # 센서 포트 설정 (실제 환경에 맞게 수정)
-    sensor_ports = ["COM8", "COM10"]
-
     # 매니저 생성 (30 count 멀티폴링, RSSI >= -55dBm 필터링, 관성 적용)
     manager = MultiSensorManager(
-        sensor_ports,
         polling_count=30,
         rssi_threshold=-55,
         max_cycle_length=10,
