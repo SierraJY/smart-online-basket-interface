@@ -5,18 +5,18 @@ import { BiCategory } from "react-icons/bi";
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
 
-import BasketButton from './BasketButton'
+import QrButton from './QrButton'
 import CategoryButton from './CategoryButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
 
 export default function MenuButton() {
   const [open, setOpen] = useState(false)
-  const [isDark, setIsDark] = useState(false) // 테마는 읽기전용!
+  const [isDark, setIsDark] = useState(false) // 테마는 읽기
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
 
-  // 다크모드 상태 동기화 (읽기만! setTheme 없음)
+  // 다크모드 상태 동기화 (읽기만, setTheme 없음)
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
     const observer = new MutationObserver(() => {
@@ -67,7 +67,7 @@ export default function MenuButton() {
               transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
-              <BasketButton />
+              <QrButton />
             </motion.div>
             <motion.div
               key="category"
