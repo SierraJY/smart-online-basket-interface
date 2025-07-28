@@ -2,43 +2,62 @@
 
 'use client'
 
-import { useProducts } from '@/utils/hooks/useProducts'
-import { useAuthStore } from '@/store/useAuthStore'
-import { toggleWishlist } from '@/utils/wishlistUtils'
-import { getToken } from '@/utils/auth/authUtils'
-import { Plus, Check } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from "react"
 
-export default function ProductDetailClient({ id }: { id: string }) {
-  const { products, loading, error } = useProducts()
-  const { email, wishlist, setWishlist } = useAuthStore()
+type Product = {
+  id: number
+  name: string
+  price: number
+  stock: number
+  category: string
+  imageUrl: string
+  discountRate: number
+  sales: number
+  tag: string | null
+  location: string | null
+  description: string | null
+  brand: string
+  discountedPrice: number
+}
+
+// id만 받아서 fetch (명세서 맞춤)
+function useProductDetail(id: string) {
+  const [product, setProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (email) {
-      const stored = localStorage.getItem(`wishlist-${email}`)
-      setWishlist(stored ? JSON.parse(stored) : [])
-    }
-  }, [email, setWishlist])
+    setLoading(true)
+    setError(null)
+
+    fetch(`/api/products/${id}`)
+      .then(res => {
+        if (!res.ok) throw new Error("상품 데이터 로드 실패")
+        return res.json()
+      })
+      .then(data => {
+        setProduct(data.product)
+        setLoading(false)
+      })
+      .catch(e => {
+        setError(e)
+        setLoading(false)
+      })
+  }, [id])
+
+  return { product, loading, error }
+}
+
+export default function ProductDetailClient({ id }: { id: string }) {
+  const { product, loading, error } = useProductDetail(id)
 
   if (loading) {
     return <main className="min-h-screen flex items-center justify-center"><div>로딩 중...</div></main>
   }
-  if (error) {
-    return <main className="min-h-screen flex items-center justify-center"><div>에러: {error.message}</div></main>
-  }
-
-  // id로 상품 상세 찾기
-  const product = products.find((p) => String(p.id) === String(id))
-  if (!product) {
-    return (
-      <main className="min-h-screen flex items-center justify-center"
-        style={{
-          background: 'var(--input-background)',
-          color: 'var(--foreground)'
-        }}>
-        <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>상품을 찾을 수 없습니다</p>
-      </main>
-    )
+  if (error || !product) {
+    return <main className="min-h-screen flex items-center justify-center">
+      <div>상품을 찾을 수 없습니다</div>
+    </main>
   }
 
   // 카테고리 언더바를 슬래쉬로 치환
@@ -64,22 +83,6 @@ export default function ProductDetailClient({ id }: { id: string }) {
             filter: 'brightness(0.96) saturate(1.08)'
           }}
         />
-        <button
-          onClick={() => {
-            if (!getToken()) {
-              alert('로그인 후 이용 가능합니다.')
-              return
-            }
-            const updated = toggleWishlist(email, product.id)
-            setWishlist(updated)
-          }}
-          className="absolute top-4 right-4 p-2 rounded-full hover:scale-110 transition-all z-10"
-        >
-          {wishlist.includes(product.id)
-            ? <Check size={28} color="var(--foreground)" strokeWidth={2.2} />
-            : <Plus size={28} color="var(--foreground)" strokeWidth={2.2} />
-          }
-        </button>
       </div>
       {/* 상세정보 영역 */}
       <div
@@ -98,6 +101,9 @@ export default function ProductDetailClient({ id }: { id: string }) {
         </h1>
         <p className="text-lg font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
           {product.price.toLocaleString()}원
+        </p>
+        <p className="text-md font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
+          {product.brand}
         </p>
         <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
           남은 재고 : {product.stock}

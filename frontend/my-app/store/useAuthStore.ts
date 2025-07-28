@@ -1,26 +1,37 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
 
-interface AuthState {
-  isLoggedIn: boolean
-  email: string
-  name: string
-  wishlist: number[]
-
-  setIsLoggedIn: (value: boolean) => void
-  setEmail: (value: string) => void
-  setName: (value: string) => void
-  setWishlist: (list: number[]) => void
+type AuthState = {
+  isLoggedIn: boolean;
+  accessToken: string;
+  refreshToken: string; // 추가!
+  userId: string;
+  favorite: number[];
   
-}
+  setIsLoggedIn: (v: boolean) => void;
+  setAccessToken: (v: string) => void;
+  setRefreshToken: (v: string) => void;
+  setUserId: (v: string) => void;
+  resetAuth: () => void;
+  setFavorite: (ids: number[]) => void;
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
-  email: '',
-  name: '',
-  wishlist: [],
-
-  setIsLoggedIn: (value) => set({ isLoggedIn: value }),
-  setEmail: (value) => set({ email: value }),
-  setName: (value) => set({ name: value }),
-  setWishlist: (list) => set({ wishlist: list }),
-}))
+  accessToken: '',
+  refreshToken: '',
+  userId: '',
+  favorite: [],
+  
+  setIsLoggedIn: (v) => set({ isLoggedIn: v }),
+  setAccessToken: (v) => set({ accessToken: v }),
+  setRefreshToken: (v) => set({ refreshToken: v }),
+  setUserId: (v) => set({ userId: v }),
+  resetAuth: () =>
+    set({
+      isLoggedIn: false,
+      accessToken: '',
+      refreshToken: '',
+      userId: '',
+    }),
+  setFavorite: (ids) => set({ favorite: ids }),
+}));

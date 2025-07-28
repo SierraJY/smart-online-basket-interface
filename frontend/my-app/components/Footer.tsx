@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/utils/auth/useAuth'
 import {
   LogOut,
@@ -11,7 +12,14 @@ import {
 } from 'lucide-react'
 
 export default function Footer() {
-  const { isLoggedIn, email, logout } = useAuth()
+  const router = useRouter();
+  const { isLoggedIn, logout } = useAuth()
+
+  // 안전하게 로그아웃 처리
+  const handleLogout = async () => {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <footer
@@ -33,12 +41,12 @@ export default function Footer() {
         <PackageSearch size={22} color='var(--foreground)' strokeWidth={1.5} />
       </Link>
 
-      <Link href="/wishlist" className='hover:scale-110'>
+      <Link href="/favorite" className='hover:scale-110'>
         <Heart size={22} color='var(--foreground)' strokeWidth={1.5} />
       </Link>
 
       {isLoggedIn ? (
-        <button onClick={logout} className='hover:scale-110 cursor-pointer'>
+        <button onClick={handleLogout} className='hover:scale-110 cursor-pointer'>
           <LogOut size={22} color='var(--foreground)' strokeWidth={1.5} />
         </button>
       ) : (

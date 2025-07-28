@@ -1,6 +1,15 @@
 /* globals.css - 다크모드 변수 완전 대응 버전 */
 
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+.test-font {
+  font-family: 'Jua', 'Cafe24Ssurround', 'Pretendard', Arial, sans-serif;
+  font-size: 0.8rem;
+  color: #215a3b;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
 
 :root {
   --input-background: #ffffff;

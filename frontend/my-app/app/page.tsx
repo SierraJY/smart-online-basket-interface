@@ -1,3 +1,5 @@
+// 메인 페이지
+
 'use client'
 
 import { useRouter } from 'next/navigation'
@@ -5,7 +7,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { CirclePlus } from 'lucide-react'
 import SearchBar from '@/components/SearchBar'
 import PushSubscribeButton from '@/components/PushSubscribeButton'
-import { useProducts } from '@/utils/hooks/useProducts' // 👈 커스텀 훅 import!
+import { useProducts } from '@/utils/hooks/useProducts'
+import AccessTokenRefreshButton from '@/components/AccessTokenRefreshButton'
 
 export default function Home() {
   const router = useRouter()
@@ -64,6 +67,17 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-4 py-10">
+        {/* <img
+        src="/logo.png"
+        alt="SOBI 로고"
+        className="w-[220px] sm:w-[260px] mb-7 mt-6 select-none pointer-events-none"
+        draggable={false}
+        style={{
+          filter: "drop-shadow(0 2px 10px #b7dcc0b8)",
+          userSelect: "none",
+        }}
+      /> */}
+      
       <SearchBar
         keyword={keyword}
         setKeyword={setKeyword}
@@ -76,6 +90,7 @@ export default function Home() {
       />
 
       <PushSubscribeButton />
+      <AccessTokenRefreshButton />
 
       <div className="flex items-center w-full max-w-md my-6">
         <div style={{ backgroundColor: 'var(--input-border)' }} className="flex-grow h-px" />

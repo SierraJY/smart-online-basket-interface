@@ -7,8 +7,8 @@
   "background_color": "#ffffff",
   "icons": [
     {
-      "src": "64.ico",
-      "type": "image/x-icon",
+      "src": "64.png",
+      "type": "image/png",
       "sizes": "64x64 32x32 24x24 16x16"
     },
     {
