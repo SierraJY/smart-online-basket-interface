@@ -30,9 +30,9 @@ public class ReceiptService {
     @Autowired
     private EpcMapRepository epcMapRepository;
 
-    // 구매 기록 생성 (결제 처리 + RFID 태그 매핑 삭제)
+    // 구매 기록 생성 (EPC 매핑 삭제 제거됨)
     @Transactional
-    public Receipt createReceipt(Integer userId, Map<String, Integer> productMap, List<String> usedEpcPatterns) {
+    public Receipt createReceipt(Integer userId, Map<String, Integer> productMap) {
         // 고객 존재 확인
         Optional<Customer> customerOpt = customerRepository.findById(userId);
         if (customerOpt.isEmpty()) {
@@ -44,14 +44,6 @@ public class ReceiptService {
             Integer productId = Integer.parseInt(entry.getKey());
             Integer quantity = entry.getValue();
             productService.decreaseStock(productId, quantity);
-        }
-
-        // 사용된 RFID 태그 매핑 삭제 (핵심 로직!)
-        for (String epcPattern : usedEpcPatterns) {
-            Optional<EpcMap> epcMapOpt = epcMapRepository.findByEpcPattern(epcPattern);
-            if (epcMapOpt.isPresent()) {
-                epcMapRepository.delete(epcMapOpt.get());
-            }
         }
 
         // JSON 문자열 생성 {"1": 2, "3": 1}
@@ -73,7 +65,7 @@ public class ReceiptService {
         return receiptRepository.save(receipt);
     }
 
-    // 바구니에서 EPC 패턴들로 자동 구매 처리
+    // 바구니에서 EPC 패턴들로 자동 구매 처리 (EPC 삭제 로직 제거됨)
     @Transactional
     public Receipt createReceiptFromEpcPatterns(Integer userId, List<String> epcPatterns) {
         Map<String, Integer> productMap = new java.util.HashMap<>();
@@ -82,7 +74,6 @@ public class ReceiptService {
         for (String epcPattern : epcPatterns) {
             Optional<EpcMap> epcMapOpt = epcMapRepository.findByEpcPattern(epcPattern);
             if (epcMapOpt.isPresent()) {
-                // EpcMap에서 productId 직접 가져오기
                 String productId = epcMapOpt.get().getProductId().toString();
                 productMap.put(productId, productMap.getOrDefault(productId, 0) + 1);
             }
@@ -92,7 +83,8 @@ public class ReceiptService {
             throw new IllegalArgumentException("유효한 상품이 없습니다.");
         }
 
-        return createReceipt(userId, productMap, epcPatterns);
+        // EPC 매핑 삭제 로직 제거 - 상품 타입 패턴은 계속 유지됨
+        return createReceipt(userId, productMap);
     }
 
     // 구매 기록 조회 (ID)

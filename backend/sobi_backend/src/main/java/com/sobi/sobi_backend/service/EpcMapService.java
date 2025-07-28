@@ -18,11 +18,5 @@ public class EpcMapService {
         return epcMapRepository.findByEpcPattern(epcPattern);
     }
 
-    // 판매 시 EPC 삭제 (구매 완료 처리 - ReceiptService에서 호출)
-    public void deleteEpcMap(String epcPattern) {
-        Optional<EpcMap> epcMapOpt = epcMapRepository.findByEpcPattern(epcPattern);
-        if (epcMapOpt.isPresent()) {
-            epcMapRepository.delete(epcMapOpt.get());
-        }
-    }
+    // deleteEpcMap 메서드 제거 - EPC 패턴은 상품 타입을 나타내므로 삭제하지 않음
 }
