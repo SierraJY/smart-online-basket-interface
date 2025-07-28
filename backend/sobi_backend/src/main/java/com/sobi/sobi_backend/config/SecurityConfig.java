@@ -140,7 +140,7 @@ public class SecurityConfig {
                 // URL별 접근 권한 설정
                 .authorizeHttpRequests(authz -> authz
                         // 회원가입, 로그인은 누구나 접근 가능
-                        .requestMatchers("/api/customers/register", "/api/customers/login").permitAll()
+                        .requestMatchers("/api/customers/signup", "/api/customers/login").permitAll()
                         // 상품 조회는 누구나 접근 가능
                         .requestMatchers("/api/products/**").permitAll()
                         // RFID 스캔은 바구니에서 수행하므로 누구나 접근 가능

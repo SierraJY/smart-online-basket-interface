@@ -34,7 +34,7 @@ public class CustomerController {
     private JwtUtil jwtUtil; // JWT 토큰 생성
 
     // 회원가입 처리 (POST /api/customers/register)
-    @PostMapping("/register")
+    @PostMapping("/signup")
     public ResponseEntity<?> register(@RequestBody CustomerRegisterRequest request) {
         try {
             // 평문 비밀번호를 암호화
