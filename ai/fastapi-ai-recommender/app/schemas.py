@@ -1,13 +1,20 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+
+
+class RecommendationItem(BaseModel):
+    asin: str
+    title: str
+    score: float
 
 
 class RecommendRequest(BaseModel):
     user_id: str
     gender: str
-    age: int
-    cart: List[str]  # 상품 asin 문자열 최대 5개
+    age: Optional[int] = 0
+    cart: List[str]
+    wishlist: List[str] = []
 
 
 class RecommendResponse(BaseModel):
-    recommendations: List[dict]  # {"asin": str, "title": str} 등
+    recommendations: List[RecommendationItem]
