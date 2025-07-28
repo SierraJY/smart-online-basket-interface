@@ -29,3 +29,11 @@ data/
 
 # 모델 결과
 models/
+
+
+# npy 파일 모두 무시
+*.npy
+
+# json 파일 모두 무시
+*.json
+
