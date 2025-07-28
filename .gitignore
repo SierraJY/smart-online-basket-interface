@@ -1,11 +1,12 @@
-# 환경 변수
-.env
+# 모델 파일 (회원/비회원)
+app/models/member_model/
+app/models/guest_model/
 
-# 로그파일
-*.log
-
-# Python 캐시 (혹시 모듈 작성 시 대비)
+# 기타 캐시, 로그, 환경
 __pycache__/
+*.pyc
+.env
+*.log
 
 # Docker DB 데이터 볼륨
 db_data/
@@ -28,8 +29,7 @@ venv/
 data/
 
 # 모델 결과
-models/
-
+parameters/
 
 # npy 파일 모두 무시
 *.npy
