@@ -204,7 +204,7 @@ export default function Page() {
                   {items.slice(0, CATEGORY_LIMIT).map((item) => (
                     <ShakeWrapper key={item.id} item={item}>
                       <Link href={`/products/${item.id}`}>
-                        <div className="w-full h-[120px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)]">
+                        <div className="w-full h-[50px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)]">
                           <Image
                             src={item.imageUrl}
                             alt={item.name}

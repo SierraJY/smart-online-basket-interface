@@ -3,11 +3,24 @@
 import { useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
-export default function QRScanner({ onScan }: { onScan: (text: string) => void }) {
+export default function QRScanner({
+    onScan,
+  }: {
+    onScan: (text: string, stopCamera: () => Promise<void>) => void;
+  }) {
   const qrRef = useRef<HTMLDivElement>(null);
   const html5QrcodeRef = useRef<Html5Qrcode | null>(null);
   const stoppedRef = useRef(false);
   const qrId = 'qr-reader';
+
+  async function stopCamera() {
+    stoppedRef.current = true;
+    if (html5QrcodeRef.current) {
+      try { await html5QrcodeRef.current.stop(); } catch {}
+      try { await html5QrcodeRef.current.clear(); } catch {}
+      html5QrcodeRef.current = null;
+    }
+  }
 
   useEffect(() => {
     if (html5QrcodeRef.current) {
@@ -24,32 +37,20 @@ export default function QRScanner({ onScan }: { onScan: (text: string) => void }
     stoppedRef.current = false;
 
     html5Qr.start(
-      { facingMode: 'environment' },
-      { fps: 20, qrbox: 340 },
-      (decodedText) => {
+      { facingMode: 'environment' } as any,
+      { fps: 20, qrbox: 340 } as any,
+      async (decodedText) => {
         if (stoppedRef.current) return;
         stoppedRef.current = true;
 
-        onScan(decodedText);
-
-        setTimeout(() => {
-          try { html5Qr.stop(); } catch {}
-          try { html5Qr.clear(); } catch {}
-          html5QrcodeRef.current = null;
-        }, 100);
+        // 이제 콜백에 stopCamera도 넘겨줌!
+        onScan(decodedText, stopCamera);
       },
-      (errorMessage) => {
-        // QR 인식 실패시 처리 (원하면 로그)
-      }
+      // ...생략
     );
 
     return () => {
-      stoppedRef.current = true;
-      if (html5QrcodeRef.current) {
-        try { html5QrcodeRef.current.stop(); } catch {}
-        try { html5QrcodeRef.current.clear(); } catch {}
-        html5QrcodeRef.current = null;
-      }
+      stopCamera();
     };
   }, [onScan]);
 

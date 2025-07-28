@@ -1,63 +1,34 @@
-'use client'
+'use client';
 
-import { useEffect, useRef } from 'react'
-import { Html5Qrcode } from 'html5-qrcode'
+import QrScanner from '@/components/QrScanner';
+import { useRouter } from 'next/navigation';
 
-export default function QRScanner({ onScan }: { onScan: (text: string) => void }) {
-  const qrRef = useRef<HTMLDivElement>(null)
-  const html5QrcodeRef = useRef<Html5Qrcode | null>(null)
-  const stoppedRef = useRef(false)
-  const qrId = 'qr-reader'
+export default function Scan() {
+  const router = useRouter();
 
-  useEffect(() => {
-    if (html5QrcodeRef.current) {
-      try { html5QrcodeRef.current.stop() } catch {}
-      try { html5QrcodeRef.current.clear() } catch {}
-      html5QrcodeRef.current = null
-    }
-
-    if (!qrRef.current) return
-
-    qrRef.current.id = qrId
-    const html5Qr = new Html5Qrcode(qrId)
-    html5QrcodeRef.current = html5Qr
-    stoppedRef.current = false
-
-    html5Qr.start(
-      { facingMode: 'environment' },
-      { fps: 20, qrbox: 340 },
-      (decodedText) => {
-        console.log('QR 읽힘:', decodedText)
-        alert(`QR코드 인식됨!\n내용: ${decodedText}`)
-        if (stoppedRef.current) return
-        stoppedRef.current = true
-        
-        onScan(decodedText)
-        setTimeout(() => {
-          try { html5Qr.stop() } catch {}
-          try { html5Qr.clear() } catch {}
-          html5QrcodeRef.current = null
-        }, 100)
-      },
-      (errorMessage) => {
-        // console.log('QR 인식실패:', errorMessage)
-      }
-    )
-
-    return () => {
-      stoppedRef.current = true
-      if (html5QrcodeRef.current) {
-        try { html5QrcodeRef.current.stop() } catch {}
-        try { html5QrcodeRef.current.clear() } catch {}
-        html5QrcodeRef.current = null
-      }
-    }
-  }, [onScan])
+  const handleScan = async (decodedText: string, stopCamera: () => Promise<void>) => {
+    alert(`QR코드 인식 성공\n내용: ${decodedText}`);
+    await stopCamera();
+    router.push('/');
+    setTimeout(() => window.location.reload(), 100);
+  };
 
   return (
-    <div 
-    style={{ width: 340, height: 255, margin: "0 auto", overflow: "hidden", borderRadius: 18, boxShadow: "0 0 24px #0002" }}>
-      <div ref={qrRef} style={{ width: "100%", height: "100%" }} />
-    </div>
-  )
+    <main className="min-h-screen flex flex-col items-center justify-center bg-[var(--background)]">
+      {/* 상단 고정 네비 */}
+      <div className="w-full max-w-md flex items-center justify-between px-4 py-4">
+        <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
+          QR 코드 스캔
+        </h2>
+        <span className="w-8">test</span>
+      </div>
+      {/* QR 카메라 영역 */}
+      <section className="flex flex-col items-center mt-4 w-full">
+        <QrScanner onScan={handleScan} />
+        <div className="mt-4 text-center text-[16px] text-[var(--text-secondary)]">
+          카메라에 QR 코드를 맞춰주세요
+        </div>
+      </section>
+    </main>
+  );
 }
