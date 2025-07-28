@@ -1,7 +1,7 @@
 import joblib
 import os
+from collections import Counter, defaultdict
 
-# 모델 로딩 (최초 1회만 로딩, 글로벌 변수로 유지)
 BASE_DIR = os.path.dirname(__file__)
 MODEL_DIR = os.path.join(BASE_DIR, "guest_model")
 
@@ -11,26 +11,36 @@ df_items = joblib.load(os.path.join(MODEL_DIR, "df_items.pkl"))
 tag_matrix = joblib.load(os.path.join(MODEL_DIR, "tag_matrix.pkl"))
 co_purchase_dict = joblib.load(os.path.join(MODEL_DIR, "co_purchase_dict.pkl"))
 
-def recommend(cart_items, top_k=6, tfidf_per_item=5):
-    # 1. 공동구매 후보 수집
-    co_purchase_candidates = set()
+def recommend(cart_items, co_top_k_per_item=10, co_candidate_limit=30, tfidf_per_item=5):
+    cart_set = set(cart_items)
+    score_dict = defaultdict(float)
+
+    # Step 1: 장바구니 기반 공동구매 후보 집계
+    co_counter = Counter()
     for item in cart_items:
-        co_purchase_candidates.update(co_purchase_dict.get(item, []))
+        co_items = co_purchase_dict.get(item, [])[:co_top_k_per_item]
+        co_counter.update(co_items)
+    for item in cart_items:
+        co_counter.pop(item, None)
 
-    # 2. TF-IDF 기반 유사 상품 수집
-    tfidf_recs = set()
-    for item in co_purchase_candidates:
-        if item in df_items['item_name'].values:
-            idx = df_items[df_items['item_name'] == item].index[0]
-            vector = tag_matrix[idx]
-            distances, indices = knn.kneighbors(vector, n_neighbors=tfidf_per_item + 1)
+    co_purchased_candidates = [item for item, _ in co_counter.most_common(co_candidate_limit)]
 
-            for i in indices.flatten():
-                name = df_items.iloc[i]['item_name']
-                if name != item:
-                    tfidf_recs.add(name)
+    # Step 2: 공동구매 후보에 대해 TF-IDF 기반 유사 추천 + 점수 누적
+    for co_item in co_purchased_candidates:
+        if co_item in df_items['item_name'].values:
+            idx = df_items[df_items['item_name'] == co_item].index[0]
+            vec = tag_matrix[idx]
+            distances, indices = knn.kneighbors(vec, n_neighbors=tfidf_per_item + 1)
 
-    # 3. 추천 리스트 구성 (장바구니에 없는 것만)
-    all_recs = list(co_purchase_candidates.union(tfidf_recs) - set(cart_items))
-    return [{"asin": name, "title": name} for name in all_recs[:top_k]]
+            for dist, i in zip(distances[0], indices[0]):
+                sim_item = df_items.iloc[i]['item_name']
+                if sim_item != co_item and sim_item not in cart_set:
+                    sim_score = 1 - dist
+                    score_dict[sim_item] += sim_score
+        else:
+            print(f"[!] '{co_item}'는 태그 기반 추천 대상에 없습니다.")
 
+    # Step 3: 점수 기준 정렬 후 상위 30개 선택
+    sorted_items = sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
+    final = [{"asin": name, "title": name} for name, _ in sorted_items[:30]]
+    return final
