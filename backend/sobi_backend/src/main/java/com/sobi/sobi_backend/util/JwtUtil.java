@@ -2,6 +2,7 @@ package com.sobi.sobi_backend.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -13,28 +14,32 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // JWT 토큰을 만들고 검증할 때 사용하는 비밀키 (충분히 길어야 함)
-    private final String SECRET_KEY = "sobi_b103_103b_park_yang_yang_hwang_kim_jjang_jjang";
+    // application.properties에서 JWT 설정 값들 주입
+    @Value("${app.jwt.secret}")
+    private String secretKey;
+
+    @Value("${app.jwt.access-token-expiration}")
+    private long accessTokenExpiration;
+
+    @Value("${app.jwt.refresh-token-expiration}")
+    private long refreshTokenExpiration;
 
     // 비밀키를 암호화 알고리즘에 맞는 형태로 변환
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
     // 액세스 토큰 만료시간 생성
     private Date createAccessTokenExpiredDate() {
         Calendar c = Calendar.getInstance();
-        // c.add(Calendar.SECOND, 3); // 3초
-        c.add(Calendar.HOUR, 1); // 1시간
-        // c.add(Calendar.HOUR, 8); // 8시간
-        // c.add(Calendar.DATE, 1); // 1일
+        c.add(Calendar.MILLISECOND, (int) accessTokenExpiration);
         return c.getTime();
     }
 
     // 리프레시 토큰 만료시간 생성
     private Date createRefreshTokenExpiredDate() {
         Calendar c = Calendar.getInstance();
-        c.add(Calendar.DATE, 7); // 7일
+        c.add(Calendar.MILLISECOND, (int) refreshTokenExpiration);
         return c.getTime();
     }
 
