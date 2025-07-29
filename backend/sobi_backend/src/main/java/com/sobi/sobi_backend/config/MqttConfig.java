@@ -1,6 +1,7 @@
 package com.sobi.sobi_backend.config;
 
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -16,8 +17,8 @@ import org.springframework.messaging.MessageChannel;
  * MQTT 설정 클래스
  *
  * 기능:
- * 1. Eclipse Mosquitto 브로커 연결 (localhost:1883)
- * 2. 바구니 RFID 업데이트 토픽 구독 (basket/+/update)
+ * 1. Eclipse Mosquitto 브로커 연결
+ * 2. 바구니 RFID 업데이트 토픽 구독
  * 3. 메시지를 Spring Integration Channel로 라우팅
  *
  * MQTT 토픽 구조:
@@ -34,14 +35,15 @@ import org.springframework.messaging.MessageChannel;
 @Configuration
 public class MqttConfig {
 
-    // MQTT 브로커 주소 (Docker 컨테이너 내부에서 접근)
-    private static final String MQTT_BROKER_URL = "tcp://localhost:1883";
+    // application.properties에서 MQTT 설정 값들 주입
+    @Value("${app.mqtt.broker-url}")
+    private String mqttBrokerUrl;
 
-    // 클라이언트 ID (고유해야 함)
-    private static final String CLIENT_ID = "sobi-backend-subscriber";
+    @Value("${app.mqtt.client-id}")
+    private String clientId;
 
-    // 구독할 토픽 패턴 (+ 는 단일 레벨 와일드카드)
-    private static final String BASKET_TOPIC_PATTERN = "basket/+/update";
+    @Value("${app.mqtt.topic-pattern}")
+    private String basketTopicPattern;
 
     /**
      * MQTT 클라이언트 팩토리 생성
@@ -58,8 +60,8 @@ public class MqttConfig {
 
         MqttConnectOptions options = new MqttConnectOptions();
 
-        // MQTT 브로커 주소 설정
-        options.setServerURIs(new String[] { MQTT_BROKER_URL });
+        // MQTT 브로커 주소 설정 (properties에서 가져옴)
+        options.setServerURIs(new String[] { mqttBrokerUrl });
 
         // 자동 재연결 활성화 (네트워크 끊김 시 자동 복구)
         options.setAutomaticReconnect(true);
@@ -75,7 +77,7 @@ public class MqttConfig {
 
         factory.setConnectionOptions(options);
 
-        System.out.println("MQTT 클라이언트 팩토리 설정 완료: " + MQTT_BROKER_URL);
+        System.out.println("MQTT 클라이언트 팩토리 설정 완료: " + mqttBrokerUrl);
 
         return factory;
     }
@@ -112,9 +114,9 @@ public class MqttConfig {
     public MessageProducer mqttInbound() {
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        CLIENT_ID + "_inbound",  // 인바운드 어댑터용 클라이언트 ID
+                        clientId + "_inbound",   // 인바운드 어댑터용 클라이언트 ID
                         mqttClientFactory(),     // 위에서 생성한 클라이언트 팩토리
-                        BASKET_TOPIC_PATTERN     // 구독할 토픽 패턴
+                        basketTopicPattern       // 구독할 토픽 패턴 (properties에서 가져옴)
                 );
 
         // QoS (Quality of Service) 설정
@@ -135,7 +137,7 @@ public class MqttConfig {
         // 어댑터 시작 시 자동으로 토픽 구독
         adapter.setAutoStartup(true);
 
-        System.out.println("MQTT 인바운드 어댑터 설정 완료 - 구독 토픽: " + BASKET_TOPIC_PATTERN);
+        System.out.println("MQTT 인바운드 어댑터 설정 완료 - 구독 토픽: " + basketTopicPattern);
 
         return adapter;
     }

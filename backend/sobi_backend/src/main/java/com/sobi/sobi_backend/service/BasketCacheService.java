@@ -8,6 +8,7 @@ import com.sobi.sobi_backend.entity.EpcMap;
 import com.sobi.sobi_backend.service.EpcMapService;
 import com.sobi.sobi_backend.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,7 @@ import java.util.*;
  * Redis 저장 구조:
  * - Key: basket_items:{boardMac}
  * - Value: {"PEAC":3,"BLUE":1,"APPL":2} (JSON)
- * - TTL: 2시간
+ * - TTL: application.properties에서 설정
  */
 @Service
 public class BasketCacheService {
@@ -41,13 +42,19 @@ public class BasketCacheService {
     @Autowired
     private ProductService productService;
 
+    // application.properties에서 바구니 캐시 TTL 주입
+    @Value("${app.basket.cache-ttl-seconds}")
+    private long basketTtlSeconds;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Redis 키 접두사
     private static final String BASKET_ITEMS_KEY_PREFIX = "basket_items:";
 
-    // 바구니 데이터 TTL (2시간)
-    private static final Duration BASKET_TTL = Duration.ofHours(2);
+    // 바구니 데이터 TTL (properties에서 가져온 값으로 Duration 생성)
+    private Duration getBasketTtl() {
+        return Duration.ofSeconds(basketTtlSeconds);
+    }
 
     /**
      * 바구니 아이템 전체 업데이트 (MQTT에서 호출)
@@ -72,8 +79,8 @@ public class BasketCacheService {
             // Map을 JSON 문자열로 변환
             String jsonValue = objectMapper.writeValueAsString(items);
 
-            // Redis에 저장 (TTL 포함)
-            redisTemplate.opsForValue().set(redisKey, jsonValue, BASKET_TTL);
+            // Redis에 저장 (TTL 포함, properties에서 가져온 값 사용)
+            redisTemplate.opsForValue().set(redisKey, jsonValue, getBasketTtl());
 
             System.out.println("바구니 데이터 업데이트 완료: " + boardMac + " → " + jsonValue);
 

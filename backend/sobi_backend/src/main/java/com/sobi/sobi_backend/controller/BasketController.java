@@ -5,7 +5,6 @@ import com.sobi.sobi_backend.service.BasketService;
 import com.sobi.sobi_backend.service.ReceiptService;
 import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
-import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -34,9 +33,6 @@ public class BasketController {
 
     @Autowired
     private BasketCacheService basketCacheService; // 바구니 캐시 서비스
-
-    @Autowired
-    private BasketMqttHandler basketMqttHandler; // MQTT 핸들러
 
     // 바구니 사용 시작 (POST /api/baskets/start/{boardMac})
     @PostMapping("/start/{boardMac}")
@@ -172,7 +168,7 @@ public class BasketController {
 
     // 내 바구니 결제 + 바구니 반납 (POST /api/baskets/my/checkout)
     @PostMapping("/my/checkout")
-    public ResponseEntity<?> checkoutMyBasket(@RequestBody CheckoutRequest request, Authentication authentication) {
+    public ResponseEntity<?> checkoutMyBasket(Authentication authentication) {
         try {
             System.out.println("내 바구니 결제 요청");
 
@@ -255,41 +251,6 @@ public class BasketController {
             Map<String, String> error = new HashMap<>();
             error.put("error", "결제 처리 중 오류가 발생했습니다: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error); // 500 Internal Server Error
-        }
-    }
-
-    // MQTT 핸들러 직접 테스트 (POST /api/baskets/test/mqtt-direct)
-    @PostMapping("/test/mqtt-direct")
-    public ResponseEntity<?> testMqttHandlerDirect() {
-        try {
-            System.out.println("🧪 MQTT 핸들러 직접 테스트 시작");
-
-            // BasketMqttHandler 직접 호출
-            basketMqttHandler.handleBasketUpdate(
-                    "{\"PEAC\": 5, \"BLUE\": 3}",
-                    "basket/2c:cf:67:11:93:6b/update"
-            );
-
-            return ResponseEntity.ok("MQTT 핸들러 직접 호출 성공");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body("오류: " + e.getMessage());
-        }
-    }
-
-    // 결제 요청 데이터 구조 (더 이상 사용 안함 - Redis에서 자동으로 가져옴)
-    public static class CheckoutRequest {
-        // 레거시 필드 - 호환성을 위해 유지하지만 사용하지 않음
-        private List<String> epcPatterns;
-
-        public CheckoutRequest() {}
-
-        public List<String> getEpcPatterns() {
-            return epcPatterns;
-        }
-
-        public void setEpcPatterns(List<String> epcPatterns) {
-            this.epcPatterns = epcPatterns;
         }
     }
 }

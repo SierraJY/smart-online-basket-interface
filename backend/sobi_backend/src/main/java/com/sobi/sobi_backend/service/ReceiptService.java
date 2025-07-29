@@ -39,11 +39,12 @@ public class ReceiptService {
             throw new IllegalArgumentException("존재하지 않는 고객입니다: " + userId);
         }
 
-        // 재고 확인 및 감소
+        // 재고 확인 및 감소, 판매량 증가
         for (Map.Entry<String, Integer> entry : productMap.entrySet()) {
             Integer productId = Integer.parseInt(entry.getKey());
             Integer quantity = entry.getValue();
             productService.decreaseStock(productId, quantity);
+            productService.increaseSales(productId, quantity);
         }
 
         // JSON 문자열 생성 {"1": 2, "3": 1}
