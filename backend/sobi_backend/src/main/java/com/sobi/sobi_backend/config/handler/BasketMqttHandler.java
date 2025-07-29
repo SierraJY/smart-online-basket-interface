@@ -3,6 +3,7 @@ package com.sobi.sobi_backend.config.handler;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sobi.sobi_backend.service.BasketCacheService;
+import com.sobi.sobi_backend.service.BasketSseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.handler.annotation.Header;
@@ -18,6 +19,7 @@ import java.util.Map;
  * 2. Topic에서 바구니 MAC 주소 추출
  * 3. JSON 페이로드를 Map으로 파싱
  * 4. BasketCacheService를 통해 Redis에 저장
+ * 5. BasketSseService를 통해 실시간 클라이언트 업데이트
  *
  * MQTT 메시지 구조:
  * - Topic: basket/{boardMac}/update
@@ -25,6 +27,7 @@ import java.util.Map;
  *
  * 처리 흐름:
  * MQTT 브로커 → MqttConfig → mqttInputChannel → 이 핸들러 → BasketCacheService → Redis
+ *                                                              ↘ BasketSseService → SSE 클라이언트들
  */
 @Component
 public class BasketMqttHandler {
@@ -32,11 +35,13 @@ public class BasketMqttHandler {
     @Autowired
     private BasketCacheService basketCacheService;
 
+    @Autowired
+    private BasketSseService basketSseService; // SSE 서비스 추가
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // 생성자에 로그 추가
     public BasketMqttHandler() {
-        System.out.println("🔧 BasketMqttHandler 생성자 호출됨 - 빈 등록 완료");
+        System.out.println("🔧 BasketMqttHandler 빈 등록 완료");
     }
 
     /**
@@ -69,8 +74,11 @@ public class BasketMqttHandler {
                 return;
             }
 
-            // 3. BasketCacheService를 통해 Redis에 저장
+            // 3. Redis에 바구니 데이터 저장
             basketCacheService.updateBasketItems(boardMac, items);
+
+            // 4. 연결된 클라이언트들에게 실시간 전송
+            basketSseService.broadcastBasketUpdate(boardMac);
 
             System.out.println("바구니 업데이트 처리 완료: " + boardMac + " → " + items.size() + "개 아이템");
             System.out.println("=== MQTT 처리 완료 ===");

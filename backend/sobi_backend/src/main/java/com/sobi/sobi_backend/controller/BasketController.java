@@ -57,6 +57,7 @@ public class BasketController {
             JwtAuthenticationFilter.JwtUserPrincipal principal =
                     (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
             Integer customerId = principal.getId();
+            String userId = principal.getUserId();
 
             // 기존 사용 중인 바구니 확인
             String existingBasket = redisTemplate.opsForValue().get("user_basket:" + customerId);
@@ -80,8 +81,9 @@ public class BasketController {
             response.put("message", "바구니 사용을 시작했습니다");
             response.put("basket", basket);
             response.put("customerId", customerId);
+            response.put("userId", userId);
 
-            System.out.println("바구니 사용 시작 완료: " + boardMac + ", 고객ID: " + customerId + ", Redis 저장 완료");
+            System.out.println("바구니 사용 시작 완료: " + boardMac + ", 고객ID: " + customerId + ", 사용자ID: " + userId + ", Redis 저장 완료");
             return ResponseEntity.ok(response); // 200 OK
         } catch (IllegalArgumentException e) { // 존재하지 않거나 사용할 수 없는 바구니
             System.err.println("바구니 사용 시작 실패: " + e.getMessage());
