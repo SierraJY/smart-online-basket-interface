@@ -5,7 +5,6 @@ from typing import List, Optional
 class RecommendationItem(BaseModel):
     asin: str
     title: str
-    score: float
 
 
 class RecommendRequest(BaseModel):
@@ -17,4 +16,6 @@ class RecommendRequest(BaseModel):
 
 
 class RecommendResponse(BaseModel):
+    user_id: str
     recommendations: List[RecommendationItem]
+

@@ -2,30 +2,16 @@ import joblib
 import os
 from collections import Counter, defaultdict
 
-# 모델 경로 설정
-BASE_DIR = os.path.dirname(__file__)
-MODEL_DIR = os.path.abspath(
-    os.path.join(
-        BASE_DIR,  # models/
-        "..",  # app/
-        "..",  # fastapi-ai-recommender/
-        "..",  # ai/
-        "parameters",
-        "guest_model",
-    )
-)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+MODEL_DIR = os.path.join(BASE_DIR, "parameters", "guest_model")
 
-# 모델/데이터 로드
 vectorizer = joblib.load(os.path.join(MODEL_DIR, "tfidf_vectorizer.pkl"))
 knn = joblib.load(os.path.join(MODEL_DIR, "knn_model.pkl"))
-df_items = joblib.load(os.path.join(MODEL_DIR, "df_items.pkl"))  # 컬럼: 'name', 'tag'
+df_items = joblib.load(os.path.join(MODEL_DIR, "df_items.pkl"))
 tag_matrix = joblib.load(os.path.join(MODEL_DIR, "tag_matrix.pkl"))
 co_purchase_dict = joblib.load(os.path.join(MODEL_DIR, "co_purchase_dict.pkl"))
 
-
-def recommend(
-    cart_items, co_top_k_per_item=10, co_candidate_limit=30, tfidf_per_item=5
-):
+def recommend(user_id, cart_items, co_top_k_per_item=10, co_candidate_limit=30, tfidf_per_item=5):
     cart_set = set(cart_items)
     score_dict = defaultdict(float)
 
@@ -37,19 +23,17 @@ def recommend(
     for item in cart_items:
         co_counter.pop(item, None)
 
-    co_purchased_candidates = [
-        item for item, _ in co_counter.most_common(co_candidate_limit)
-    ]
+    co_purchased_candidates = [item for item, _ in co_counter.most_common(co_candidate_limit)]
 
     # Step 2: 공동구매 후보에 대해 TF-IDF 기반 유사 추천 + 점수 누적
     for co_item in co_purchased_candidates:
-        if co_item in df_items["name"].values:  # ← 컬럼명 반드시 'name'!
-            idx = df_items[df_items["name"] == co_item].index[0]
+        if co_item in df_items['name'].values:
+            idx = df_items[df_items['name'] == co_item].index[0]
             vec = tag_matrix[idx]
             distances, indices = knn.kneighbors(vec, n_neighbors=tfidf_per_item + 1)
 
             for dist, i in zip(distances[0], indices[0]):
-                sim_item = df_items.iloc[i]["name"]
+                sim_item = df_items.iloc[i]['name']
                 if sim_item != co_item and sim_item not in cart_set:
                     sim_score = 1 - dist
                     score_dict[sim_item] += sim_score
@@ -58,5 +42,9 @@ def recommend(
 
     # Step 3: 점수 기준 정렬 후 상위 30개 선택
     sorted_items = sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
-    final = [{"asin": name, "title": name, "score": 5} for name, _ in sorted_items[:30]]
-    return final
+    recommendations = [{"asin": name, "title": name} for name, _ in sorted_items[:30]]
+    
+    return {
+        "user_id": user_id,
+        "recommendations": recommendations
+    }

@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-onnxruntime
-pydantic
-numpy
-joblib
-scikit-learn
-pandas
-
