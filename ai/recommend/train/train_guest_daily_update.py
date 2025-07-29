@@ -7,7 +7,7 @@ from sklearn.neighbors import NearestNeighbors
 from collections import Counter, defaultdict
 from datetime import datetime
 
-# 최신 purchase csv 찾기
+# 최신 purchase CSV 찾기
 def find_latest_purchase_csv(data_dir='./data', prefix='new_purchase_', suffix='.csv'):
     latest_file = None
     latest_date = None
@@ -27,11 +27,11 @@ def find_latest_purchase_csv(data_dir='./data', prefix='new_purchase_', suffix='
 
     return latest_file
 
-# 공동구매 사전 생성
-def build_co_purchase_dict(purchase_df, top_n=3):
+# 공동구매 사전 생성 (제품 ID 기준)
+def build_co_purchase_dict(purchase_df, product_col='id', session_col='session_id', top_n=5):
     co_purchase = defaultdict(Counter)
-    for session_id, group in purchase_df.groupby("session_id"):
-        items = group["product_name"].tolist()
+    for session_id, group in purchase_df.groupby(session_col):
+        items = group[product_col].tolist()
         for i in range(len(items)):
             for j in range(len(items)):
                 if i != j:
@@ -43,7 +43,7 @@ def build_co_purchase_dict(purchase_df, top_n=3):
     }
 
 # 공동구매 사전 업데이트
-def update_co_purchase_model(daily_csv_path, existing_model_dir='./models', top_n=5):
+def update_co_purchase_model(daily_csv_path, existing_model_dir='./parameters/guest_model', top_n=5):
     co_purchase_path = os.path.join(existing_model_dir, 'co_purchase_dict.pkl')
     if os.path.exists(co_purchase_path):
         co_purchase_dict = joblib.load(co_purchase_path)
@@ -51,8 +51,8 @@ def update_co_purchase_model(daily_csv_path, existing_model_dir='./models', top_
         co_purchase_dict = {}
 
     df_daily = pd.read_csv(daily_csv_path)
-    assert 'session_id' in df_daily.columns and 'product_name' in df_daily.columns
-    new_dict = build_co_purchase_dict(df_daily, top_n=top_n)
+    assert 'session_id' in df_daily.columns and 'id' in df_daily.columns
+    new_dict = build_co_purchase_dict(df_daily, product_col='id', session_col='session_id', top_n=top_n)
 
     for item, co_items in new_dict.items():
         if item not in co_purchase_dict:
@@ -65,10 +65,14 @@ def update_co_purchase_model(daily_csv_path, existing_model_dir='./models', top_
     print(f"[✓] 공동구매 사전 업데이트 완료 → {co_purchase_path}")
 
 # TF-IDF + KNN 모델 재학습
-def retrain_tfidf_knn(tag_csv_path, save_dir='./models', n_neighbors=5):
+def retrain_tfidf_knn(tag_csv_path, save_dir='./parameters/guest_model', n_neighbors=5):
     df_items = pd.read_csv(tag_csv_path)
+    assert 'id' in df_items.columns and 'tag' in df_items.columns
+    df_items = df_items[['id', 'tag', 'name']].dropna()
+
     vectorizer = TfidfVectorizer()
-    tag_matrix = vectorizer.fit_transform(df_items['tags'])
+    tag_matrix = vectorizer.fit_transform(df_items['tag'])
+
     knn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine')
     knn.fit(tag_matrix)
 
@@ -80,10 +84,10 @@ def retrain_tfidf_knn(tag_csv_path, save_dir='./models', n_neighbors=5):
 
 # 통합 실행
 if __name__ == "__main__":
-    latest_csv = find_latest_purchase_csv()
+    latest_csv = find_latest_purchase_csv(data_dir='./data')
     if latest_csv is None:
         print("[!] 최신 구매 CSV를 찾을 수 없습니다.")
         exit()
 
-    update_co_purchase_model(latest_csv)
-    retrain_tfidf_knn(tag_csv_path='./data/initial_tag_data.csv', save_dir='./models', n_neighbors=5)
+    update_co_purchase_model(latest_csv, existing_model_dir='./parameters/guest_model', top_n=5)
+    retrain_tfidf_knn(tag_csv_path='./data/products_all_tagged.csv', save_dir='./parameters/guest_model', n_neighbors=5)
