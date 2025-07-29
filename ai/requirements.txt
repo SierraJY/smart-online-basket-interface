@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+onnxruntime
+pydantic
+numpy
+joblib
+scikit-learn
+pandas
+prophet
+mlxtend
+matplotlib
+seaborn
+plotly
+jinja2
+
+
