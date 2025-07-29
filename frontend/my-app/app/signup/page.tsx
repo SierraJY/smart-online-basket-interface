@@ -5,24 +5,21 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signup } from '@/utils/api/auth'
 import { useAuthStore } from '@/store/useAuthStore'
+import WhatsUrGenderOrAge from '@/components/modals/WhatsUrGenderOrAge'
 
 export default function SignupPage() {
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [gender, setGender] = useState(0)
-  const [age, setAge] = useState(20)
+  const [gender, setGender] = useState(1) // 기본값 남자
+  const [age, setAge] = useState(20) // 기본값 20세
   const [message, setMessage] = useState('')
+  const [showModal, setShowModal] = useState(false)
   const router = useRouter()
   const { setIsLoggedIn, setUserId: setUserIdStore } = useAuthStore()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password !== confirmPassword) {
-      setMessage('비밀번호가 일치하지 않습니다.')
-      return
-    }
-    setMessage('')
+  // 회원가입 (최종)
+  const handleSubmit = async () => {
     try {
       const result = await signup({ userId, password, gender, age })
       setUserIdStore(result.userId)
@@ -33,10 +30,27 @@ export default function SignupPage() {
     }
   }
 
+  // 1차 폼(아이디/비번)에서 회원가입 버튼
+  const handleFirstStep = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password !== confirmPassword) {
+      setMessage('비밀번호가 일치하지 않습니다.')
+      return
+    }
+    setMessage('')
+    setShowModal(true)
+  }
+
+  // 모달에서 완료 버튼
+  const handleModalSubmit = () => {
+    setShowModal(false)
+    handleSubmit()
+  }
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-4 py-10 transition-colors duration-300">
       <h1 className="text-2xl font-bold mb-6 text-[var(--foreground)]">회원가입</h1>
-      <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col gap-4">
+      <form onSubmit={handleFirstStep} className="w-full max-w-sm flex flex-col gap-4">
         <input
           type="text"
           placeholder="아이디"
@@ -61,24 +75,6 @@ export default function SignupPage() {
           className="rounded-md px-4 py-3 text-sm border"
           required
         />
-        <select
-          value={gender}
-          onChange={e => setGender(Number(e.target.value))}
-          className="rounded-md px-4 py-3 text-sm border"
-        >
-          <option value={0}>남성</option>
-          <option value={1}>여성</option>
-        </select>
-        <input
-          type="number"
-          placeholder="나이"
-          value={age}
-          min={1}
-          max={99}
-          onChange={e => setAge(Number(e.target.value))}
-          className="rounded-md px-4 py-3 text-sm border"
-          required
-        />
         <button
           type="submit"
           className="rounded-md py-3 text-sm font-semibold transition-all bg-[var(--foreground)] text-[var(--background)]"
@@ -93,6 +89,15 @@ export default function SignupPage() {
           로그인 하기
         </Link>
       </p>
+      <WhatsUrGenderOrAge
+        open={showModal}
+        gender={gender}
+        age={age}
+        setGender={setGender}
+        setAge={setAge}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleModalSubmit}
+      />
     </main>
   )
 }

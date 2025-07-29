@@ -1,14 +1,14 @@
 import '@/globals.css'
 import Head from './head'
-import BackButton from '@/components/BackButton'
+import BackButton from '@/components/buttons/BackButton'
 import Footer from '@/components/Footer'
 import { metadata } from '@/metadata'
 import TransitionWrapper from './transition-wrapper'
 import { ReactNode, Suspense } from 'react'
 import LoginOrLogout from '@/components/LoginOrLogout'
-import MenuButton from '@/components/MenuButton'
-
-
+import MenuButton from '@/components/buttons/MenuButton'
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export { metadata }
 
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko" className='your-scroll-list overflow-y-auto'>
       <Head />
-      <body className="select-none min-h-screen pb-12">
+      <body className="select-none min-h-screen">
         <BackButton />
         <TransitionWrapper>
           <Suspense fallback={null}>

@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { useState, useMemo, useEffect } from 'react'
 import { CirclePlus } from 'lucide-react'
 import SearchBar from '@/components/SearchBar'
-import PushSubscribeButton from '@/components/PushSubscribeButton'
+import PushSubscribeButton from '@/components/buttons/PushSubscribeButton'
 import { useProducts } from '@/utils/hooks/useProducts'
-import AccessTokenRefreshButton from '@/components/AccessTokenRefreshButton'
+import AccessTokenRefreshButton from '@/components/buttons/AccessTokenRefreshButton'
+import { FaExclamationTriangle } from "react-icons/fa";
 
 export default function Home() {
   const router = useRouter()
@@ -62,8 +63,29 @@ export default function Home() {
   }
 
   // 커스텀 훅 사용할 때 로딩 시 에러 처리
-  if (loading) return <div>로딩 중...</div>
-  if (error) return <div>에러: {error.message}</div>
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
+      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+    >
+      <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+      <div className="text-lg font-semibold text-[var(--foreground)]">메인 페이지로 이동 중...</div>
+      <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
+    </div>
+  );
+  
+  if (error) return (
+    <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center">
+      <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
+      <div className="font-bold text-lg text-red-500 mb-2">문제가 발생했어요!</div>
+      <div className="text-gray-500 text-base mb-4">{error.message}</div>
+      <button
+        className="mt-2 px-6 py-2 bg-red-500 text-white rounded-full shadow hover:bg-red-700 transition-all"
+        onClick={() => window.location.reload()}
+      >
+        새로고침
+      </button>
+    </div>
+  );
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-4 py-10">

@@ -73,6 +73,24 @@ css 변수는 직접 설정 가능
 
 CSS 변수 네이밍 및 설정 확실히 하기
 ---------
-25/07/23
-개별 카테고리 상품 목록에서도 품절 상품 흑백,흐림 적용
-FCM 토큰을 통한 푸쉬 알림 기능 구현
+25/07/28
+카테고리 페이지, 찜목록 api 연동 다시 확인
+
+- 새로고침 시 로그아웃되는 이유
+새로고침(F5) 시 상태가 휘발되는데, 스토리지에서 자동 복원(재로그인)이 안 되고 있어서!
+
+새로고침 → store는 날아감 → localStorage에 accessToken 있음 → 자동으로 store로 복구 필요
+일단 zustand persist를 활용해 'auth-storage'에 로그인상태와 userid저장해서 새로고침 시 로그아웃 방지
+--------
+25/07/29
+
+1. QR코드를 찍어서 boardMac코드를 받는다.
+2. 
+fetch : '/api/baskets/start/' + boardMac
+method : 'POST'
+headers : 'Authorization : Bearer + token
+요청을 보낸다.
+3. 200 응답을 받으면 SSE 요청을 보낸다
+'/api/baskets/my/stream'
+headers : 'Authorization : Bearer + token
+4. 2번의 요청이 모두 성공하면 사용자는 장바구니 페이지에서 백엔드에서 주는 정보를 통해 실시간으로 장바구니에 들어오고 나가는 상품 정보를 확인할 수 있다.

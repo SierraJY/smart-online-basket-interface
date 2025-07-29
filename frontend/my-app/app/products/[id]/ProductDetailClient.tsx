@@ -2,54 +2,10 @@
 
 'use client'
 
-import { useEffect, useState } from "react"
-
-type Product = {
-  id: number
-  name: string
-  price: number
-  stock: number
-  category: string
-  imageUrl: string
-  discountRate: number
-  sales: number
-  tag: string | null
-  location: string | null
-  description: string | null
-  brand: string
-  discountedPrice: number
-}
-
-// id만 받아서 fetch (명세서 맞춤)
-function useProductDetail(id: string) {
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  useEffect(() => {
-    setLoading(true)
-    setError(null)
-
-    fetch(`/api/products/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error("상품 데이터 로드 실패")
-        return res.json()
-      })
-      .then(data => {
-        setProduct(data.product)
-        setLoading(false)
-      })
-      .catch(e => {
-        setError(e)
-        setLoading(false)
-      })
-  }, [id])
-
-  return { product, loading, error }
-}
+import { useProducts } from '@/utils/hooks/useProducts'
 
 export default function ProductDetailClient({ id }: { id: string }) {
-  const { product, loading, error } = useProductDetail(id)
+  const { product, loading, error } = useProducts({ id });
 
   if (loading) {
     return <main className="min-h-screen flex items-center justify-center"><div>로딩 중...</div></main>

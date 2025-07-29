@@ -9,6 +9,7 @@ import {
   Heart,
   CircleUserRound,
   Home,
+  ShoppingBasket,
 } from 'lucide-react'
 
 export default function Footer() {
@@ -39,6 +40,10 @@ export default function Footer() {
 
       <Link href="/products" className='hover:scale-110'>
         <PackageSearch size={22} color='var(--foreground)' strokeWidth={1.5} />
+      </Link>
+
+      <Link href="/baskets" className="hover:scale-110">
+        <ShoppingBasket size={24} color="var(--foreground)" strokeWidth={1.5} />
       </Link>
 
       <Link href="/favorite" className='hover:scale-110'>

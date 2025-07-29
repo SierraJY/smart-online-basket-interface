@@ -16,16 +16,17 @@ export type Product = {
   discountedPrice: number
 }
 
-// 파라미터: keyword, category (필요 없으면 undefined 전달)
+// 확장: id도 받을 수 있게!
 interface Options {
+  id?: string | number
   keyword?: string
   category?: string
 }
 
-// 상품 전체, 검색, 카테고리 모두 커버!
 export function useProducts(options: Options = {}) {
-  const { keyword = "", category = "" } = options
+  const { id, keyword = "", category = "" } = options
 
+  const [product, setProduct] = useState<Product | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -34,15 +35,30 @@ export function useProducts(options: Options = {}) {
     setLoading(true)
     setError(null)
 
-    // 기본 url은 전체 조회
-    let url = "/api/products"
+    // id가 있으면 단일 상품 조회
+    if (id) {
+      fetch(`/api/products/${id}`)
+        .then(res => {
+          if (!res.ok) throw new Error("상품 데이터 로드 실패")
+          return res.json()
+        })
+        .then(data => {
+          setProduct(data.product || null)
+          setProducts([]) // 혹시 이전 리스트 남을 수 있으니 비움
+          setLoading(false)
+        })
+        .catch(e => {
+          setError(e)
+          setLoading(false)
+        })
+      return
+    }
 
-    // 1. 키워드가 있으면 검색
+    // 기존 리스트 조회 로직
+    let url = "/api/products"
     if (keyword && keyword.trim().length > 0) {
       url = `/api/products/search?keyword=${encodeURIComponent(keyword)}`
-    }
-    // 2. 카테고리만 있으면 카테고리 조회(백엔드 api에서 지원시)
-    else if (category && category !== "전체") {
+    } else if (category && category !== "전체") {
       url = `/api/products/category/${encodeURIComponent(category)}`
     }
 
@@ -53,13 +69,19 @@ export function useProducts(options: Options = {}) {
       })
       .then(data => {
         setProducts(Array.isArray(data.products) ? data.products : [])
+        setProduct(null)
         setLoading(false)
       })
       .catch(e => {
         setError(e)
         setLoading(false)
       })
-  }, [keyword, category])
+  }, [id, keyword, category])
 
-  return { products, loading, error }
+  return {
+    product,
+    products,
+    loading,
+    error,
+  }
 }

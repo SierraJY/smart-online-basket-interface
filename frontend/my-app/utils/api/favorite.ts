@@ -1,42 +1,43 @@
-import { getToken } from "@/utils/auth/authUtils";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "";
-
-export async function fetchFavorite() {
-  const token = getToken();
-  const res = await fetch(`${API}/api/favorites/my`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("찜목록 불러오기 실패");
-  return res.json();
-}
-
-export async function addFavorite(productId: number) {
-  const token = getToken();
-  const res = await fetch(`${API}/api/favorites/${productId}`, {
+// 찜 추가 (POST)
+export async function addFavorite(productId: number, accessToken: string) {
+  return fetch(`/api/favorites/${productId}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
+    credentials: "include", // 필요시
+  }).then((res) => {
+    if (!res.ok) throw new Error("찜 추가 실패!");
+    return res.json(); // message 포함 응답
   });
-  if (!res.ok) throw new Error("찜 추가 실패");
-  return res.json();
 }
 
-export async function removeFavorite(productId: number) {
-  const token = getToken();
-  const res = await fetch(`${API}/api/favorites/${productId}`, {
+// 찜 해제 (DELETE)
+export async function removeFavorite(productId: number, accessToken: string) {
+  return fetch(`/api/favorites/${productId}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
+    credentials: "include", // 필요시
+  }).then((res) => {
+    if (!res.ok) throw new Error("찜 해제 실패!");
+    return res.json(); // message 포함 응답
   });
-  if (!res.ok) throw new Error("찜 제거 실패");
-  return res.json();
+}
+
+// 찜목록 조회 (GET)
+export async function fetchFavoriteList(accessToken: string) {
+  return fetch("/api/favorites/my", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    credentials: "include",
+  }).then((res) => {
+    if (!res.ok) throw new Error("찜 목록 조회 실패!");
+    return res.json(); // { favoriteProducts, ... }
+  });
 }

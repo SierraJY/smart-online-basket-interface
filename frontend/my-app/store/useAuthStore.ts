@@ -1,37 +1,49 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
-type AuthState = {
-  isLoggedIn: boolean;
-  accessToken: string;
-  refreshToken: string; // 추가!
-  userId: string;
-  favorite: number[];
-  
-  setIsLoggedIn: (v: boolean) => void;
-  setAccessToken: (v: string) => void;
-  setRefreshToken: (v: string) => void;
-  setUserId: (v: string) => void;
-  resetAuth: () => void;
-  setFavorite: (ids: number[]) => void;
-};
+interface AuthState {
+  isLoggedIn: boolean
+  userId: string
+  accessToken: string | null
+  refreshToken: string
+  favorite: number[]; // 찜 목록 id 배열로 예시 (상품 id 타입 맞게)
+  setFavorite: (arr: number[]) => void; // arr 타입도 맞게!
+  setIsLoggedIn: (value: boolean) => void
+  setUserId: (id: string) => void
+  setAccessToken: (token: string) => void
+  setRefreshToken: (token: string) => void
+  clearAuth: () => void
+}
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isLoggedIn: false,
-  accessToken: '',
-  refreshToken: '',
-  userId: '',
-  favorite: [],
-  
-  setIsLoggedIn: (v) => set({ isLoggedIn: v }),
-  setAccessToken: (v) => set({ accessToken: v }),
-  setRefreshToken: (v) => set({ refreshToken: v }),
-  setUserId: (v) => set({ userId: v }),
-  resetAuth: () =>
-    set({
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
       isLoggedIn: false,
+      userId: '',
       accessToken: '',
       refreshToken: '',
-      userId: '',
+      favorite: [], // <-- 추가!
+      setFavorite: (arr) => set({ favorite: arr }), // <-- 추가!
+      setIsLoggedIn: (value) => set({ isLoggedIn: value }),
+      setUserId: (id) => set({ userId: id }),
+      setAccessToken: (token) => set({ accessToken: token }),
+      setRefreshToken: (token) => set({ refreshToken: token }),
+      clearAuth: () =>
+        set({
+          isLoggedIn: false,
+          userId: '',
+          accessToken: '',
+          refreshToken: '',
+        }),
     }),
-  setFavorite: (ids) => set({ favorite: ids }),
-}));
+    {
+      name: 'auth-storage', // localStorage 키 이름
+      partialize: (state) => ({
+        isLoggedIn: state.isLoggedIn,
+        userId: state.userId,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+    }
+  )
+)

@@ -2,18 +2,15 @@
 
 import QrScanner from '@/components/QrScanner';
 import { useRouter } from 'next/navigation';
-import { useBasketStore } from '@/store/useBasketStore';
 
 export default function Scan() {
   const router = useRouter();
-  const setBoardMac = useBasketStore(state => state.setBoardMac);
 
   const handleScan = async (decodedText: string, stopCamera: () => Promise<void>) => {
-    alert(`QR코드 인식 성공\n장바구니 MAC: ${decodedText}`);
+    alert(`QR코드 인식 성공\n내용: ${decodedText}`);
     await stopCamera();
-    setBoardMac(decodedText);
-    router.push('/baskets');
-    // setTimeout(() => window.location.reload(), 100);
+    router.push('/');
+    setTimeout(() => window.location.reload(), 100);
   };
   
 

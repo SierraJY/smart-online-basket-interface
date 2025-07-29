@@ -58,6 +58,7 @@ export async function logoutApi(token: string) {
   return res.json();
 }
 
+// 리프레쉬토큰 갱신
 export async function refreshTokenApi(refreshToken: string) {
   const res = await fetch('/api/auth/refresh', {
     method: 'POST',

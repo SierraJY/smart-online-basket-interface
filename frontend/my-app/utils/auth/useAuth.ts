@@ -2,6 +2,10 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { logoutApi, refreshTokenApi } from '@/utils/api/auth'
 import { setToken, removeToken } from '@/utils/auth/authUtils'
 
+export function resetAuth() {
+  useAuthStore.getState().clearAuth();
+}
+
 export function useAuth() {
   const {
     isLoggedIn,
@@ -12,7 +16,6 @@ export function useAuth() {
     setAccessToken,
     setRefreshToken,
     setUserId,
-    resetAuth,
   } = useAuthStore();
 
   // 토큰 갱신
@@ -42,8 +45,10 @@ export function useAuth() {
     } catch (e) {
       // 실패시 무시 가능
     }
+    
     resetAuth();
     removeToken();
+    localStorage.removeItem('auth-storage') // 로그아웃 시 auth-storage도 삭제
   };
 
   // 로그인 후 상태/토큰 저장(참고용)
