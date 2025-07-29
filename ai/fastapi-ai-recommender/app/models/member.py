@@ -4,14 +4,21 @@ import json
 import os
 
 # ------- (1) 모델과 vocab 로드 (최초 1회만) -------
-BASE = os.path.dirname(__file__)
+BASE = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),  # 현재: models/
+        "..",  # app/
+        "..",  # fastapi-ai-recommender/
+        "..",  # ai/
+        "parameters",
+        "member_model",
+    )
+)
 user_lookup = np.load(os.path.join(BASE, "user_lookup.npy"))
-cart_lookup = np.load(os.path.join(BASE, "cart_lookup.npy"))
-wishlist_lookup = np.load(os.path.join(BASE, "wishlist_lookup.npy"))
-gender_lookup = np.load(os.path.join(BASE, "gender_lookup.npy"))
+context_lookup = np.load(os.path.join(BASE, "context_lookup.npy"))
 item_embs = np.load(os.path.join(BASE, "item_embeddings.npy"))
-with open(os.path.join(BASE, "asin2title.json"), encoding="utf-8") as f:
-    asin2title = json.load(f)
+with open(os.path.join(BASE, "id2title.json"), encoding="utf-8") as f:
+    id2title = json.load(f)
 
 session = ort.InferenceSession(os.path.join(BASE, "model_quantized.onnx"))
 
@@ -21,50 +28,60 @@ def to_idx(val, vocab):
     return int(idx[0]) if len(idx) > 0 else 0
 
 
-# ------- (2) 추천 함수 -------
-def recommend(user_id, gender, age, cart=None, wishlist=None, topk=5):
-    # 빈값 대응
-    cart = cart if cart is not None else []
-    wishlist = wishlist if wishlist is not None else []
-
+def recommend(
+    user_id, gender, age, cart=None, wish_list=None, topk=5, context_weight=5.0
+):
+    MAX_CONTEXT_LEN = 5
+    cart = cart if cart else []
+    wish_list = wish_list if wish_list else []
+    # cart, wish_list 합치고 중복 제거
+    context = list(dict.fromkeys(cart + wish_list))
     # 길이 맞춰 패딩
-    MAX_CART_LEN = 5
-    MAX_WISHLIST_LEN = 5
-    cart = (cart + [""] * MAX_CART_LEN)[:MAX_CART_LEN]
-    wishlist = (wishlist + [""] * MAX_WISHLIST_LEN)[:MAX_WISHLIST_LEN]
+    context = (context + [""] * MAX_CONTEXT_LEN)[:MAX_CONTEXT_LEN]
 
     # 각 feature를 index로 변환
-    user_idx = np.array([to_idx(user_id, user_lookup)], dtype=np.float32)  # float32!
-    cart_idx = np.array([[to_idx(x, cart_lookup) for x in cart]], dtype=np.int32)
-    gender_idx = np.array([to_idx(gender, gender_lookup)], dtype=np.int32)
-    age_idx = np.array([age], dtype=np.int32)
-    wishlist_idx = np.array(
-        [[to_idx(x, wishlist_lookup) for x in wishlist]], dtype=np.int32
-    )
+    user_idx = np.array([to_idx(user_id, user_lookup)], dtype=np.int32)
+    context_idx = np.array(
+        [[to_idx(x, context_lookup) for x in context]], dtype=np.int32
+    )  # (1, 5)
+    gender_idx = np.array([int(gender)], dtype=np.int32)
+    age_idx = np.array([int(age)], dtype=np.int32)
 
-    # 입력 dict (ONNX 입력 이름 맞춰야 함!)
+    # ONNX 입력: user_idx, context_idx, gender, age
     inputs = {
-        "args_0": user_idx,  # float32
-        "args_0_1": cart_idx,  # int32
-        "args_0_2": gender_idx,  # int32
-        "args_0_3": age_idx,  # int32
-        "args_0_4": wishlist_idx,  # int32
+        "args_0": user_idx,
+        "args_0_1": context_idx,
+        "args_0_2": gender_idx,
+        "args_0_3": age_idx,
     }
 
-    # ----- 디버깅용: 입력이름/타입/shape 확인 -----
-    # for inp in session.get_inputs():
-    #     print(f"name: {inp.name}, type: {inp.type}, shape: {inp.shape}")
-
-    # ------- (3) ONNX 추론 및 추천 -------
+    # ------- (3) ONNX 추론 -------
     outputs = session.run(None, inputs)
-    user_vec = outputs[0][0]
-    scores = item_embs @ user_vec
-    topk_idx = np.argsort(scores)[::-1][:topk]
+    user_vec = outputs[0][0]  # (임베딩 32차원)
 
-    # ------- (4) 추천 결과 리턴 -------
+    # ⭐️ context 가중치 적용(실험적): context 벡터 부분만 곱하기
+    # 만약 user_vec이 [user, gender, age, context]로 concat된 구조라면 아래와 같이...
+    # context는 마지막 EMBED_DIM 길이 (예: EMBED_DIM=32면 맨 끝 32차원)
+    EMBED_DIM = user_vec.shape[0] // 4  # 예: 128차원이면 32씩 4개
+    # [user, gender, age, context] 구조를 가정
+    user_vec[-EMBED_DIM:] *= context_weight  # context 부분만 곱하기
+
+    # ------- (4) 내적 및 추천 -------
+    scores = item_embs @ user_vec
+    topk_candidates = 100
+    topk_idx = np.argsort(scores)[::-1][:topk_candidates]
+    candidate_ids = [context_lookup[idx] for idx in topk_idx]
+
+    # context(빈 값 제외)로 필터링
+    exclude_set = set([x for x in context if x])
+    filtered_ids = [pid for pid in candidate_ids if pid not in exclude_set]
+
+    final_ids = filtered_ids[:topk]
+
     results = []
-    for idx in topk_idx:
-        asin = str(cart_lookup[idx])
-        title = asin2title.get(asin, "Unknown")
-        results.append({"asin": asin, "title": title})
+    for pid in final_ids:
+        idx = np.where(context_lookup == pid)[0]
+        score = float(scores[idx[0]]) if len(idx) > 0 else 0.0
+        title = id2title.get(pid, "Unknown")
+        results.append({"asin": pid, "title": title, "score": score})
     return results
