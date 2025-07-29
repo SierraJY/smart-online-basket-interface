@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; padding: 30px; }
+        h1 { color: #333; }
+        section { margin-bottom: 40px; }
+        img { width: 100%; height: auto; margin-top: 10px; }
+        .desc { font-size: 0.9rem; margin-top: 5px; color: #555; }
+    </style>
+</head>
+<body>
+    <h1>📊 일일 스마트 바스켓 분석 리포트 ({{ today }})</h1>
+
+    <section>
+        <h2>1. 고객 군집 분석</h2>
+        <img src="../images/cluster_plot.png" />
+        <div class="desc">{{ summaries.customer }}</div>
+    </section>
+
+    <section>
+        <h2>2. 상품 트렌드 예측</h2>
+        <img src="../images/sales_forecast.png" />
+        <div class="desc">{{ summaries.prophet }}</div>
+    </section>
+
+    <section>
+        <h2>3. 발주/재고 예측</h2>
+        <img src="../images/restock_predict.png" />
+        <div class="desc">{{ summaries.restock }}</div>
+    </section>
+
+    <section>
+        <h2>4. 연관 구매 분석</h2>
+        <img src="../images/assoc_rules.png" />
+        <div class="desc">{{ summaries.association }}</div>
+    </section>
+</body>
+</html>
