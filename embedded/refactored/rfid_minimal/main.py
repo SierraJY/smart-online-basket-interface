@@ -33,22 +33,22 @@ def parse_arguments():
     parser.add_argument(
         "--cycles", 
         type=int, 
-        default=3, 
-        help="Number of polling cycles to run (default: 3)"
+        default=30, 
+        help="Number of polling cycles to run (default: 30)"
     )
     
     parser.add_argument(
         "--polling-count", 
         type=int, 
-        default=30, 
-        help="Multi-polling count for each sensor (default: 30)"
+        default=15, 
+        help="Multi-polling count for each sensor (default: 15)"
     )
     
     parser.add_argument(
         "--rssi-threshold", 
         type=int, 
-        default=None, 
-        help="RSSI threshold for filtering tags in dBm (default: None, no filtering)"
+        default=-70, 
+        help="RSSI threshold for filtering tags in dBm (default: -70 filtering)"
     )
     
     parser.add_argument(
@@ -87,7 +87,7 @@ def parse_arguments():
 def run_rfid_system(
     cycles: int = 3,
     polling_count: int = 30,
-    rssi_threshold: int = None,
+    rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
     timeout: float = 5.0
@@ -112,15 +112,9 @@ def run_rfid_system(
         
         # Set tag detection callback
         def tag_callback(manager_id: str, reader_id: str, tag_info: TagInfo) -> None:
-            # Log the detection
-            logger.debug(f"Tag callback: {reader_id} detected {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
-            
-            # Register tag with cart manager
-            cart_manager.register_tag(tag_info.raw_tag_id, tag_info)
-            
-            # Log detection
-            logger.info(f"Tag detected: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
-        
+            # Log the detection in debug mode if needed
+            logger.debug(f"Tag detected during polling: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
+
         manager.set_tag_callback(tag_callback)
         
         # Run multiple polling cycles
@@ -134,8 +128,11 @@ def run_rfid_system(
             
             # Run polling cycle
             cycle_start_time = time.time()
-            results = manager.run_polling_cycle(timeout)
+            results = manager.run_polling_cycle(timeout) # results 딕셔너리 생성
             cycle_duration = time.time() - cycle_start_time
+
+            # Send results to CartManager for processing
+            cart_manager.process_cycle_results(results, manager)
             
             # End cart tracking for this cycle
             cart_manager.end_cycle()
@@ -158,7 +155,19 @@ def run_rfid_system(
                         tag_info = manager.readers[0].get_tag_info(tag_id)
                         rssi = tag_info.rssi if tag_info else "Unknown"
                         logger.debug(f"  - {tag_id} (RSSI: {rssi})")
-            
+
+            # print cart summary with tag details
+            logger.info("Cart summary:")
+            cart_summary = cart_manager.get_cart_summary()
+            logger.info(f"Confirmed items: {len(cart_summary['confirmed_items'])}, Removed items: {len(cart_summary['removed_items'])}")
+            logger.info("Confirmed items:")
+            for item in cart_summary["confirmed_items"]:
+                item_details = cart_manager.get_item_details(item)
+                if item_details:
+                    logger.info(f"  - {item} (Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
+            for item in cart_summary["removed_items"]:
+                logger.info(f"  - {item} (Removed)")
+
             # Wait between cycles
             if cycle < cycles:
                 time.sleep(1.0)
