@@ -5,7 +5,8 @@ from sklearn.neighbors import NearestNeighbors
 import joblib
 from collections import Counter, defaultdict
 
-def build_co_purchase_dict(purchase_df, product_col='clean_title_ko', session_col='session_id', top_n=5):
+
+def build_co_purchase_dict(purchase_df, product_col='id', session_col='session_id', top_n=5):
     co_purchase = defaultdict(Counter)
     for session_id, group in purchase_df.groupby(session_col):
         items = group[product_col].tolist()
@@ -18,10 +19,11 @@ def build_co_purchase_dict(purchase_df, product_col='clean_title_ko', session_co
         for item, counter in co_purchase.items()
     }
 
+
 def train_full_initial_model(
     tag_csv_path,
     purchase_jsonl_path,
-    save_dir='./parameters/guest_model',
+    save_dir='../parameters/guest_model',
     top_n=6,
     n_neighbors=5
 ):
@@ -29,8 +31,8 @@ def train_full_initial_model(
 
     # 1. 상품 태그 정보 불러오기
     df_items = pd.read_csv(tag_csv_path)
-    assert 'name' in df_items.columns and 'tag' in df_items.columns
-    df_items = df_items[['name', 'tag']].dropna()
+    assert 'id' in df_items.columns and 'tag' in df_items.columns
+    df_items = df_items[['id', 'tag']].dropna()
 
     # 2. TF-IDF 벡터 학습
     vectorizer = TfidfVectorizer()
@@ -42,8 +44,8 @@ def train_full_initial_model(
 
     # 4. 공동구매 사전 생성
     df_purchase = pd.read_json(purchase_jsonl_path, lines=True)
-    assert 'session_id' in df_purchase.columns and 'clean_title_ko' in df_purchase.columns
-    co_purchase_dict = build_co_purchase_dict(df_purchase, product_col='clean_title_ko', session_col='session_id', top_n=top_n)
+    assert 'session_id' in df_purchase.columns and 'id' in df_purchase.columns
+    co_purchase_dict = build_co_purchase_dict(df_purchase, product_col='id', session_col='session_id', top_n=top_n)
 
     # 5. 모델 저장
     joblib.dump(vectorizer, os.path.join(save_dir, 'tfidf_vectorizer.pkl'))
@@ -57,5 +59,5 @@ def train_full_initial_model(
 if __name__ == "__main__":
     train_full_initial_model(
         tag_csv_path='../data/products_all_tagged.csv',
-        purchase_jsonl_path='../data/session_data.jsonl'
+        purchase_jsonl_path='../data/purchase_history.jsonl'
     )
