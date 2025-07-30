@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 // JSON 로그인 처리
 // 아이디와 비밀번호 기반의 데이터를 JSON으로 전송받아 '인증'을 담당하는 필터
+// 클라이언트가 보낸 JSON 로그인 요청을 받아서 Spring Security의 표준 인증 과정으로 연결
 
 @Component
 public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
@@ -24,10 +25,12 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
     }
 
     // 지정된 URL로 JSON 전송을 하였을 경우 파라미터 정보를 가져와서 인증을 시도
+    // 여기서 만드는 토큰은 JWT가 X, SpringSecurity 내부에서 사용되는 인증 객체
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
 
+        // 인증 과정에서만 사용, 인증 완료 후 소멸
         UsernamePasswordAuthenticationToken authRequest;
         try {
             // 요청에서 인증 토큰 생성
@@ -41,7 +44,7 @@ public class CustomAuthenticationFilter extends UsernamePasswordAuthenticationFi
         return this.getAuthenticationManager().authenticate(authRequest);
     }
 
-    // HTTP 요청에서 사용자 ID와 비밀번호를 추출하여 인증 토큰을 생성
+    // HTTP 요청에서 사용자 ID와 비밀번호를 추출하여 인증 토큰(!= JWT)을 생성
     // JSON 형태의 요청 본문을 파싱하여 로그인 정보를 추출
     private UsernamePasswordAuthenticationToken getAuthRequest(HttpServletRequest request) throws Exception {
         try {

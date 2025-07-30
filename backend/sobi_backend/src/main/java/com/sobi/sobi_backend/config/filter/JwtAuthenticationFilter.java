@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     // JWT 토큰이 필요하지 않은 API 엔드포인트 목록
     private static final List<String> EXCLUDE_URLS = Arrays.asList(
-            "/api/customers/register",
+            "/api/customers/signup",
             "/api/customers/login",
             "/api/products",
             "/api/epc-maps/scan",

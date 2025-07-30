@@ -43,25 +43,25 @@ public class CustomLogoutHandler implements LogoutHandler {
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         System.out.println("=== 로그아웃 처리 시작 ===");
 
-        // [STEP1] Authorization 헤더에서 토큰 추출
+        // Authorization 헤더에서 토큰 추출
         String authorizationHeader = request.getHeader("Authorization");
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            // [STEP2] "Bearer " 제거하고 실제 JWT 토큰 추출
+            // "Bearer " 제거하고 실제 JWT 토큰 추출
             String token = authorizationHeader.substring(7);
             System.out.println("로그아웃 토큰 추출 완료: " + token.substring(0, Math.min(token.length(), 30)) + "...");
 
-            // [STEP3] 토큰 유효성 확인 (이미 무효한 토큰인지 체크)
+            // 토큰 유효성 확인 (이미 무효한 토큰인지 체크)
             if (jwtUtil.validateToken(token)) {
 
-                // [STEP4] 토큰이 이미 블랙리스트에 있는지 확인
+                // 토큰이 이미 블랙리스트에 있는지 확인
                 if (!tokenBlackListService.isTokenBlacklisted(token)) {
 
-                    // [STEP5] 토큰에서 만료 시간 추출
+                    // 토큰에서 만료 시간 추출
                     // JwtUtil에 getExpirationFromToken 메서드 필요 (추가 구현 필요)
                     long expirationTime = getTokenExpiration(token);
 
-                    // [STEP6] 블랙리스트에 토큰 추가 (TTL 자동 설정)
+                    // 블랙리스트에 토큰 추가 (TTL 자동 설정)
                     tokenBlackListService.addTokenToBlacklist(token, expirationTime);
 
                     System.out.println("토큰 블랙리스트 추가 완료 - 로그아웃 성공");
@@ -78,7 +78,7 @@ public class CustomLogoutHandler implements LogoutHandler {
             }
 
         } else {
-            // [STEP2-2] Authorization 헤더가 없거나 Bearer 형식이 아닌 경우
+            // Authorization 헤더가 없거나 Bearer 형식이 아닌 경우
             System.out.println("Authorization 헤더가 없거나 잘못된 형식");
             sendErrorResponse(response, "로그아웃 처리 중 문제가 발생했습니다.");
         }
