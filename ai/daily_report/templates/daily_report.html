@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>주간 스마트 바스켓 리포트</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 30px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p.timestamp {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 30px;
+        }
+        section {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 40px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+        }
+        section h2 {
+            color: #222;
+            margin-bottom: 15px;
+        }
+        img {
+            width: 100%;
+            max-width: 700px;
+            height: auto;
+            border: 1px solid #ccc;
+            display: block;
+            margin-top: 10px;
+        }
+        .desc {
+            font-size: 0.9rem;
+            margin-top: 10px;
+            color: #555;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 주간 스마트 바스켓 분석 리포트 ({{ week_range }})</h1>
+    <p class="timestamp">작성일: {{ today }}</p>
+
+    <section>
+        <h2>1. 고객 군집 분석 👥</h2>
+        <img src="{{ url_for('static', filename='images/cluster_plot.png') }}" alt="고객 군집 시각화" />
+        <div class="desc">{{ summaries.customer }}</div>
+    </section>
+
+    <section>
+        <h2>2. 상품 트렌드 예측 📈</h2>
+        <img src="{{ url_for('static', filename='images/sales_forecast.png') }}" alt="상품 판매 예측" />
+        <div class="desc">{{ summaries.prophet }}</div>
+    </section>
+
+    <section>
+        <h2>3. 발주 및 재고 예측 📦</h2>
+        <img src="{{ url_for('static', filename='images/restock_predict.png') }}" alt="발주량 및 재고 예측" />
+        <div class="desc">{{ summaries.restock }}</div>
+    </section>
+
+    <section>
+        <h2>4. 연관 구매 분석 🔗</h2>
+        <img src="{{ url_for('static', filename='images/assoc_rules.png') }}" alt="연관 상품 네트워크" />
+        <div class="desc">{{ summaries.association }}</div>
+    </section>
+</body>
+</html>
