@@ -7,10 +7,11 @@ import logging
 import argparse
 import sys
 import time
-from typing import Dict, Set
+from typing import Dict, Set, List
 
 from rfid_minimal.sensor_manager import MultiSensorManager
-from rfid_minimal.rfid_reader import TagInfo
+from rfid_minimal.models import TagInfo
+from rfid_minimal.cart_manager import CartManager
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -51,6 +52,20 @@ def parse_arguments():
     )
     
     parser.add_argument(
+        "--presence-threshold", 
+        type=int, 
+        default=2, 
+        help="Number of consecutive detections to confirm item presence (default: 2)"
+    )
+    
+    parser.add_argument(
+        "--absence-threshold", 
+        type=int, 
+        default=2, 
+        help="Number of consecutive missed detections to confirm item removal (default: 2)"
+    )
+    
+    parser.add_argument(
         "--log-level", 
         type=str, 
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -67,25 +82,14 @@ def parse_arguments():
     
     return parser.parse_args()
 
-def on_tag_detected(manager_id: str, reader_id: str, tag_info: TagInfo) -> None:
-    """
-    Handle tag detection callback
-    
-    Args:
-        manager_id: Manager identifier
-        reader_id: Reader identifier
-        tag_info: Tag information
-    """
-    logger = logging.getLogger("rfid_minimal")
-    logger.debug(
-        f"Tag callback: {reader_id} detected {tag_info.raw_tag_id} "
-        f"(RSSI: {tag_info.rssi})"
-    )
+# Removed on_tag_detected function as it's now defined inline in run_rfid_system
 
 def run_rfid_system(
     cycles: int = 3,
     polling_count: int = 30,
     rssi_threshold: int = None,
+    presence_threshold: int = 2,
+    absence_threshold: int = 2,
     timeout: float = 5.0
 ) -> None:
     """Run the RFID system with specified parameters"""
@@ -99,8 +103,25 @@ def run_rfid_system(
             rssi_threshold=rssi_threshold
         )
         
+        # Create cart manager
+        cart_manager = CartManager(
+            presence_threshold=presence_threshold,
+            absence_threshold=absence_threshold,
+            rssi_threshold=rssi_threshold
+        )
+        
         # Set tag detection callback
-        manager.set_tag_callback(on_tag_detected)
+        def tag_callback(manager_id: str, reader_id: str, tag_info: TagInfo) -> None:
+            # Log the detection
+            logger.debug(f"Tag callback: {reader_id} detected {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
+            
+            # Register tag with cart manager
+            cart_manager.register_tag(tag_info.raw_tag_id, tag_info)
+            
+            # Log detection
+            logger.info(f"Tag detected: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
+        
+        manager.set_tag_callback(tag_callback)
         
         # Run multiple polling cycles
         all_cycle_results: Dict[int, Dict[str, Set[str]]] = {}
@@ -108,10 +129,16 @@ def run_rfid_system(
         for cycle in range(1, cycles + 1):
             logger.info(f"=== Cycle #{cycle} started ===")
             
+            # Start cart tracking for this cycle
+            cart_manager.start_cycle()
+            
             # Run polling cycle
             cycle_start_time = time.time()
             results = manager.run_polling_cycle(timeout)
             cycle_duration = time.time() - cycle_start_time
+            
+            # End cart tracking for this cycle
+            cart_manager.end_cycle()
             
             # Store results
             all_cycle_results[cycle] = results
@@ -148,6 +175,22 @@ def run_rfid_system(
         
         logger.info(f"Total unique tags detected: {len(all_tags)}")
         
+        # Display cart status
+        cart_summary = cart_manager.get_cart_summary()
+        confirmed_items = cart_summary["confirmed_items"]
+        removed_items = cart_summary["removed_items"]
+        
+        logger.info("\n=== Cart Status ===")
+        logger.info(f"Items currently in cart: {len(confirmed_items)}")
+        for item in confirmed_items:
+            item_details = cart_manager.get_item_details(item)
+            if item_details:
+                logger.info(f"  - {item} (Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
+        
+        logger.info(f"Items removed from cart: {len(removed_items)}")
+        for item in removed_items:
+            logger.info(f"  - {item}")
+        
     except KeyboardInterrupt:
         logger.info("User interrupted execution")
     except Exception as e:
@@ -170,5 +213,7 @@ if __name__ == "__main__":
         cycles=args.cycles,
         polling_count=args.polling_count,
         rssi_threshold=args.rssi_threshold,
+        presence_threshold=args.presence_threshold,
+        absence_threshold=args.absence_threshold,
         timeout=args.timeout
     ) 
