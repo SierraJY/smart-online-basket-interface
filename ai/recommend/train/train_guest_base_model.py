@@ -6,9 +6,9 @@ import joblib
 from collections import Counter, defaultdict
 
 
-def build_co_purchase_dict(purchase_df, product_col='id', session_col='session_id', top_n=5):
+def build_co_purchase_dict(purchase_df, product_col='id', session_col='purchased_at', top_n=5):
     co_purchase = defaultdict(Counter)
-    for session_id, group in purchase_df.groupby(session_col):
+    for purchased_at, group in purchase_df.groupby(session_col):
         items = group[product_col].tolist()
         for i in range(len(items)):
             for j in range(len(items)):
@@ -44,8 +44,8 @@ def train_full_initial_model(
 
     # 4. 공동구매 사전 생성
     df_purchase = pd.read_json(purchase_jsonl_path, lines=True)
-    assert 'session_id' in df_purchase.columns and 'id' in df_purchase.columns
-    co_purchase_dict = build_co_purchase_dict(df_purchase, product_col='id', session_col='session_id', top_n=top_n)
+    assert 'purchased_at' in df_purchase.columns and 'id' in df_purchase.columns
+    co_purchase_dict = build_co_purchase_dict(df_purchase, product_col='id', session_col='purchased_at', top_n=top_n)
 
     # 5. 모델 저장
     joblib.dump(vectorizer, os.path.join(save_dir, 'tfidf_vectorizer.pkl'))

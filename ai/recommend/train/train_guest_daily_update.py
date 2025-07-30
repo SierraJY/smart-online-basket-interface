@@ -32,7 +32,7 @@ def flatten_receipts(df):
     rows = []
     for _, row in df.iterrows():
         user_id = row['user_id']
-        session_id = str(row['receipt_id'])
+        session_id = str(row['purchased_at'])
         try:
             product_dict = json.loads(row['product_list']) if isinstance(row['product_list'], str) else row['product_list']
         except Exception:
