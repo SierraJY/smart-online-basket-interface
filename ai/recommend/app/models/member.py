@@ -59,12 +59,8 @@ def recommend(
 
     final_ids = filtered_ids[:topk]
 
-    recommendations = []
-    for pid in final_ids:
-        title = id2title.get(pid, "Unknown")
-        recommendations.append({"asin": pid, "title": title})
-
     return {
         "user_id": user_id,
-        "recommendations": recommendations
+        "recommendations": final_ids
     }
+

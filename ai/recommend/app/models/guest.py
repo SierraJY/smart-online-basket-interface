@@ -54,15 +54,12 @@ def recommend(
 
     # Step 3: 상위 추천 정렬 및 변환
     sorted_items = sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
-    recommendations = []
-    for pid, _ in sorted_items[:30]:
-        title = id2title.get(pid, "Unknown")
-        recommendations.append({
-            "asin": str(pid),   # string 통일 (회원용과 동일)
-            "title": title
-        })
+
+    # 제품 ID 리스트만 추출 (string 형식 통일)
+    recommended_ids = [str(pid) for pid, _ in sorted_items[:30]]
 
     return {
         "user_id": user_id,
-        "recommendations": recommendations
+        "recommendations": recommended_ids
     }
+
