@@ -21,7 +21,7 @@ def recommend(
     user_id,
     cart_items,  # 제품 ID 리스트
     co_top_k_per_item=10,
-    co_candidate_limit=30,
+    co_candidate_limit=6,
     tfidf_per_item=5
 ):
     cart_set = set(cart_items)
