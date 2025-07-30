@@ -59,5 +59,5 @@ def train_full_initial_model(
 if __name__ == "__main__":
     train_full_initial_model(
         tag_csv_path='../data/products_all_tagged.csv',
-        purchase_jsonl_path='../data/session_data.jsonl'
+        purchase_jsonl_path='../data/purchase_history.jsonl'
     )
