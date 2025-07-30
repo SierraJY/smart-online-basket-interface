@@ -18,7 +18,7 @@ public class EpcMapController {
     @Autowired
     private EpcMapService epcMapService; // EPC 매핑 처리 서비스
 
-    // RFID 스캔으로 상품 조회 (GET /api/epc-maps/scan/{epcPattern}) - 핵심 기능!
+    // RFID 스캔으로 상품 조회 (GET /api/epc-maps/scan/{epcPattern})
     @GetMapping("/scan/{epcPattern}")
     public ResponseEntity<?> scanProduct(@PathVariable String epcPattern) {
         try {

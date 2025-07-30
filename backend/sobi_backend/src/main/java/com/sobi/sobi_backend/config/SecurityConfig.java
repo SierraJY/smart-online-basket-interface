@@ -40,12 +40,14 @@ public class SecurityConfig {
     private CustomLogoutHandler customLogoutHandler; // 커스텀 로그아웃 핸들러 추가
 
     // 비밀번호 암호화/검증을 위한 인코더 (BCrypt 알고리즘 사용)
+    // AuthenticationManger가 내부적으로 사용
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     // 로그인 시 사용자 정보를 조회하는 서비스 (아이디로 사용자 찾기)
+    // AuthenticationManger가 내부적으로 사용
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
@@ -55,6 +57,8 @@ public class SecurityConfig {
     }
 
     // 로그인 처리를 담당하는 매니저 (아이디/비밀번호 검증)
+    // AuthenticationConfiguration config : Spring Security가 자동으로 제공하는 설정 객체, 기본 구성
+    // 내부적으로, PassWordEncoder와 UserDetatilService 활용
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -81,6 +85,9 @@ public class SecurityConfig {
             System.out.println("토큰 발급 대상 - userId: " + userId + ", customerId: " + customerId);
 
             // JWT 토큰 생성 (JwtUtil은 직접 접근이 어려우므로 ApplicationContext 사용)
+            // JwtUtil이 setAuthentifcationSuccessHandler 람다식 내부에서 사용
+            // 람다식 내부에서는 Autowired가 불가능
+            // 따라서 의존성 주입 사용하는 것이 아닌, 직접 컨테이너에 접근해서 사용
             com.sobi.sobi_backend.util.JwtUtil jwtUtil =
                     org.springframework.web.context.support.WebApplicationContextUtils
                             .getWebApplicationContext(request.getServletContext())
@@ -156,28 +163,23 @@ public class SecurityConfig {
                 .addFilterBefore(customAuthenticationFilter(config), UsernamePasswordAuthenticationFilter.class)
                 // 기본 폼 로그인 비활성화 (JSON 로그인 사용)
                 .formLogin(form -> form.disable())
-                // 로그아웃 처리 설정 (참고 블로그 방식 적용)
+                // 로그아웃 처리 설정
                 .logout(this::configureLogout) // 메서드 참조로 로그아웃 설정 위임
         ;
 
         return http.build();
     }
 
-    /**
-     * 로그아웃에 대한 설정을 관리합니다.
-     * 참고 블로그 방식을 우리 프로젝트에 맞게 적용
-     *
-     * @param logout LogoutConfigurer
-     */
+    //로그아웃에 대한 설정을 관리
     private void configureLogout(LogoutConfigurer<HttpSecurity> logout) {
         logout
-                // 1. 로그아웃 엔드포인트를 지정
-                .logoutUrl("/api/customers/logout") // 우리 프로젝트 URL 패턴 유지
+                // 로그아웃 엔드포인트를 지정
+                .logoutUrl("/api/customers/logout")
 
-                // 2. 엔드포인트 호출에 대한 처리 Handler를 구성
+                // 엔드포인트 호출에 대한 처리 Handler를 구성
                 .addLogoutHandler(customLogoutHandler) // CustomLogoutHandler 연결
 
-                // 3. 로그아웃 처리가 완료되었을때 처리를 수행합니다.
+                // 로그아웃 처리가 완료되었을때 처리를 수행
                 // CustomLogoutHandler에서 이미 응답을 처리하므로 추가 처리 없음
                 .logoutSuccessHandler((request, response, authentication) -> {
                     // CustomLogoutHandler에서 이미 JSON 응답을 보냈으므로
