@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from app import schemas
 from app.models import member, guest
 
+
 app = FastAPI()
+
 
 @app.post("/recommend", response_model=schemas.RecommendResponse)
 def recommend(req: schemas.RecommendRequest):
@@ -15,6 +17,6 @@ def recommend(req: schemas.RecommendRequest):
             age=req.age,
             cart=req.cart,
             wishlist=req.wishlist,
-            topk=5
+            topk=30,
         )
-    return {"recommendations": results}
+    return results
