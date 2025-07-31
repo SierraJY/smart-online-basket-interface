@@ -4,16 +4,42 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_recommenders as tfrs
 from sklearn.model_selection import train_test_split
-import json
 import tf2onnx
 from onnxruntime.quantization import quantize_dynamic, QuantType
 
-# ===============================
-# 1. 설정
-# ===============================
-NEW_DATA_PATH = (
-    "C:/Users/SSAFY/Desktop/AI_model_train/two-tower/user_id_id_name_sim08.jsonl"
+# === [PostgreSQL에서 데이터 불러오기] ===
+import psycopg2
+
+DB_HOST = "DB_HOST"
+DB_PORT = 5432
+DB_USER = "DB_USER"
+DB_PASSWORD = "DB_PASSWORD"
+DB_NAME = "DB_NAME"
+
+print("DB에서 추가 학습용 구매내역 데이터 쿼리 중...")
+conn = psycopg2.connect(
+    host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASSWORD, dbname=DB_NAME
 )
+sql = """
+SELECT 
+    user_id,        -- 유저ID (str)
+    id,             -- 상품ID (str)
+    gender,         -- (옵션) 성별 (M/F/1/2)
+    age,            -- (옵션) 나이 (int)
+    timestamp       -- 구매 시각 (int, timestamp 등)
+FROM 
+    purchase_history
+WHERE
+    timestamp BETWEEN '2024-01-01' AND '2024-12-31'
+"""
+df = pd.read_sql(sql, conn)
+conn.close()
+print("DB에서 데이터프레임 로드 성공, shape:", df.shape)
+
+# ===============================
+# 이하 기존 코드 그대로!
+# ===============================
+
 MAX_CONTEXT_LEN = 10
 BATCH_SIZE = 64
 EPOCHS = 1
@@ -23,16 +49,6 @@ SAVED_MODEL_PATH = "serving_model"
 KERAS_WEIGHTS_PATH = "two_tower_weights.h5"
 ONNX_MODEL_PATH = "two_tower_model.onnx"
 QUANTIZED_MODEL_PATH = "two_tower_model_quantized.onnx"
-
-# ===============================
-# 2. 데이터 로딩 및 전처리
-# ===============================
-print("추가 학습 데이터 경로:", NEW_DATA_PATH)
-if not os.path.exists(NEW_DATA_PATH):
-    raise FileNotFoundError(f"파일이 존재하지 않습니다: {NEW_DATA_PATH}")
-
-df = pd.read_json(NEW_DATA_PATH, lines=True)
-print("데이터프레임 로드 성공, shape:", df.shape)
 
 
 def gender_to_int(x):
@@ -82,9 +98,6 @@ def pad_list(x, length):
 
 df["context"] = df["context"].apply(lambda x: pad_list(x, MAX_CONTEXT_LEN))
 
-# ===============================
-# 3. 기존 vocabulary 불러오기
-# ===============================
 if not (os.path.exists("id_lookup.npy") and os.path.exists("user_lookup.npy")):
     raise FileNotFoundError(
         "id_lookup.npy 또는 user_lookup.npy 파일이 없습니다. 초기 학습 후 생성된 파일을 준비해주세요."
@@ -96,9 +109,6 @@ user_ids = list(np.load("user_lookup.npy"))
 print(f"상품 수: {len(product_ids)}, 사용자 수: {len(user_ids)}")
 
 
-# ===============================
-# 4. tf.data Dataset 생성
-# ===============================
 def df_to_tf_dataset(df):
     return tf.data.Dataset.from_tensor_slices(
         {
@@ -154,9 +164,6 @@ candidates_ds = (
 )
 
 
-# ===============================
-# 5. 모델 정의 (초기 학습과 동일하게)
-# ===============================
 class UserModel(tf.keras.Model):
     def __init__(self, num_users, num_products):
         super().__init__()
@@ -205,16 +212,10 @@ class TwoTowerModel(tfrs.models.Model):
         return self.query_proj(self.query_model(features["user_features"]))
 
 
-# ===============================
-# 6. 모델 생성 및 컴파일
-# ===============================
 num_users, num_products = len(user_ids), len(product_ids)
 model = TwoTowerModel(num_users, num_products)
 model.compile(optimizer=tf.keras.optimizers.Adagrad(0.1))
 
-# ===============================
-# 7. 모델 빌드(변수 생성) 및 가중치 로드
-# ===============================
 dummy_input = {
     "user_features": {
         "user_idx": tf.constant([0], dtype=tf.int32),
@@ -231,31 +232,19 @@ _ = model(dummy_input)  # 반드시 먼저 호출해서 변수 생성
 print("가중치 불러오기:", KERAS_WEIGHTS_PATH)
 model.load_weights(KERAS_WEIGHTS_PATH)
 
-# ===============================
-# 8. 추가 학습
-# ===============================
 print("\n[추가 학습 시작]")
 for epoch in range(EPOCHS):
     print(f"\n===== [Epoch {epoch + 1}/{EPOCHS}] =====")
     model.fit(train_ds_indexed, epochs=1, verbose=2)
 print("[추가 학습 종료]")
 
-# ===============================
-# 9. 가중치 저장
-# ===============================
 model.save_weights(KERAS_WEIGHTS_PATH)
 print("가중치 저장 완료.")
 
-# ===============================
-# 10. ONNX 변환
-# ===============================
 print("ONNX 모델 변환 시작...")
 model_proto, _ = tf2onnx.convert.from_keras(model, output_path=ONNX_MODEL_PATH)
 print("ONNX 모델 변환 완료:", ONNX_MODEL_PATH)
 
-# ===============================
-# 11. ONNX 양자화 (Dynamic Quantize)
-# ===============================
 print("ONNX 모델 양자화 시작...")
 quantize_dynamic(ONNX_MODEL_PATH, QUANTIZED_MODEL_PATH, weight_type=QuantType.QInt8)
 print("ONNX 모델 양자화 완료:", QUANTIZED_MODEL_PATH)

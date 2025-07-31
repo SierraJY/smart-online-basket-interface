@@ -52,25 +52,25 @@
 
     <section>
         <h2>1. 고객 군집 분석 👥</h2>
-        <img src="{{ url_for('static', filename='images/cluster_plot.png') }}" alt="고객 군집 시각화" />
+        <img src="{{ images.customer }}" alt="고객 군집 시각화" />
         <div class="desc">{{ summaries.customer }}</div>
     </section>
 
     <section>
         <h2>2. 상품 트렌드 예측 📈</h2>
-        <img src="{{ url_for('static', filename='images/sales_forecast.png') }}" alt="상품 판매 예측" />
+        <img src="{{ images.prophet }}" alt="상품 판매 예측" />
         <div class="desc">{{ summaries.prophet }}</div>
     </section>
 
     <section>
         <h2>3. 발주 및 재고 예측 📦</h2>
-        <img src="{{ url_for('static', filename='images/restock_predict.png') }}" alt="발주량 및 재고 예측" />
+        <img src="{{ images.restock }}" alt="발주량 및 재고 예측" />
         <div class="desc">{{ summaries.restock }}</div>
     </section>
 
     <section>
         <h2>4. 연관 구매 분석 🔗</h2>
-        <img src="{{ url_for('static', filename='images/assoc_rules.png') }}" alt="연관 상품 네트워크" />
+        <img src="{{ images.association }}" alt="연관 상품 네트워크" />
         <div class="desc">{{ summaries.association }}</div>
     </section>
 </body>
