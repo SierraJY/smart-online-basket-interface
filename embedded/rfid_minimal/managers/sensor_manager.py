@@ -80,7 +80,7 @@ class MultiSensorManager:
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
     
-    def run_polling_cycle(self, timeout: float = .5) -> Dict[str, Set[str]]:
+    def run_polling_cycle(self, timeout: float = 0.5) -> Dict[str, Set[str]]:
         """
         Run one polling cycle on all readers
         

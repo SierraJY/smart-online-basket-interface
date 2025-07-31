@@ -251,11 +251,11 @@ class CartManager:
         cart_data = {
             "id": BASKET_ID,
             "list": dict(product_counts),
-            "changes": {
-                "added": [tag_id for tag_id in self.items_added_this_cycle],
-                "removed": [tag_id for tag_id in self.items_removed_this_cycle],
-                "returned": [tag_id for tag_id in self.items_returned_this_cycle]
-            }
+            # "changes": {
+            #     "added": [tag_id for tag_id in self.items_added_this_cycle],
+            #     "removed": [tag_id for tag_id in self.items_removed_this_cycle],
+            #     "returned": [tag_id for tag_id in self.items_returned_this_cycle]
+            # }
         }
         
         return cart_data

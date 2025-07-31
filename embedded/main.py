@@ -93,8 +93,8 @@ def parse_arguments():
     parser.add_argument(
         "--timeout", 
         type=float, 
-        default=5.0, 
-        help="Polling timeout in seconds (default: 5.0)"
+        default=0.5, 
+        help="Polling timeout in seconds (default: 0.5)"
     )
     
     parser.add_argument(
@@ -123,7 +123,7 @@ def run_rfid_system(
     rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
-    timeout: float = 5.0,
+    timeout: float = 0.5,
     mqtt_enabled: bool = None,
     basket_id: str = None
 ) -> Dict[str, Any]:
@@ -253,10 +253,9 @@ def run_rfid_system(
                 if should_publish:
                     try:
                         # Publish to MQTT (scheduled update)
-                        import json
-                        cart_json = json.dumps(cart_data)
-                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_json}")
-                        publish_result = publish_message(message=cart_json)
+                        # Note: cart_data is already a JSON string from format_cart_for_mqtt
+                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_data}")
+                        publish_result = publish_message(message=cart_data)
                         
                         if publish_result:
                             logger.info("MQTT publish successful")
@@ -370,13 +369,9 @@ if __name__ == "__main__":
     if not "error" in result and mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
         try:
             final_cart_data = result["final_cart_data"]
-            import json
-            if isinstance(final_cart_data, dict):
-                final_cart_json = json.dumps(final_cart_data)
-            else:
-                final_cart_json = final_cart_data
-            logger.info(f"Publishing cart data to MQTT: {final_cart_json}")
-            publish_result = publish_message(message=final_cart_json)
+            # final_cart_data is already a JSON string from format_cart_for_mqtt
+            logger.info(f"Publishing final cart data to MQTT: {final_cart_data}")
+            publish_result = publish_message(message=final_cart_data)
             
             if publish_result:
                 logger.info("MQTT publish successful")
