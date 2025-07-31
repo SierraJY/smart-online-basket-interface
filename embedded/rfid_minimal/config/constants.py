@@ -14,7 +14,7 @@ class TagStatus(Enum):
     NOT_DETECTED = auto()
 
 # YRM100 Constants
-NO_RESPONSE_TIMEOUT = 1.0  # Consider polling complete if no response for 1.0 seconds
+NO_RESPONSE_TIMEOUT = 3.0  # Consider polling complete if no response for 3.0 seconds (increased from 1.0)
 THREAD_JOIN_TIMEOUT = 2.0  # Wait up to 2 seconds for thread to join
 RECONNECT_DELAY = 1.0      # Wait 1 second before reconnection attempt
 

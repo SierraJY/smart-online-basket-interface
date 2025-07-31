@@ -2,7 +2,7 @@
 """
 RFID Minimal - Main Application
 
-This is the entry point for the RFID Minimal system.
+This is the single entry point for the RFID Minimal system.
 It directly runs the RFID system and handles MQTT communication.
 """
 
@@ -117,38 +117,32 @@ def parse_arguments():
     
     return parser.parse_args()
 
-if __name__ == "__main__":
-    # Parse command line arguments
-    args = parse_arguments()
-    
-    # Set up logging with the level specified in command line arguments
-    setup_logging(args.log_level)
-    
+def run_rfid_system(
+    cycles: int = 3,
+    polling_count: int = 30,
+    rssi_threshold: int = -60,
+    presence_threshold: int = 2,
+    absence_threshold: int = 2,
+    timeout: float = 5.0,
+    mqtt_enabled: bool = None,
+    basket_id: str = None
+) -> Dict[str, Any]:
+    """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
-    logger.info("Starting RFID Minimal System")
-    
-    # Determine MQTT status
-    mqtt_status = None
-    if args.mqtt_enabled:
-        mqtt_status = True
-    elif args.mqtt_disabled:
-        mqtt_status = False
-    
-    # Get basket ID from args or config
-    basket_id = args.basket_id if args.basket_id else BASKET_ID
+    logger.info(f"Starting RFID system with {cycles} cycles")
     
     try:
         # Create sensor manager
         manager = MultiSensorManager(
-            polling_count=args.polling_count,
-            rssi_threshold=args.rssi_threshold
+            polling_count=polling_count,
+            rssi_threshold=rssi_threshold
         )
         
         # Create cart manager
         cart_manager = CartManager(
-            presence_threshold=args.presence_threshold,
-            absence_threshold=args.absence_threshold,
-            rssi_threshold=args.rssi_threshold
+            presence_threshold=presence_threshold,
+            absence_threshold=absence_threshold,
+            rssi_threshold=rssi_threshold
         )
         
         # Set tag detection callback
@@ -161,7 +155,7 @@ if __name__ == "__main__":
         # Run multiple polling cycles
         all_cycle_results: Dict[int, Dict[str, Set[str]]] = {}
         
-        for cycle in range(1, args.cycles + 1):
+        for cycle in range(1, cycles + 1):
             logger.info(f"=== Cycle #{cycle} started ===")
             
             # Start cart tracking for this cycle
@@ -169,7 +163,7 @@ if __name__ == "__main__":
             
             # Run polling cycle
             cycle_start_time = time.time()
-            results = manager.run_polling_cycle(args.timeout)
+            results = manager.run_polling_cycle(timeout)
             cycle_duration = time.time() - cycle_start_time
 
             # Send results to CartManager for processing
@@ -193,7 +187,11 @@ if __name__ == "__main__":
                 logger.info(f"{reader_id}: {len(tags)} tags")
                 if logger.level <= logging.DEBUG:
                     for tag_id in sorted(tags):
-                        tag_info = manager.readers[0].get_tag_info(tag_id)
+                        tag_info = None
+                        for reader in manager.readers:
+                            if reader.reader_id == reader_id:
+                                tag_info = reader.get_tag_info(tag_id)
+                                break
                         rssi = tag_info.rssi if tag_info else "Unknown"
                         logger.debug(f"  - {tag_id} (RSSI: {rssi})")
 
@@ -216,18 +214,19 @@ if __name__ == "__main__":
                 logger.info(f"  - {item} (PID: {pid}, Removed)")
 
             # Format cart data for potential MQTT publishing
+            basket_id_to_use = basket_id if basket_id else BASKET_ID
             cart_data = format_cart_for_mqtt(
                 cart_summary["confirmed_items"], 
-                basket_id
+                basket_id_to_use
             )
             logger.debug(f"Cart data formatted for potential MQTT: {cart_data}")
             
             # Publish cart data to MQTT if enabled
-            if mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
+            if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
                 # Check if we should publish this cycle
                 should_publish = (MQTT_PUBLISH_CYCLE == 0 or 
                                  cycle % MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle == args.cycles)
+                                 cycle == cycles)
                 
                 if should_publish:
                     try:
@@ -243,12 +242,12 @@ if __name__ == "__main__":
                         logger.error(f"Error publishing to MQTT: {e}")
             
             # Wait between cycles
-            if cycle < args.cycles:
+            if cycle < cycles:
                 time.sleep(1.0)
         
         # Display final summary
         logger.info("\n=== Final Summary ===")
-        logger.info(f"Completed {args.cycles} polling cycles")
+        logger.info(f"Completed {cycles} polling cycles")
         
         # Calculate unique tags across all cycles
         all_tags = set()
@@ -283,30 +282,80 @@ if __name__ == "__main__":
         # Format final cart data for MQTT publishing
         final_cart_data = format_cart_for_mqtt(
             confirmed_items, 
-            basket_id
+            basket_id_to_use
         )
         
-        # Publish final cart data to MQTT if enabled
-        if mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
-            try:
-                logger.info(f"Publishing cart data to MQTT: {final_cart_data}")
-                publish_result = publish_message(message=final_cart_data)
-                
-                if publish_result:
-                    logger.info("MQTT publish successful")
-                else:
-                    logger.error("MQTT publish failed")
-            except Exception as e:
-                logger.error(f"Error publishing to MQTT: {e}")
-                
-        logger.info(f"RFID system completed successfully with {len(confirmed_items)} items in cart")
-            
+        # Return the final results
+        result = {
+            "cart_summary": cart_summary,
+            "confirmed_items": confirmed_items,
+            "removed_items": removed_items,
+            "final_cart_data": final_cart_data,
+            "all_tags": list(all_tags),
+            "all_cycle_results": all_cycle_results,
+            "basket_id": basket_id_to_use
+        }
+        
+        return result
+        
     except KeyboardInterrupt:
         logger.info("User interrupted execution")
+        return {"error": "User interrupted execution"}
     except Exception as e:
         logger.error(f"Error running RFID system: {e}", exc_info=True)
+        return {"error": str(e)}
     finally:
         # Clean up resources
         if 'manager' in locals():
             manager.cleanup()
             logger.info("Resources cleaned up")
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    args = parse_arguments()
+    
+    # Set up logging with the level specified in command line arguments
+    setup_logging(args.log_level)
+    
+    logger = logging.getLogger("rfid_minimal")
+    logger.info("Starting RFID Minimal System")
+    
+    # Determine MQTT status
+    mqtt_status = None
+    if args.mqtt_enabled:
+        mqtt_status = True
+    elif args.mqtt_disabled:
+        mqtt_status = False
+    
+    # Get basket ID from args or config
+    basket_id = args.basket_id if args.basket_id else BASKET_ID
+    
+    # Run the RFID system
+    result = run_rfid_system(
+        cycles=args.cycles,
+        polling_count=args.polling_count,
+        rssi_threshold=args.rssi_threshold,
+        presence_threshold=args.presence_threshold,
+        absence_threshold=args.absence_threshold,
+        timeout=args.timeout,
+        mqtt_enabled=mqtt_status,
+        basket_id=basket_id
+    )
+    
+    # Handle final MQTT publishing if needed
+    if not "error" in result and mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
+        try:
+            final_cart_data = result["final_cart_data"]
+            logger.info(f"Publishing cart data to MQTT: {final_cart_data}")
+            publish_result = publish_message(message=final_cart_data)
+            
+            if publish_result:
+                logger.info("MQTT publish successful")
+            else:
+                logger.error("MQTT publish failed")
+        except Exception as e:
+            logger.error(f"Error publishing to MQTT: {e}")
+    
+    # Print final status
+    if "error" not in result:
+        logger.info(f"RFID system completed successfully with {len(result['confirmed_items'])} items in cart")

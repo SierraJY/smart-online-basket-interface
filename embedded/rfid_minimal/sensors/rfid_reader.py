@@ -161,7 +161,9 @@ class RFIDReader:
     
     def is_polling(self) -> bool:
         """Check if polling is in progress"""
-        return self.is_running
+        # Check both the running flag and if there's an active thread
+        is_active = self.is_running and self.thread is not None and self.thread.is_alive()
+        return is_active
     
     def reset(self) -> None:
         """Reset reader state"""
@@ -239,12 +241,15 @@ class RFIDReader:
         """Background thread for reading data from the reader"""
         buffer = bytearray()
         last_data_time = time.time()
+        polling_start_time = time.time()
+        
+        self.logger.debug(f"{self.reader_id}: Read loop started")
         
         while self.is_running:
             try:
                 # Check if connection is still active
                 if not self.connection.is_connected():
-                    self.logger.error("Connection lost")
+                    self.logger.error(f"{self.reader_id}: Connection lost")
                     self.is_running = False
                     break
                 
@@ -269,9 +274,16 @@ class RFIDReader:
                     self._process_data(buffer)
                 else:
                     # Check for timeout
-                    if time.time() - last_data_time > NO_RESPONSE_TIMEOUT:
+                    elapsed_time = time.time() - last_data_time
+                    total_time = time.time() - polling_start_time
+                    
+                    # Log polling status periodically
+                    if int(total_time) % 2 == 0 and total_time > 0:  # Log every 2 seconds
+                        self.logger.debug(f"{self.reader_id}: Polling active for {total_time:.1f}s, last data {elapsed_time:.1f}s ago")
+                    
+                    if elapsed_time > NO_RESPONSE_TIMEOUT:
                         # No data received for a while, assume polling is complete
-                        self.logger.debug(f"No response timeout for {self.reader_id}")
+                        self.logger.debug(f"{self.reader_id}: No response timeout after {elapsed_time:.1f}s")
                         self.is_running = False
                         break
                 
@@ -282,6 +294,8 @@ class RFIDReader:
                 self.logger.error(f"Error in read loop for {self.reader_id}: {e}")
                 self.is_running = False
                 break
+                
+        self.logger.debug(f"{self.reader_id}: Read loop ended")
     
     def _process_data(self, buffer: bytearray) -> None:
         """

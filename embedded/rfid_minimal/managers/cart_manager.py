@@ -84,7 +84,6 @@ class CartManager:
         """Start a new polling cycle"""
         self.cycle_count += 1
         self.current_cycle_tags.clear()
-        self.logger.debug(f"Starting cart tracking for cycle #{self.cycle_count}")
     
     def process_cycle_results(self, cycle_results: Dict[str, Set[str]], sensor_manager: 'MultiSensorManager') -> None:
         """
@@ -160,8 +159,6 @@ class CartManager:
         """
         End the current polling cycle and update item statuses
         """
-        self.logger.debug(f"Ending cart tracking for cycle #{self.cycle_count}")
-        
         # Check for missed detections
         for tag_id in self.confirmed_items.copy():
             if tag_id not in self.current_cycle_tags:

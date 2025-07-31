@@ -80,7 +80,7 @@ class MultiSensorManager:
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
     
-    def run_polling_cycle(self, timeout: float = 5.0) -> Dict[str, Set[str]]:
+    def run_polling_cycle(self, timeout: float = 10.0) -> Dict[str, Set[str]]:
         """
         Run one polling cycle on all readers
         
@@ -118,17 +118,38 @@ class MultiSensorManager:
             
             # Wait for polling to complete or timeout
             start_time = time.time()
+            check_interval = 0.5  # Check status every 0.5 seconds
+            last_check_time = start_time
+            
+            self.logger.debug(f"Waiting for polling to complete on {reader.reader_id} (timeout: {timeout}s)")
+            
             while reader.is_polling and time.time() - start_time < timeout:
-                # Check if any data is available
-                in_waiting = reader.connection.get_in_waiting()
-                if in_waiting > 0:
-                    self.logger.debug(f"{reader.reader_id} has {in_waiting} bytes waiting")
+                current_time = time.time()
+                
+                # Check data availability periodically
+                if current_time - last_check_time >= check_interval:
+                    last_check_time = current_time
+                    elapsed = current_time - start_time
+                    
+                    # Check if any data is available
+                    in_waiting = reader.connection.get_in_waiting()
+                    if in_waiting > 0:
+                        self.logger.debug(f"{reader.reader_id} has {in_waiting} bytes waiting after {elapsed:.1f}s")
+                    else:
+                        self.logger.debug(f"{reader.reader_id} polling in progress for {elapsed:.1f}s, no data in buffer")
+                
                 time.sleep(0.1)  # Short sleep to prevent CPU hogging
             
             # Stop polling if still active
             if reader.is_polling:
-                reader.stop_multiple_polling()
-                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
+                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds, sending stop command")
+                stop_result = reader.stop_multiple_polling()
+                if stop_result:
+                    self.logger.debug(f"Successfully sent stop polling command to {reader.reader_id}")
+                else:
+                    self.logger.error(f"Failed to send stop polling command to {reader.reader_id}")
+            else:
+                self.logger.debug(f"Polling completed naturally for {reader.reader_id}")
             
             # Store results
             detected_tags = set(reader.get_detected_tags())
