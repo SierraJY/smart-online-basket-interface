@@ -6,11 +6,13 @@ import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.service.BasketSseService;
 import com.sobi.sobi_backend.service.BasketService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * MQTT 바구니 메시지 처리 핸들러
@@ -20,7 +22,7 @@ import java.util.Map;
  * 2. Topic에서 바구니 ID 추출
  * 3. JSON 페이로드에서 list 부분만 파싱
  * 4. BasketCacheService를 통해 Redis에 저장
- * 5. BasketSseService를 통해 실시간 클라이언트 업데이트
+ * 5. 바구니 사용자를 찾아서 해당 고객에게만 실시간 알림
  *
  * MQTT 메시지 구조:
  * - Topic: basket/{basketId}/update
@@ -28,7 +30,7 @@ import java.util.Map;
  *
  * 처리 흐름:
  * MQTT 브로커 → MqttConfig → mqttInputChannel → 이 핸들러 → BasketCacheService → Redis
- *                                                              ↘ BasketSseService → SSE 클라이언트들
+ *                                                              ↘ BasketSseService → 해당 고객 SSE
  */
 @Component
 public class BasketMqttHandler {
@@ -41,6 +43,9 @@ public class BasketMqttHandler {
 
     @Autowired
     private BasketService basketService;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,8 +92,15 @@ public class BasketMqttHandler {
             // 4. Redis에 바구니 데이터 저장
             basketCacheService.updateBasketItems(basketId, items);
 
-            // 5. 연결된 클라이언트들에게 실시간 전송
-            basketSseService.broadcastBasketUpdate(basketId);
+            // 5. 바구니를 사용하는 고객 찾기
+            Integer customerId = findCustomerByBasket(basketId);
+            if (customerId != null) {
+                // 해당 고객에게만 실시간 알림
+                basketSseService.notifyCustomer(customerId);
+                System.out.println("바구니 업데이트 알림 완료: basketId=" + basketId + " → 고객ID=" + customerId);
+            } else {
+                System.out.println("바구니를 사용하는 고객을 찾을 수 없음: basketId=" + basketId);
+            }
 
             System.out.println("바구니 업데이트 처리 완료: basketId=" + basketId + " → " + items.size() + "개 아이템");
             System.out.println("=== MQTT 처리 완료 ===");
@@ -99,6 +111,41 @@ public class BasketMqttHandler {
 
             // MQTT 메시지 처리 실패해도 시스템은 계속 동작
             // 다음 메시지는 정상 처리될 수 있음
+        }
+    }
+
+    /**
+     * Redis에서 바구니를 사용하는 고객 ID 찾기
+     *
+     * @param basketId 바구니 ID
+     * @return 고객 ID, 찾지 못하면 null
+     */
+    private Integer findCustomerByBasket(Integer basketId) {
+        try {
+            // Redis에서 user_basket:* 패턴의 모든 키 조회
+            Set<String> keys = redisTemplate.keys("user_basket:*");
+            if (keys == null || keys.isEmpty()) {
+                System.out.println("Redis에 사용자-바구니 매핑이 없음");
+                return null;
+            }
+
+            for (String key : keys) {
+                String userBasketId = redisTemplate.opsForValue().get(key);
+                if (basketId.toString().equals(userBasketId)) {
+                    // "user_basket:123" → customerId = 123
+                    String customerIdStr = key.split(":")[1];
+                    Integer customerId = Integer.parseInt(customerIdStr);
+                    System.out.println("바구니 사용자 발견: basketId=" + basketId + " → 고객ID=" + customerId);
+                    return customerId;
+                }
+            }
+
+            System.out.println("바구니 " + basketId + "를 사용하는 고객을 찾을 수 없음");
+            return null;
+
+        } catch (Exception e) {
+            System.err.println("고객 조회 중 오류: " + e.getMessage());
+            return null;
         }
     }
 
