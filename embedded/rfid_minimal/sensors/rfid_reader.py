@@ -179,7 +179,7 @@ class RFIDReader:
             self.connection.connect()
             
         # Add a small delay after connecting to ensure device is ready
-        time.sleep(0.5)
+        time.sleep(0.1)
         
         # Only send a stop command if we're not already in a clean state
         # This prevents sending unnecessary stop commands that might disrupt the connection
@@ -187,7 +187,7 @@ class RFIDReader:
             try:
                 self.logger.debug(f"{self.reader_id}: Sending initial stop command to reset device state")
                 self.command_handler.send_stop_polling_command()
-                time.sleep(0.5)  # Give device time to reset
+                time.sleep(0.1)  # Give device time to reset
             except Exception as e:
                 self.logger.warning(f"{self.reader_id}: Error sending reset command: {e}")
     

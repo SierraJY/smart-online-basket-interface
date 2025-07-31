@@ -33,7 +33,7 @@ class ConnectionHandler:
             if self.serial_conn and self.serial_conn.is_open:
                 self.serial_conn.close()
                 self.logger.debug(f"{self.reader_id}: Closed existing connection before reconnecting")
-                time.sleep(0.5)  # Give port time to close properly
+                time.sleep(0.1)  # Give port time to close properly
             
             # Try different settings if needed
             try:

@@ -5,7 +5,7 @@ Handles tracking of products in the cart across multiple polling cycles
 """
 
 import logging
-from typing import Dict, Set, List, Optional
+from typing import Dict, Set, List, Optional, Callable, Any
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -77,13 +77,38 @@ class CartManager:
         self.current_cycle_tags: Set[str] = set()
         self.missed_detections: Dict[str, int] = {}
         
+        # Track changes for MQTT publishing
+        self.items_added_this_cycle: Set[str] = set()
+        self.items_removed_this_cycle: Set[str] = set()
+        self.items_returned_this_cycle: Set[str] = set()
+        self.cart_changed = False
+        
+        # Callback for cart changes
+        self.cart_change_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+        
         # Cycle counter
         self.cycle_count = 0
+        
+    def set_cart_change_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
+        """
+        Set callback function to be called when cart contents change
+        
+        Args:
+            callback: Function to call when cart changes
+                     Function signature: callback(cart_data: Dict[str, Any])
+        """
+        self.cart_change_callback = callback
     
     def start_cycle(self) -> None:
         """Start a new polling cycle"""
         self.cycle_count += 1
         self.current_cycle_tags.clear()
+        
+        # Reset change tracking for this cycle
+        self.items_added_this_cycle.clear()
+        self.items_removed_this_cycle.clear()
+        self.items_returned_this_cycle.clear()
+        self.cart_changed = False
     
     def process_cycle_results(self, cycle_results: Dict[str, Set[str]], sensor_manager: 'MultiSensorManager') -> None:
         """
@@ -148,11 +173,15 @@ class CartManager:
         if (tag_id not in self.confirmed_items and 
             self.cart_items[tag_id].detection_count >= self.presence_threshold):
             self.confirmed_items.add(tag_id)
+            self.items_added_this_cycle.add(tag_id)
+            self.cart_changed = True
             self.logger.info(f"🆕 New item confirmed in cart: {tag_id}")
             
         # If item was previously removed, add it back
         if tag_id in self.removed_items:
             self.removed_items.remove(tag_id)
+            self.items_returned_this_cycle.add(tag_id)
+            self.cart_changed = True
             self.logger.info(f"🔄 Item returned to cart: {tag_id}")
     
     def end_cycle(self) -> None:
@@ -169,7 +198,14 @@ class CartManager:
                 if self.missed_detections[tag_id] >= self.absence_threshold:
                     self.confirmed_items.remove(tag_id)
                     self.removed_items.add(tag_id)
+                    self.items_removed_this_cycle.add(tag_id)
+                    self.cart_changed = True
                     self.logger.info(f"❌ Item removed from cart: {tag_id}")
+        
+        # Trigger callback if cart has changed
+        if self.cart_changed and self.cart_change_callback:
+            cart_data = self.get_cart_data_for_mqtt()
+            self.cart_change_callback(cart_data)
     
     def get_cart_summary(self) -> Dict[str, List[str]]:
         """
@@ -182,6 +218,28 @@ class CartManager:
             "confirmed_items": list(self.confirmed_items),
             "removed_items": list(self.removed_items)
         }
+        
+    def get_cart_data_for_mqtt(self) -> Dict[str, Any]:
+        """
+        Get cart data formatted for MQTT publishing
+        
+        Returns:
+            Dictionary with cart data and change information
+        """
+        from rfid_minimal.core.parser import parse_pid, format_cart_for_mqtt
+        from rfid_minimal.config.config import BASKET_ID
+        
+        # Format cart data for MQTT
+        cart_data = format_cart_for_mqtt(self.confirmed_items, BASKET_ID)
+        
+        # Add change information
+        cart_data["changes"] = {
+            "added": [tag_id for tag_id in self.items_added_this_cycle],
+            "removed": [tag_id for tag_id in self.items_removed_this_cycle],
+            "returned": [tag_id for tag_id in self.items_returned_this_cycle]
+        }
+        
+        return cart_data
     
     def get_item_details(self, tag_id: str) -> Optional[CartItem]:
         """

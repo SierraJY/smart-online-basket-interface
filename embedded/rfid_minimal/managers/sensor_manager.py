@@ -101,7 +101,7 @@ class MultiSensorManager:
             if not reader.connection.is_connected():
                 self.logger.warning(f"{reader.reader_id} not connected, attempting to reconnect")
                 reader.connection.connect()
-                time.sleep(0.5)  # Give some time for connection to stabilize
+                time.sleep(0.1)  # Give some time for connection to stabilize
                 
             # We'll skip the explicit reset() call here since start_multiple_polling will handle it
             

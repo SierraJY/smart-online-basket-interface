@@ -145,6 +145,24 @@ def run_rfid_system(
             rssi_threshold=rssi_threshold
         )
         
+        # Set up MQTT publishing callback if MQTT is available
+        if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
+            def on_cart_change(cart_data: Dict[str, Any]) -> None:
+                """Callback function for cart changes that publishes to MQTT"""
+                try:
+                    logger.info(f"Cart changed - Publishing to MQTT: {cart_data}")
+                    publish_result = publish_message(message=cart_data)
+                    
+                    if publish_result:
+                        logger.info("MQTT publish successful")
+                    else:
+                        logger.error("MQTT publish failed")
+                except Exception as e:
+                    logger.error(f"Error publishing to MQTT: {e}")
+            
+            # Register the callback
+            cart_manager.set_cart_change_callback(on_cart_change)
+        
         # Set tag detection callback
         def tag_callback(manager_id: str, reader_id: str, tag_info: TagInfo) -> None:
             # Log the detection in debug mode if needed
@@ -221,17 +239,18 @@ def run_rfid_system(
             )
             logger.debug(f"Cart data formatted for potential MQTT: {cart_data}")
             
-            # Publish cart data to MQTT if enabled
+            # Publish cart data to MQTT if enabled and it's a scheduled cycle
+            # Note: Real-time updates are now handled by the cart_change_callback
             if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
-                # Check if we should publish this cycle
-                should_publish = (MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle % MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle == cycles)
+                # Check if we should publish this cycle based on the cycle number
+                should_publish = (MQTT_PUBLISH_CYCLE > 0 and 
+                                 (cycle % MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle == cycles))
                 
                 if should_publish:
                     try:
-                        # Publish to MQTT
-                        logger.info(f"Publishing cart data to MQTT: {cart_data}")
+                        # Publish to MQTT (scheduled update)
+                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_data}")
                         publish_result = publish_message(message=cart_data)
                         
                         if publish_result:
