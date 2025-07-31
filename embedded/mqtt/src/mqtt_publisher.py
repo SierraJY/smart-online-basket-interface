@@ -1,5 +1,5 @@
 import paho.mqtt.client as mqtt
-import config
+from mqtt import config
 
 def publish_message(topic=None, message=None, qos=0, retain=False):
     """

@@ -25,12 +25,19 @@ if __name__ == "__main__":
     # Parse command line arguments
     args = parse_arguments()
     
-    # Set up logging with DEBUG level to see more information
-    setup_logging("DEBUG")
+    # Set up logging with the level specified in command line arguments
+    setup_logging(args.log_level)
     
     logger = logging.getLogger("rfid_minimal")
     logger.info("Starting RFID Minimal System from root directory")
     
+    # Determine MQTT status
+    mqtt_status = None
+    if args.mqtt_enabled:
+        mqtt_status = True
+    elif args.mqtt_disabled:
+        mqtt_status = False
+        
     # Run the RFID system
     result = run_rfid_system(
         cycles=args.cycles,
@@ -38,7 +45,9 @@ if __name__ == "__main__":
         rssi_threshold=args.rssi_threshold,
         presence_threshold=args.presence_threshold,
         absence_threshold=args.absence_threshold,
-        timeout=args.timeout
+        timeout=args.timeout,
+        mqtt_enabled=mqtt_status,
+        basket_id=args.basket_id
     )
     
     # Check for errors

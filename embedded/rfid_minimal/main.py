@@ -15,7 +15,15 @@ from rfid_minimal.managers.cart_manager import CartManager
 from rfid_minimal.core.parser import parse_pid, format_cart_for_mqtt
 from rfid_minimal.config.config import BASKET_ID, MQTT_ENABLED, MQTT_PUBLISH_CYCLE
 
-# No need to import MQTT publisher here anymore
+# Try to import MQTT publisher
+mqtt_available = False
+try:
+    mqtt_spec = importlib.util.find_spec('mqtt.src.mqtt_publisher')
+    if mqtt_spec:
+        from mqtt.src.mqtt_publisher import publish_message
+        mqtt_available = True
+except ImportError:
+    pass
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -110,7 +118,9 @@ def run_rfid_system(
     rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
-    timeout: float = 5.0
+    timeout: float = 5.0,
+    mqtt_enabled: bool = None,
+    basket_id: str = None
 ) -> Dict[str, Any]:
     """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
@@ -195,11 +205,38 @@ def run_rfid_system(
                 logger.info(f"  - {item} (PID: {pid}, Removed)")
 
             # Format cart data for potential MQTT publishing
+            basket_id_to_use = basket_id if basket_id else BASKET_ID
             cart_data = format_cart_for_mqtt(
                 cart_summary["confirmed_items"], 
-                BASKET_ID
+                basket_id_to_use
             )
             logger.debug(f"Cart data formatted for potential MQTT: {cart_data}")
+            
+            # Publish cart data to MQTT if enabled
+            if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
+                # Check if we should publish this cycle
+                should_publish = (MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle % MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle == cycles)
+                
+                if should_publish:
+                    try:
+                        # Import MQTT publisher dynamically to avoid circular imports
+                        import importlib.util
+                        mqtt_spec = importlib.util.find_spec('mqtt.src.mqtt_publisher')
+                        if mqtt_spec:
+                            from mqtt.src.mqtt_publisher import publish_message
+                            
+                            # Publish to MQTT
+                            logger.info(f"Publishing cart data to MQTT: {cart_data}")
+                            publish_result = publish_message(message=cart_data)
+                            
+                            if publish_result:
+                                logger.info("MQTT publish successful")
+                            else:
+                                logger.error("MQTT publish failed")
+                    except Exception as e:
+                        logger.error(f"Error publishing to MQTT: {e}")
             
             # Wait between cycles
             if cycle < cycles:
@@ -240,9 +277,10 @@ def run_rfid_system(
             logger.info(f"  - {item} (PID: {pid})")
             
         # Format final cart data for potential MQTT publishing
+        basket_id_to_use = basket_id if basket_id else BASKET_ID
         final_cart_data = format_cart_for_mqtt(
             confirmed_items, 
-            BASKET_ID
+            basket_id_to_use
         )
         
         # Return the final results
@@ -252,7 +290,8 @@ def run_rfid_system(
             "removed_items": removed_items,
             "final_cart_data": final_cart_data,
             "all_tags": list(all_tags),
-            "all_cycle_results": all_cycle_results
+            "all_cycle_results": all_cycle_results,
+            "basket_id": basket_id_to_use
         }
         
         return result
