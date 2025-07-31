@@ -7,7 +7,7 @@ import argparse
 import sys
 import time
 import importlib.util
-from typing import Dict, Set, List
+from typing import Dict, Set, List, Any
 
 from rfid_minimal.managers.sensor_manager import MultiSensorManager
 from rfid_minimal.core.models import TagInfo
@@ -15,15 +15,7 @@ from rfid_minimal.managers.cart_manager import CartManager
 from rfid_minimal.core.parser import parse_pid, format_cart_for_mqtt
 from rfid_minimal.config.config import BASKET_ID, MQTT_ENABLED, MQTT_PUBLISH_CYCLE
 
-# Try to import MQTT publisher
-mqtt_available = False
-try:
-    mqtt_spec = importlib.util.find_spec('mqtt.src.mqtt_publisher')
-    if mqtt_spec:
-        from mqtt.src.mqtt_publisher import publish_message
-        mqtt_available = True
-except ImportError:
-    pass
+# No need to import MQTT publisher here anymore
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -118,10 +110,8 @@ def run_rfid_system(
     rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
-    timeout: float = 5.0,
-    mqtt_enabled: bool = None,
-    basket_id: str = None
-) -> None:
+    timeout: float = 5.0
+) -> Dict[str, Any]:
     """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
     logger.info(f"Starting RFID system with {cycles} cycles")
@@ -204,32 +194,12 @@ def run_rfid_system(
                 pid = parsed_info.get('pid', 'Unknown')
                 logger.info(f"  - {item} (PID: {pid}, Removed)")
 
-            # Publish cart data to MQTT if enabled
-            if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
-                # Check if we should publish this cycle
-                should_publish = (MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle % MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle == cycles)
-                
-                if should_publish:
-                    try:
-                        # Format cart data for MQTT
-                        basket_id_to_use = basket_id if basket_id else BASKET_ID
-                        mqtt_message = format_cart_for_mqtt(
-                            cart_summary["confirmed_items"], 
-                            basket_id_to_use
-                        )
-                        
-                        # Publish to MQTT
-                        logger.info(f"Publishing cart data to MQTT: {mqtt_message}")
-                        publish_result = publish_message(message=mqtt_message)
-                        
-                        if publish_result:
-                            logger.info("MQTT publish successful")
-                        else:
-                            logger.error("MQTT publish failed")
-                    except Exception as e:
-                        logger.error(f"Error publishing to MQTT: {e}")
+            # Format cart data for potential MQTT publishing
+            cart_data = format_cart_for_mqtt(
+                cart_summary["confirmed_items"], 
+                BASKET_ID
+            )
+            logger.debug(f"Cart data formatted for potential MQTT: {cart_data}")
             
             # Wait between cycles
             if cycle < cycles:
@@ -268,11 +238,31 @@ def run_rfid_system(
             parsed_info = parse_pid(item)
             pid = parsed_info.get('pid', 'Unknown')
             logger.info(f"  - {item} (PID: {pid})")
+            
+        # Format final cart data for potential MQTT publishing
+        final_cart_data = format_cart_for_mqtt(
+            confirmed_items, 
+            BASKET_ID
+        )
+        
+        # Return the final results
+        result = {
+            "cart_summary": cart_summary,
+            "confirmed_items": confirmed_items,
+            "removed_items": removed_items,
+            "final_cart_data": final_cart_data,
+            "all_tags": list(all_tags),
+            "all_cycle_results": all_cycle_results
+        }
+        
+        return result
         
     except KeyboardInterrupt:
         logger.info("User interrupted execution")
+        return {"error": "User interrupted execution"}
     except Exception as e:
         logger.error(f"Error running RFID system: {e}", exc_info=True)
+        return {"error": str(e)}
     finally:
         # Clean up resources
         if 'manager' in locals():
@@ -286,21 +276,16 @@ if __name__ == "__main__":
     # Set up logging
     setup_logging(args.log_level)
     
-    # Determine MQTT status
-    mqtt_status = None
-    if args.mqtt_enabled:
-        mqtt_status = True
-    elif args.mqtt_disabled:
-        mqtt_status = False
-    
     # Run the RFID system
-    run_rfid_system(
+    result = run_rfid_system(
         cycles=args.cycles,
         polling_count=args.polling_count,
         rssi_threshold=args.rssi_threshold,
         presence_threshold=args.presence_threshold,
         absence_threshold=args.absence_threshold,
-        timeout=args.timeout,
-        mqtt_enabled=mqtt_status,
-        basket_id=args.basket_id
+        timeout=args.timeout
     )
+    
+    # Print result summary
+    if "error" not in result:
+        print(f"RFID system completed successfully with {len(result['confirmed_items'])} items in cart")
