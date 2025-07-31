@@ -90,82 +90,112 @@ class FrameProcessor:
         Returns:
             bool: Whether checksum is valid
         """
-        if len(frame) < 4:  # Header + Type + Checksum + End
+        try:
+            checksum_data = frame[1:-2]  # From Type to Payload
+            expected_checksum = self.calculate_checksum(checksum_data)
+            actual_checksum = frame[-2]
+            return expected_checksum == actual_checksum
+        except:
             return False
-        
-        # Extract data portion (between header and checksum)
-        data = frame[1:-2]
-        
-        # Extract checksum from frame
-        frame_checksum = frame[-2]
-        
-        # Calculate expected checksum
-        expected_checksum = self.calculate_checksum(data)
-        
-        return frame_checksum == expected_checksum
     
     def parse_tag_data(self, frame: bytes) -> Optional[TagInfo]:
         """
-        Parse tag data from frame
+        Parse tag data from notification frame
         
         Args:
             frame: Frame data
             
         Returns:
-            TagInfo or None if parsing fails
+            TagInfo or None if parsing failed
         """
         try:
-            # Verify frame format
-            if len(frame) < 8:  # Minimum length for a valid tag notification
-                self.logger.debug(f"Frame too short: {len(frame)} bytes")
+            # Check if it's a valid notification frame
+            if len(frame) < 7 or frame[1] != FRAME_TYPE_NOTIFICATION:
                 return None
+                
+            # Debug: log the entire frame for analysis
+            frame_hex = ' '.join(f'{b:02X}' for b in frame)
+            self.logger.debug(f"Raw frame: {frame_hex}")
+            
+            # Log frame structure based on the image
+            if len(frame) >= 8:
+                self.logger.debug(f"Frame header: {frame[0]:02X}")
+                self.logger.debug(f"Frame type: {frame[1]:02X}")
+                self.logger.debug(f"Command: {frame[2]:02X}")
+                self.logger.debug(f"Length: {frame[3]:02X} {frame[4]:02X}")
+                self.logger.debug(f"RSSI: {frame[5]:02X}")
+                self.logger.debug(f"PC: {frame[6]:02X} {frame[7]:02X}")
             
             # Verify checksum
             if not self.verify_checksum(frame):
-                self.logger.debug("Invalid checksum")
+                self.logger.warning("Invalid checksum in tag notification frame")
                 return None
             
-            # Check if it's a tag notification
-            if frame[1] != FRAME_TYPE_NOTIFICATION or frame[3] != RESP_TAG_NOTIFICATION:
+            # Extract payload length (2 bytes, MSB first)
+            payload_len = (frame[3] << 8) | frame[4]
+            
+            # Check if we have enough data
+            if len(frame) < 5 + payload_len + 2:  # Header(1) + Type(1) + Command(1) + Length(2) + Payload + Checksum(1) + End(1)
                 return None
             
-            # Extract parameters
-            params = frame[4:-2]  # Parameters between command and checksum
+            # Based on the provided image, the notification frame structure is:
+            # Header(1) + Type(1) + Command(1) + PL(MSB)(1) + PL(LSB)(1) + 
+            # RSSI(1) + PC(MSB)(1) + PC(LSB)(1) + EPC(n) + CRC(2) + Checksum(1) + End(1)
             
-            # Parse parameters
-            if len(params) < 3:  # Minimum for antenna + data length
-                return None
+            # Extract RSSI - at position 5
+            rssi_pos = 5
+            if rssi_pos < len(frame):
+                rssi = frame[rssi_pos]
+                if rssi > 127:
+                    rssi = rssi - 256  # Convert to signed value
+            else:
+                rssi = 0
+            
+            # Extract PC (Protocol Control) - 2 bytes at positions 6-7
+            pc_start = 6
+            pc_data = frame[pc_start:pc_start+2]
+            
+            # The PC field contains information about the EPC length
+            # EPC length in words (2 bytes per word) is in bits 10-14 of PC
+            epc_words = (pc_data[0] >> 2) & 0x1F  # Extract bits 10-14
+            epc_len = epc_words * 2  # Convert words to bytes
+            
+            # Extract EPC data - starts after PC
+            epc_start = pc_start + 2
+            epc_data = frame[epc_start:epc_start+epc_len]
+            
+            # Convert EPC data to hex string
+            tag_id = ''.join(f'{b:02X}' for b in epc_data)
+            
+            # Check if it's a 96-bit EPC
+            is_96bit_epc = epc_len == 12  # 12 bytes = 96 bits
+            
+            # Extract PC and CRC
+            pc = ''.join(f'{b:02X}' for b in pc_data)
+            
+            # CRC is 2 bytes after the EPC data
+            crc_idx = epc_start + epc_len
+            if crc_idx + 2 <= len(frame) - 2:  # Ensure we have CRC data
+                crc_data = frame[crc_idx:crc_idx+2]
+                crc = ''.join(f'{b:02X}' for b in crc_data)
+            else:
+                crc = ""
                 
-            # Extract data length
-            data_length = params[1]
+            # Log parsed components
+            self.logger.debug(f"Parsed components - RSSI: {rssi}, PC: {pc}, EPC: {tag_id}, CRC: {crc}")
             
-            # Extract RSSI (signed int)
-            rssi = params[2]
-            if rssi > 127:
-                rssi = rssi - 256  # Convert to signed
-            
-            # Extract tag data
-            tag_data = params[3:3+data_length]
-            
-            # Convert tag data to hex string
-            tag_id = ''.join(f'{b:02X}' for b in tag_data)
-            
-            # Determine if it's a 96-bit EPC
-            is_96bit_epc = len(tag_data) == 12
-            
-            # Create tag info object
-            tag_info = TagInfo(
-                raw_tag_id=tag_id,
-                data_length=data_length,
+            return TagInfo(
+                raw_tag_id=tag_id[:epc_len],
+                data_length=epc_len,
                 rssi=rssi,
-                is_96bit_epc=is_96bit_epc
+                is_96bit_epc=is_96bit_epc,
+                pc=pc,
+                crc=crc
             )
-            
-            return tag_info
             
         except Exception as e:
             self.logger.error(f"Error parsing tag data: {e}")
-            return None
+            return None 
     
     def extract_tag_info(self, frame: bytes) -> Dict[str, Any]:
         """
