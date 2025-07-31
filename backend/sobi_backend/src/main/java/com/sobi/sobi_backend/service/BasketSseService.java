@@ -2,6 +2,7 @@ package com.sobi.sobi_backend.service;
 
 import com.sobi.sobi_backend.service.BasketCacheService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -12,10 +13,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * 바구니 실시간 업데이트를 위한 SSE 관리 서비스
  *
  * 기능:
- * 1. 바구니별 SSE 연결 관리
- * 2. MQTT 메시지 수신 시 해당 바구니 사용자들에게 실시간 전송
+ * 1. 고객별 SSE 연결 관리 (1:1 구조)
+ * 2. MQTT 메시지 수신 시 해당 고객에게만 실시간 전송
  * 3. 연결 해제 및 타임아웃 관리
- * 4. 사용자별 중복 연결 관리
+ * 4. 고객별 단일 연결 보장 (새로고침/탭 이동 대응)
  */
 @Service
 public class BasketSseService {
@@ -23,54 +24,47 @@ public class BasketSseService {
     @Autowired
     private BasketCacheService basketCacheService;
 
-    /**
-     * 바구니 ID별 SSE 연결 관리
-     * Key: basketId (바구니 ID)
-     * Value: Map<customerId, SseEmitter> (고객별 연결)
-     */
-    private final Map<Integer, Map<Integer, SseEmitter>> basketEmitters = new ConcurrentHashMap<>();
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
     /**
-     * 고객별 현재 연결된 바구니 추적
-     * Key: customerId
-     * Value: basketId
+     * 고객별 SSE 연결 관리 (바구니 1개 = 고객 1명)
+     * Key: customerId (고객 ID)
+     * Value: SseEmitter (연결)
      */
-    private final Map<Integer, Integer> customerBaskets = new ConcurrentHashMap<>();
+    private final Map<Integer, SseEmitter> customerEmitters = new ConcurrentHashMap<>();
 
     /**
      * SSE 연결 추가
      *
-     * @param basketId 바구니 ID
      * @param customerId 고객 ID
      * @param emitter SSE Emitter
      */
-    public void addEmitter(Integer basketId, Integer customerId, SseEmitter emitter) {
+    public void addEmitter(Integer customerId, SseEmitter emitter) {
         try {
-            // 기존 연결이 있다면 해제
+            // 기존 연결이 있다면 해제 (새로고침/탭 이동 대응)
             removeCustomerEmitter(customerId);
 
             // 새로운 연결 등록
-            basketEmitters.computeIfAbsent(basketId, k -> new ConcurrentHashMap<>())
-                    .put(customerId, emitter);
-            customerBaskets.put(customerId, basketId);
+            customerEmitters.put(customerId, emitter);
 
             // 연결 종료 시 정리 작업 등록
             emitter.onCompletion(() -> {
-                System.out.println("SSE 연결 완료: 고객ID=" + customerId + ", basketId=" + basketId);
-                removeEmitter(basketId, customerId);
+                System.out.println("SSE 연결 정상 종료: 고객ID=" + customerId);
+                customerEmitters.remove(customerId);
             });
 
             emitter.onTimeout(() -> {
-                System.out.println("SSE 연결 타임아웃: 고객ID=" + customerId + ", basketId=" + basketId);
-                removeEmitter(basketId, customerId);
+                System.out.println("SSE 연결 타임아웃으로 종료: 고객ID=" + customerId);
+                customerEmitters.remove(customerId);
             });
 
             emitter.onError((ex) -> {
-                System.err.println("SSE 연결 오류: 고객ID=" + customerId + ", 오류=" + ex.getMessage());
-                removeEmitter(basketId, customerId);
+                System.err.println("SSE 연결 오류로 종료: 고객ID=" + customerId + ", 오류=" + ex.getMessage());
+                customerEmitters.remove(customerId);
             });
 
-            System.out.println("SSE 연결 추가 완료: 고객ID=" + customerId + ", basketId=" + basketId);
+            System.out.println("SSE 연결 추가 완료: 고객ID=" + customerId);
             logConnectionStatus();
 
         } catch (Exception e) {
@@ -80,17 +74,26 @@ public class BasketSseService {
     }
 
     /**
-     * 특정 바구니의 모든 연결된 클라이언트에게 업데이트 전송
+     * 특정 고객에게 바구니 업데이트 알림
      *
-     * @param basketId 바구니 ID
+     * @param customerId 고객 ID
      */
-    public void broadcastBasketUpdate(Integer basketId) {
+    public void notifyCustomer(Integer customerId) {
         try {
-            Map<Integer, SseEmitter> emitters = basketEmitters.get(basketId);
-            if (emitters == null || emitters.isEmpty()) {
-                System.out.println("SSE 브로드캐스트 대상 없음: basketId=" + basketId);
+            SseEmitter emitter = customerEmitters.get(customerId);
+            if (emitter == null) {
+                System.out.println("SSE 알림 대상 없음: 고객ID=" + customerId);
                 return;
             }
+
+            // Redis에서 고객의 바구니 ID 조회
+            String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
+            if (basketIdStr == null) {
+                System.out.println("고객의 사용 중인 바구니 없음: 고객ID=" + customerId);
+                return;
+            }
+
+            Integer basketId = Integer.parseInt(basketIdStr);
 
             // 현재 바구니 상태 조회
             List<BasketCacheService.BasketItemInfo> basketItems =
@@ -99,91 +102,49 @@ public class BasketSseService {
             // 응답 데이터 생성
             Map<String, Object> responseData = createBasketResponse(basketItems, basketId);
 
-            System.out.println("[SSE] 브로드캐스트 시작: basketId=" + basketId + " → " + emitters.size() + "명 연결");
+            System.out.println("[SSE] 알림 전송 시작: 고객ID=" + customerId + ", basketId=" + basketId);
 
-            // 각 연결된 클라이언트에게 전송
-            Iterator<Map.Entry<Integer, SseEmitter>> iterator = emitters.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<Integer, SseEmitter> entry = iterator.next();
-                Integer customerId = entry.getKey();
-                SseEmitter emitter = entry.getValue();
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("basket-update")
+                        .data(responseData));
+
+                System.out.println("[SSE] 알림 전송 성공: 고객ID=" + customerId);
+
+            } catch (Exception e) {
+                System.err.println("[SSE] 알림 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
+
+                // 전송 실패한 연결 제거
+                customerEmitters.remove(customerId);
 
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name("basket-update")
-                            .data(responseData));
-
-                    System.out.println("[SSE] 전송 성공: 고객ID=" + customerId);
-
-                } catch (Exception e) {
-                    System.err.println("[SSE] 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
-
-                    // 전송 실패한 연결 제거
-                    iterator.remove();
-                    customerBaskets.remove(customerId);
-
-                    try {
-                        emitter.completeWithError(e);
-                    } catch (Exception ignored) {}
-                }
+                    emitter.completeWithError(e);
+                } catch (Exception ignored) {}
             }
 
-            System.out.println("[SSE] 브로드캐스트 완료: basketId=" + basketId);
-
         } catch (Exception e) {
-            System.err.println("SSE 브로드캐스트 중 오류: " + e.getMessage());
+            System.err.println("SSE 고객 알림 중 오류: " + e.getMessage());
         }
     }
 
-    /**
-     * 특정 바구니-고객 연결 제거
-     */
-    private void removeEmitter(Integer basketId, Integer customerId) {
-        try {
-            Map<Integer, SseEmitter> emitters = basketEmitters.get(basketId);
-            if (emitters != null) {
-                emitters.remove(customerId);
 
-                // 해당 바구니에 연결된 클라이언트가 없으면 바구니 항목도 제거
-                if (emitters.isEmpty()) {
-                    basketEmitters.remove(basketId);
-                }
-            }
-
-            customerBaskets.remove(customerId);
-
-            System.out.println("SSE 연결 제거: 고객ID=" + customerId + ", basketId=" + basketId);
-            logConnectionStatus();
-
-        } catch (Exception e) {
-            System.err.println("SSE 연결 제거 실패: " + e.getMessage());
-        }
-    }
 
     /**
-     * 고객의 기존 연결 제거 (중복 연결 방지)
+     * 고객의 기존 연결 제거 (새로고침/탭 이동 대응)
      */
     private void removeCustomerEmitter(Integer customerId) {
-        Integer previousBasket = customerBaskets.get(customerId);
-        if (previousBasket != null) {
-            Map<Integer, SseEmitter> emitters = basketEmitters.get(previousBasket);
-            if (emitters != null) {
-                SseEmitter previousEmitter = emitters.remove(customerId);
-                if (previousEmitter != null) {
-                    try {
-                        previousEmitter.complete();
-                    } catch (Exception e) {
-                        System.err.println("기존 SSE 연결 종료 실패: " + e.getMessage());
-                    }
-                }
-
-                if (emitters.isEmpty()) {
-                    basketEmitters.remove(previousBasket);
+        try {
+            SseEmitter previousEmitter = customerEmitters.remove(customerId);
+            if (previousEmitter != null) {
+                try {
+                    previousEmitter.complete();
+                    System.out.println("기존 SSE 연결 정리 완료: 고객ID=" + customerId);
+                } catch (Exception e) {
+                    System.err.println("기존 SSE 연결 종료 실패: " + e.getMessage());
                 }
             }
-            customerBaskets.remove(customerId);
-
-            System.out.println("기존 SSE 연결 제거: 고객ID=" + customerId + ", 이전 바구니=" + previousBasket);
+        } catch (Exception e) {
+            System.err.println("고객 연결 제거 실패: " + e.getMessage());
         }
     }
 
@@ -215,10 +176,6 @@ public class BasketSseService {
      * 현재 연결 상태 로깅 (디버깅용)
      */
     private void logConnectionStatus() {
-        int totalConnections = basketEmitters.values().stream()
-                .mapToInt(Map::size)
-                .sum();
-
-        System.out.println("현재 SSE 연결 상태: " + basketEmitters.size() + "개 바구니, " + totalConnections + "개 연결");
+        System.out.println("현재 SSE 연결 상태: " + customerEmitters.size() + "명 연결");
     }
 }

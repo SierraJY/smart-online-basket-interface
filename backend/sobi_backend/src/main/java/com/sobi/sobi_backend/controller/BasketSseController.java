@@ -27,19 +27,8 @@ public class BasketSseController {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
-    /**
-     * 바구니 실시간 업데이트 SSE 스트림 연결
-     *
-     * 사용법:
-     * const eventSource = new EventSource('/api/baskets/my/stream', {
-     *     headers: { 'Authorization': 'Bearer ' + token }
-     * });
-     *
-     * eventSource.addEventListener('basket-update', (event) => {
-     *     const basketItems = JSON.parse(event.data);
-     *     updateBasketUI(basketItems);
-     * });
-     */
+    // 바구니 실시간 업데이트 SSE 스트림 연결
+    // SseEmitter : SSE 구현을 위한 클래스 [역할 : HTTP 연결 유지, 데이터 전송, 연결 상태 관리]
     @GetMapping(value = "/my/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamBasketUpdates(Authentication authentication) {
         try {
@@ -48,6 +37,9 @@ public class BasketSseController {
             // 인증된 사용자 정보 가져오기
             if (authentication == null || !authentication.isAuthenticated()) {
                 System.err.println("SSE 연결 실패: 인증되지 않은 사용자");
+
+                // 에러용 SseEmitter [짧은 타임 아웃, 즉시 종료]
+                // SSE 엔드포인트는 반드시 SseEmitter를 반환해야하므로, 비정상 상황에서도 SseEmitter 객체 만들어야함
                 SseEmitter errorEmitter = new SseEmitter(1000L);
                 try {
                     errorEmitter.send(SseEmitter.event()
@@ -95,7 +87,7 @@ public class BasketSseController {
             SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
 
             // SSE 서비스에 등록
-            basketSseService.addEmitter(basketId, customerId, emitter);
+            basketSseService.addEmitter(customerId, emitter);
 
             // 연결 즉시 현재 바구니 상태 전송
             List<BasketCacheService.BasketItemInfo> currentItems =
