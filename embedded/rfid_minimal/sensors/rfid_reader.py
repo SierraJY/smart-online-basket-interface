@@ -310,11 +310,11 @@ class RFIDReader:
         frames = self.frame_processor.process_response_buffer(buffer)
         
         if frames:
-            self.logger.debug(f"Extracted {len(frames)} frames from buffer")
+            self.logger.debug(f"{self.reader_id}: Extracted {len(frames)} frames from buffer")
         
         # Process each frame
         for frame, is_notification in frames:
-            self.logger.debug(f"Processing frame: {frame.hex()}, is_notification: {is_notification}")
+            self.logger.debug(f"{self.reader_id}: Processing frame: {frame.hex()}, is_notification: {is_notification}")
             
             if is_notification:
                 # Parse tag data
@@ -323,7 +323,7 @@ class RFIDReader:
                 if tag_info:
                     # Store tag info
                     self.processed_tags[tag_info.raw_tag_id] = tag_info
-                    self.logger.info(f"Tag detected: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
+                    self.logger.info(f"{self.reader_id}: TAG DETECTED! ID: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
                     
                     # Call callback if set
                     if self.tag_callback:

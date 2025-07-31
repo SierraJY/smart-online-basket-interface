@@ -80,7 +80,7 @@ class MultiSensorManager:
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
     
-    def run_polling_cycle(self, timeout: float = 10.0) -> Dict[str, Set[str]]:
+    def run_polling_cycle(self, timeout: float = 5.0) -> Dict[str, Set[str]]:
         """
         Run one polling cycle on all readers
         
@@ -94,7 +94,8 @@ class MultiSensorManager:
         
         self.logger.info(f"Starting polling cycle with {len(self.readers)} readers")
         
-        # Run readers sequentially to prevent interference
+        # Start all readers simultaneously for faster operation
+        active_readers = []
         for reader in self.readers:
             # Check connection and reconnect if needed
             if not reader.connection.is_connected():
@@ -113,47 +114,53 @@ class MultiSensorManager:
                 results[reader.reader_id] = set()
                 continue
                 
-            self.logger.debug(f"Polling started for {reader.reader_id}, waiting up to {timeout} seconds")
+            self.logger.debug(f"Polling started for {reader.reader_id}")
+            active_readers.append(reader)
+        
+        # Now wait for all readers to complete in parallel
+        if active_readers:
+            self.logger.debug(f"Waiting for {len(active_readers)} readers to complete polling (timeout: {timeout}s)")
             
-            # Wait for polling to complete or timeout
             start_time = time.time()
-            check_interval = 0.5  # Check status every 0.5 seconds
-            last_check_time = start_time
+            check_interval = 0.2  # Check status more frequently
             
-            self.logger.debug(f"Waiting for polling to complete on {reader.reader_id} (timeout: {timeout}s)")
-            
-            while reader.is_polling and time.time() - start_time < timeout:
-                current_time = time.time()
-                
-                # Check data availability periodically
-                if current_time - last_check_time >= check_interval:
-                    last_check_time = current_time
-                    elapsed = current_time - start_time
+            # Continue until all readers are done or timeout
+            while active_readers and time.time() - start_time < timeout:
+                # Check each active reader
+                for reader in list(active_readers):  # Use a copy of the list for safe removal
+                    # Check if reader is still polling
+                    if not reader.is_polling:
+                        self.logger.debug(f"{reader.reader_id} polling completed naturally")
+                        active_readers.remove(reader)
+                        continue
                     
-                    # Check if any data is available
+                    # Check for data in buffer
                     in_waiting = reader.connection.get_in_waiting()
                     if in_waiting > 0:
-                        self.logger.debug(f"{reader.reader_id} has {in_waiting} bytes waiting after {elapsed:.1f}s")
-                    else:
-                        self.logger.debug(f"{reader.reader_id} polling in progress for {elapsed:.1f}s, no data in buffer")
+                        self.logger.debug(f"{reader.reader_id} has {in_waiting} bytes in buffer")
                 
-                time.sleep(0.1)  # Short sleep to prevent CPU hogging
+                # Short sleep between checks
+                time.sleep(0.05)  # Reduced sleep time for faster response
             
-            # Stop polling if still active
-            if reader.is_polling:
-                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds, sending stop command")
-                stop_result = reader.stop_multiple_polling()
-                if stop_result:
-                    self.logger.debug(f"Successfully sent stop polling command to {reader.reader_id}")
-                else:
-                    self.logger.error(f"Failed to send stop polling command to {reader.reader_id}")
-            else:
-                self.logger.debug(f"Polling completed naturally for {reader.reader_id}")
-            
-            # Store results
+            # Stop any readers that are still active
+            for reader in active_readers:
+                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
+                reader.stop_multiple_polling()
+        
+        # Collect results from all readers
+        for reader in self.readers:
             detected_tags = set(reader.get_detected_tags())
             results[reader.reader_id] = detected_tags
-            self.logger.info(f"{reader.reader_id}: {len(detected_tags)} tags")
+            
+            # Log more details about detected tags
+            if detected_tags:
+                self.logger.info(f"{reader.reader_id}: {len(detected_tags)} tags detected")
+                for tag_id in detected_tags:
+                    tag_info = reader.get_tag_info(tag_id)
+                    if tag_info:
+                        self.logger.info(f"  - Tag: {tag_id} (RSSI: {tag_info.rssi})")
+            else:
+                self.logger.info(f"{reader.reader_id}: No tags detected")
         
         return results
     

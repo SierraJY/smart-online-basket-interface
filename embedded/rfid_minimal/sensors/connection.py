@@ -151,8 +151,7 @@ class ConnectionHandler:
             self.serial_conn.write(data)
             # Flush to ensure data is sent immediately - this is critical
             self.serial_conn.flush()
-            # Reset the input buffer to clear any pending data
-            self.serial_conn.reset_input_buffer()
+            # DO NOT reset the input buffer as it might clear incoming tag data
             return True
         except Exception as e:
             self.logger.error(f"{self.reader_id}: Error writing data: {e}")
