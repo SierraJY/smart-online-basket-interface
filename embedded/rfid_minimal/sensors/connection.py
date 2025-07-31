@@ -29,16 +29,57 @@ class ConnectionHandler:
     def connect(self) -> bool:
         """Establish serial connection"""
         try:
-            self.serial_conn = serial.Serial(
-                port=self.port,
-                baudrate=self.baudrate,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
-                timeout=NO_RESPONSE_TIMEOUT,
-            )
-            self.logger.info(f"Connected to {self.port}")
-            return True
+            # Close existing connection if open
+            if self.serial_conn and self.serial_conn.is_open:
+                self.serial_conn.close()
+                self.logger.debug(f"{self.reader_id}: Closed existing connection before reconnecting")
+                time.sleep(0.5)  # Give port time to close properly
+            
+            # Try different settings if needed
+            try:
+                self.logger.debug(f"{self.reader_id}: Attempting connection to {self.port} at {self.baudrate} baud")
+                self.serial_conn = serial.Serial(
+                    port=self.port,
+                    baudrate=self.baudrate,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=NO_RESPONSE_TIMEOUT,
+                    write_timeout=1.0,  # Add write timeout
+                    dsrdtr=False,       # Disable hardware flow control
+                    rtscts=False,       # Disable hardware flow control
+                    xonxoff=False       # Disable software flow control
+                )
+                
+                # Set RTS and DTR lines - some devices need this
+                self.serial_conn.setRTS(True)
+                self.serial_conn.setDTR(True)
+                
+                # Clear buffers
+                self.serial_conn.reset_input_buffer()
+                self.serial_conn.reset_output_buffer()
+                
+                self.logger.info(f"Connected to {self.port}")
+                return True
+            except Exception as first_attempt_error:
+                # If first attempt fails, try with different settings
+                self.logger.warning(f"{self.reader_id}: First connection attempt failed: {first_attempt_error}")
+                self.logger.debug(f"{self.reader_id}: Trying alternative settings...")
+                
+                # Try with different flow control settings
+                self.serial_conn = serial.Serial(
+                    port=self.port,
+                    baudrate=self.baudrate,
+                    bytesize=serial.EIGHTBITS,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    timeout=NO_RESPONSE_TIMEOUT,
+                    dsrdtr=True,        # Enable hardware flow control
+                    rtscts=True         # Enable hardware flow control
+                )
+                
+                self.logger.info(f"Connected to {self.port} with alternative settings")
+                return True
 
         except serial.SerialException as e:
             self.logger.error(f"Serial connection failed: {e}")

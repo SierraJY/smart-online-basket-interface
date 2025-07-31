@@ -52,26 +52,38 @@ class CommandHandler:
             command = self.create_command_frame(CMD_MULTIPLE_POLLING, parameters)
             self.logger.debug(f"Sending multiple polling command: {command.hex()}")
             
-            # Try to clear any pending data first
-            time.sleep(0.1)
+            # Try different approaches to ensure the command is received
             
-            # Send the command
-            success = self.connection.write_data(command)
+            # 1. Clear any pending data first
+            self.connection.serial_conn.reset_input_buffer()
+            self.connection.serial_conn.reset_output_buffer()
+            time.sleep(0.2)
             
-            if success:
-                # Add a larger delay to ensure command is processed
-                time.sleep(0.2)
-                self.last_response_time = time.time()
-                self.logger.info(f"Multiple polling command sent (count: {count})")
-                
-                # Debug check for any immediate response
-                in_waiting = self.connection.get_in_waiting()
-                if in_waiting > 0:
-                    self.logger.debug(f"Immediate response detected: {in_waiting} bytes in buffer")
+            # 2. Send the command with proper flushing
+            self.logger.debug(f"Writing command to serial port: {command.hex()}")
+            bytes_written = self.connection.serial_conn.write(command)
+            self.logger.debug(f"Wrote {bytes_written} bytes")
+            
+            # 3. Flush output to ensure it's sent immediately
+            self.connection.serial_conn.flush()
+            self.logger.debug("Flushed output buffer")
+            
+            # 4. Wait for potential response
+            time.sleep(0.3)
+            
+            # 5. Check for immediate response
+            in_waiting = self.connection.get_in_waiting()
+            if in_waiting > 0:
+                self.logger.debug(f"Immediate response detected: {in_waiting} bytes in buffer")
+                # Try to read the response
+                response = self.connection.serial_conn.read(in_waiting)
+                self.logger.debug(f"Response data: {response.hex()}")
             else:
-                self.logger.error("Failed to send multiple polling command")
+                self.logger.debug("No immediate response detected")
             
-            return success
+            self.last_response_time = time.time()
+            self.logger.info(f"Multiple polling command sent (count: {count})")
+            return True
             
         except Exception as e:
             self.logger.error(f"Error sending multiple polling command: {e}")
@@ -89,16 +101,32 @@ class CommandHandler:
             command = self.create_command_frame(CMD_STOP_MULTIPLE_POLLING)
             self.logger.debug(f"Sending stop polling command: {command.hex()}")
             
-            success = self.connection.write_data(command)
+            # Use the same direct approach as with multiple polling
+            # 1. Clear any pending data first
+            self.connection.serial_conn.reset_input_buffer()
+            self.connection.serial_conn.reset_output_buffer()
+            time.sleep(0.1)
             
-            if success:
-                # Add a small delay to ensure command is processed
-                time.sleep(0.1)
-                self.logger.info("Stop polling command sent")
-            else:
-                self.logger.error("Failed to send stop polling command")
+            # 2. Send the command with proper flushing
+            self.logger.debug(f"Writing stop command to serial port: {command.hex()}")
+            bytes_written = self.connection.serial_conn.write(command)
+            self.logger.debug(f"Wrote {bytes_written} bytes")
             
-            return success
+            # 3. Flush output to ensure it's sent immediately
+            self.connection.serial_conn.flush()
+            
+            # 4. Wait for potential response
+            time.sleep(0.2)
+            
+            # 5. Check for immediate response
+            in_waiting = self.connection.get_in_waiting()
+            if in_waiting > 0:
+                self.logger.debug(f"Immediate response to stop command: {in_waiting} bytes in buffer")
+                response = self.connection.serial_conn.read(in_waiting)
+                self.logger.debug(f"Stop command response: {response.hex()}")
+            
+            self.logger.info("Stop polling command sent")
+            return True
             
         except Exception as e:
             self.logger.error(f"Error sending stop polling command: {e}")

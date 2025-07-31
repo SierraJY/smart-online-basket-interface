@@ -99,12 +99,30 @@ class MultiSensorManager:
             # Reset reader state before starting a new cycle
             reader.reset()
             
-            # Start polling
-            reader.start_multiple_polling(self.polling_count)
+            # Check connection and reconnect if needed
+            if not reader.connection.is_connected():
+                self.logger.warning(f"{reader.reader_id} not connected, attempting to reconnect")
+                reader.connection.connect()
+                time.sleep(0.5)  # Give some time for connection to stabilize
+            
+            # Start polling with detailed logging
+            self.logger.debug(f"Starting multiple polling for {reader.reader_id} with count={self.polling_count}")
+            success = reader.start_multiple_polling(self.polling_count)
+            
+            if not success:
+                self.logger.error(f"Failed to start polling for {reader.reader_id}")
+                results[reader.reader_id] = set()
+                continue
+                
+            self.logger.debug(f"Polling started for {reader.reader_id}, waiting up to {timeout} seconds")
             
             # Wait for polling to complete or timeout
             start_time = time.time()
             while reader.is_polling and time.time() - start_time < timeout:
+                # Check if any data is available
+                in_waiting = reader.connection.get_in_waiting()
+                if in_waiting > 0:
+                    self.logger.debug(f"{reader.reader_id} has {in_waiting} bytes waiting")
                 time.sleep(0.1)  # Short sleep to prevent CPU hogging
             
             # Stop polling if still active
@@ -113,7 +131,9 @@ class MultiSensorManager:
                 self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
             
             # Store results
-            results[reader.reader_id] = set(reader.get_detected_tags())
+            detected_tags = set(reader.get_detected_tags())
+            results[reader.reader_id] = detected_tags
+            self.logger.info(f"{reader.reader_id}: {len(detected_tags)} tags")
         
         return results
     
