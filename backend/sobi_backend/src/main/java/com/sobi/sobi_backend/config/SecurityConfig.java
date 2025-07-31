@@ -154,6 +154,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/epc-maps/scan/**").permitAll()
                         // 리프레시는 토큰 만료 후에 진행되므로 누구나 접근 가능
                         .requestMatchers("/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/baskets/my/stream").permitAll()
                         // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
