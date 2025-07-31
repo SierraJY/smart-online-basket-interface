@@ -18,17 +18,17 @@ import org.springframework.messaging.MessageChannel;
  *
  * 기능:
  * 1. Eclipse Mosquitto 브로커 연결
- * 2. 바구니 RFID 업데이트 토픽 구독
+ * 2. 바구니 업데이트 토픽 구독
  * 3. 메시지를 Spring Integration Channel로 라우팅
  *
  * MQTT 토픽 구조:
- * - basket/{boardMac}/update
- * - 예: basket/2c:cf:67:11:93:6b/update
+ * - Topic: basket/{basketId}/update
+ * - 예: basket/1/update
  *
  * 페이로드 구조 (JSON):
  * {
  *   "action": "set",
- *   "items": {"PEAC": 2, "BLUE": 1},
+ *   {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}},
  *   "timestamp": 1640995200000
  * }
  */
@@ -121,7 +121,7 @@ public class MqttConfig {
 
         // QoS (Quality of Service) 설정
         // 0: At most once (최대 1번, 메시지 손실 가능)
-        // 1: At least once (최소 1번, 중복 가능) ← 권장
+        // 1: At least once (최소 1번, 중복 가능) 권장
         // 2: Exactly once (정확히 1번, 가장 안전하지만 느림)
         adapter.setQos(1);
 

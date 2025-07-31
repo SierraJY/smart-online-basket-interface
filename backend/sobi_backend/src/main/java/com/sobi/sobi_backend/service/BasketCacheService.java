@@ -26,7 +26,7 @@ import java.util.*;
  * 4. 결제 완료 후 바구니 데이터 삭제
  *
  * Redis 저장 구조:
- * - Key: basket_items:{boardMac}
+ * - Key: basket_items:{basketId}
  * - Value: {"PEAC":3,"BLUE":1,"APPL":2} (JSON)
  * - TTL: application.properties에서 설정
  */
@@ -62,17 +62,17 @@ public class BasketCacheService {
      * MQTT 메시지로 받은 전체 바구니 상태를 Redis에 저장
      * 기존 데이터를 덮어쓰는 방식 (action: "set")
      *
-     * @param boardMac 바구니 MAC 주소 (예: "2c:cf:67:11:93:6b")
+     * @param basketId 바구니 ID (예: 1)
      * @param items EPC 패턴별 수량 맵 (예: {"PEAC":3, "BLUE":1})
      */
-    public void updateBasketItems(String boardMac, Map<String, Integer> items) {
+    public void updateBasketItems(Integer basketId, Map<String, Integer> items) {
         try {
-            String redisKey = BASKET_ITEMS_KEY_PREFIX + boardMac;
+            String redisKey = BASKET_ITEMS_KEY_PREFIX + basketId;
 
             if (items == null || items.isEmpty()) {
                 // 바구니가 비어있으면 Redis 키 삭제
                 redisTemplate.delete(redisKey);
-                System.out.println("바구니 비움 처리 완료: " + boardMac);
+                System.out.println("바구니 비움 처리 완료: basketId=" + basketId);
                 return;
             }
 
@@ -82,7 +82,7 @@ public class BasketCacheService {
             // Redis에 저장 (TTL 포함, properties에서 가져온 값 사용)
             redisTemplate.opsForValue().set(redisKey, jsonValue, getBasketTtl());
 
-            System.out.println("바구니 데이터 업데이트 완료: " + boardMac + " → " + jsonValue);
+            System.out.println("바구니 데이터 업데이트 완료: basketId=" + basketId + " → " + jsonValue);
 
         } catch (JsonProcessingException e) {
             System.err.println("바구니 데이터 JSON 변환 실패: " + e.getMessage());
@@ -99,16 +99,16 @@ public class BasketCacheService {
      * Redis에서 바구니 데이터를 조회하여 Map 형태로 반환
      * API에서 바구니 내용을 조회할 때 사용
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @return EPC 패턴별 수량 맵, 데이터가 없으면 빈 Map
      */
-    public Map<String, Integer> getBasketItems(String boardMac) {
+    public Map<String, Integer> getBasketItems(Integer basketId) {
         try {
-            String redisKey = BASKET_ITEMS_KEY_PREFIX + boardMac;
+            String redisKey = BASKET_ITEMS_KEY_PREFIX + basketId;
             String jsonValue = redisTemplate.opsForValue().get(redisKey);
 
             if (jsonValue == null || jsonValue.trim().isEmpty()) {
-                System.out.println("바구니 데이터 없음: " + boardMac);
+                System.out.println("바구니 데이터 없음: basketId=" + basketId);
                 return new HashMap<>();
             }
 
@@ -118,7 +118,7 @@ public class BasketCacheService {
                     new TypeReference<Map<String, Integer>>() {}
             );
 
-            System.out.println("바구니 데이터 조회 완료: " + boardMac + " → " + items);
+            System.out.println("바구니 데이터 조회 완료: basketId=" + basketId + " → " + items);
             return items;
 
         } catch (JsonProcessingException e) {
@@ -136,12 +136,12 @@ public class BasketCacheService {
      * EPC 패턴을 실제 상품 정보로 변환하여 프론트엔드에서 사용할 수 있는 형태로 제공
      * EpcMapService를 통해 EPC → Product 매핑 조회
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @return 바구니에 담긴 상품 정보 리스트 (수량 포함)
      */
     @Transactional(readOnly = true)
-    public List<BasketItemInfo> getBasketItemsWithProductInfo(String boardMac) {
-        Map<String, Integer> basketItems = getBasketItems(boardMac);
+    public List<BasketItemInfo> getBasketItemsWithProductInfo(Integer basketId) {
+        Map<String, Integer> basketItems = getBasketItems(basketId);
 
         if (basketItems.isEmpty()) {
             return new ArrayList<>();
@@ -201,15 +201,15 @@ public class BasketCacheService {
      *
      * 결제 완료 후 또는 바구니 사용 종료 시 Redis에서 바구니 데이터 삭제
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @return 삭제 성공 여부
      */
-    public boolean clearBasketItems(String boardMac) {
+    public boolean clearBasketItems(Integer basketId) {
         try {
-            String redisKey = BASKET_ITEMS_KEY_PREFIX + boardMac;
+            String redisKey = BASKET_ITEMS_KEY_PREFIX + basketId;
             Boolean deleted = redisTemplate.delete(redisKey);
 
-            System.out.println("바구니 데이터 삭제 완료: " + boardMac + " → " + deleted);
+            System.out.println("바구니 데이터 삭제 완료: basketId=" + basketId + " → " + deleted);
             return Boolean.TRUE.equals(deleted);
 
         } catch (Exception e) {
@@ -221,12 +221,12 @@ public class BasketCacheService {
     /**
      * 바구니 존재 여부 확인
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @return 바구니 데이터 존재 여부
      */
-    public boolean hasBasketItems(String boardMac) {
+    public boolean hasBasketItems(Integer basketId) {
         try {
-            String redisKey = BASKET_ITEMS_KEY_PREFIX + boardMac;
+            String redisKey = BASKET_ITEMS_KEY_PREFIX + basketId;
             return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
         } catch (Exception e) {
             System.err.println("바구니 존재 여부 확인 실패: " + e.getMessage());
@@ -240,11 +240,11 @@ public class BasketCacheService {
      * 결제 처리 시 ReceiptService에서 사용
      * 수량에 따라 동일한 EPC 패턴을 반복하여 리스트 생성
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @return EPC 패턴 리스트 (수량만큼 반복)
      */
-    public List<String> getEpcPatternsForCheckout(String boardMac) {
-        Map<String, Integer> basketItems = getBasketItems(boardMac);
+    public List<String> getEpcPatternsForCheckout(Integer basketId) {
+        Map<String, Integer> basketItems = getBasketItems(basketId);
 
         List<String> epcPatterns = new ArrayList<>();
 
@@ -258,7 +258,7 @@ public class BasketCacheService {
             }
         }
 
-        System.out.println("결제용 EPC 패턴 리스트 생성: " + boardMac + " → " + epcPatterns);
+        System.out.println("결제용 EPC 패턴 리스트 생성: basketId=" + basketId + " → " + epcPatterns);
         return epcPatterns;
     }
 

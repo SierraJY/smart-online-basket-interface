@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.service.BasketSseService;
+import com.sobi.sobi_backend.service.BasketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.handler.annotation.Header;
@@ -16,14 +17,14 @@ import java.util.Map;
  *
  * 기능:
  * 1. MQTT 브로커에서 바구니 업데이트 메시지 수신
- * 2. Topic에서 바구니 MAC 주소 추출
- * 3. JSON 페이로드를 Map으로 파싱
+ * 2. Topic에서 바구니 ID 추출
+ * 3. JSON 페이로드에서 list 부분만 파싱
  * 4. BasketCacheService를 통해 Redis에 저장
  * 5. BasketSseService를 통해 실시간 클라이언트 업데이트
  *
  * MQTT 메시지 구조:
- * - Topic: basket/{boardMac}/update
- * - Payload: {"PEAC": 3, "BLUE": 1, "APPL": 2}
+ * - Topic: basket/{basketId}/update
+ * - Payload: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
  *
  * 처리 흐름:
  * MQTT 브로커 → MqttConfig → mqttInputChannel → 이 핸들러 → BasketCacheService → Redis
@@ -36,7 +37,10 @@ public class BasketMqttHandler {
     private BasketCacheService basketCacheService;
 
     @Autowired
-    private BasketSseService basketSseService; // SSE 서비스 추가
+    private BasketSseService basketSseService;
+
+    @Autowired
+    private BasketService basketService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -51,7 +55,7 @@ public class BasketMqttHandler {
      * mqttInputChannel로 들어오는 모든 MQTT 메시지를 처리
      *
      * @param payload MQTT 메시지 본문 (JSON 문자열)
-     * @param topic MQTT 토픽 (예: "basket/2c:cf:67:11:93:6b/update")
+     * @param topic MQTT 토픽 (예: "basket/1/update")
      */
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleBasketUpdate(String payload, @Header("mqtt_receivedTopic") String topic) {
@@ -60,27 +64,33 @@ public class BasketMqttHandler {
             System.out.println("토픽: " + topic);
             System.out.println("페이로드: " + payload);
 
-            // 1. 토픽에서 바구니 MAC 주소 추출
-            String boardMac = extractBoardMacFromTopic(topic);
-            if (boardMac == null || boardMac.trim().isEmpty()) {
+            // 1. 토픽에서 바구니 ID 추출
+            Integer basketId = extractBasketIdFromTopic(topic);
+            if (basketId == null) {
                 System.err.println("유효하지 않은 토픽 형식: " + topic);
                 return;
             }
 
-            // 2. JSON 페이로드를 Map으로 파싱
+            // 2. Basket 존재 여부 확인
+            if (basketService.getBasketById(basketId).isEmpty()) {
+                System.err.println("존재하지 않는 바구니 ID: " + basketId);
+                return;
+            }
+
+            // 3. JSON 페이로드에서 list 부분만 파싱
             Map<String, Integer> items = parseJsonPayload(payload);
             if (items == null) {
                 System.err.println("JSON 파싱 실패 - payload: " + payload);
                 return;
             }
 
-            // 3. Redis에 바구니 데이터 저장
-            basketCacheService.updateBasketItems(boardMac, items);
+            // 4. Redis에 바구니 데이터 저장
+            basketCacheService.updateBasketItems(basketId, items);
 
-            // 4. 연결된 클라이언트들에게 실시간 전송
-            basketSseService.broadcastBasketUpdate(boardMac);
+            // 5. 연결된 클라이언트들에게 실시간 전송
+            basketSseService.broadcastBasketUpdate(basketId);
 
-            System.out.println("바구니 업데이트 처리 완료: " + boardMac + " → " + items.size() + "개 아이템");
+            System.out.println("바구니 업데이트 처리 완료: basketId=" + basketId + " → " + items.size() + "개 아이템");
             System.out.println("=== MQTT 처리 완료 ===");
 
         } catch (Exception e) {
@@ -93,27 +103,27 @@ public class BasketMqttHandler {
     }
 
     /**
-     * MQTT 토픽에서 바구니 MAC 주소 추출
+     * MQTT 토픽에서 바구니 ID 추출
      *
-     * 토픽 형식: basket/{boardMac}/update
-     * 예: "basket/2c:cf:67:11:93:6b/update" → "2c:cf:67:11:93:6b"
+     * 토픽 형식: basket/{basketId}/update
+     * 예: "basket/1/update" → 1
      *
      * @param topic MQTT 토픽 문자열
-     * @return 바구니 MAC 주소, 추출 실패 시 null
+     * @return 바구니 ID, 추출 실패 시 null
      */
-    private String extractBoardMacFromTopic(String topic) {
+    private Integer extractBasketIdFromTopic(String topic) {
         try {
             if (topic == null || topic.trim().isEmpty()) {
                 System.err.println("토픽이 null 또는 빈 문자열입니다");
                 return null;
             }
 
-            // "basket/{boardMac}/update" 형식 검증 및 파싱
+            // "basket/{basketId}/update" 형식 검증 및 파싱
             String[] parts = topic.split("/");
 
-            // 예상 형식: ["basket", "{boardMac}", "update"]
+            // 예상 형식: ["basket", "{basketId}", "update"]
             if (parts.length != 3) {
-                System.err.println("토픽 형식 오류 - 예상: basket/{boardMac}/update, 실제: " + topic);
+                System.err.println("토픽 형식 오류 - 예상: basket/{basketId}/update, 실제: " + topic);
                 return null;
             }
 
@@ -127,15 +137,25 @@ public class BasketMqttHandler {
                 return null;
             }
 
-            String boardMac = parts[1];
-            if (boardMac.trim().isEmpty()) {
-                System.err.println("바구니 MAC 주소가 비어있습니다");
+            String basketIdStr = parts[1];
+            if (basketIdStr.trim().isEmpty()) {
+                System.err.println("바구니 ID가 비어있습니다");
                 return null;
             }
 
-            System.out.println("바구니 MAC 주소 추출 성공: " + boardMac);
-            return boardMac;
+            // 문자열을 Integer로 변환
+            Integer basketId = Integer.parseInt(basketIdStr.trim());
+            if (basketId <= 0) {
+                System.err.println("유효하지 않은 바구니 ID: " + basketId);
+                return null;
+            }
 
+            System.out.println("바구니 ID 추출 성공: " + basketId);
+            return basketId;
+
+        } catch (NumberFormatException e) {
+            System.err.println("바구니 ID 파싱 실패 - 숫자가 아님: " + e.getMessage());
+            return null;
         } catch (Exception e) {
             System.err.println("토픽 파싱 중 오류: " + e.getMessage());
             return null;
@@ -143,9 +163,10 @@ public class BasketMqttHandler {
     }
 
     /**
-     * JSON 페이로드를 Map으로 파싱
+     * JSON 페이로드에서 list 부분만 파싱
      *
-     * 예상 형식: {"PEAC": 3, "BLUE": 1, "APPL": 2}
+     * 페이로드 형식: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
+     * id는 받되 사용하지 않고, list 부분만 기존 파싱 로직 사용
      *
      * @param payload JSON 문자열
      * @return EPC 패턴별 수량 맵, 파싱 실패 시 null
@@ -157,15 +178,28 @@ public class BasketMqttHandler {
                 return null;
             }
 
-            // JSON 문자열을 Map<String, Integer>로 변환
-            Map<String, Integer> items = objectMapper.readValue(
+            // JSON 문자열을 Map으로 파싱
+            Map<String, Object> jsonMap = objectMapper.readValue(
                     payload.trim(),
+                    new TypeReference<Map<String, Object>>() {}
+            );
+
+            // list 부분 추출
+            Object listObj = jsonMap.get("list");
+            if (listObj == null) {
+                System.err.println("페이로드에 'list' 필드가 없습니다");
+                return null;
+            }
+
+            // list를 Map<String, Integer>로 변환
+            Map<String, Integer> items = objectMapper.convertValue(
+                    listObj,
                     new TypeReference<Map<String, Integer>>() {}
             );
 
             // 기본 검증
             if (items == null) {
-                System.err.println("JSON 파싱 결과가 null입니다");
+                System.err.println("list 파싱 결과가 null입니다");
                 return null;
             }
 

@@ -5,9 +5,7 @@ import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -64,9 +62,9 @@ public class BasketSseController {
                     (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
             Integer customerId = principal.getId();
 
-            // Redis에서 사용자의 바구니 MAC 주소 조회
-            String boardMac = redisTemplate.opsForValue().get("user_basket:" + customerId);
-            if (boardMac == null) {
+            // Redis에서 사용자의 바구니 ID 조회
+            String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
+            if (basketIdStr == null) {
                 System.err.println("SSE 연결 실패: 사용 중인 바구니가 없음");
                 SseEmitter errorEmitter = new SseEmitter(1000L);
                 try {
@@ -78,27 +76,42 @@ public class BasketSseController {
                 return errorEmitter;
             }
 
+            Integer basketId;
+            try {
+                basketId = Integer.parseInt(basketIdStr);
+            } catch (NumberFormatException e) {
+                System.err.println("SSE 연결 실패: 바구니 ID 파싱 오류");
+                SseEmitter errorEmitter = new SseEmitter(1000L);
+                try {
+                    errorEmitter.send(SseEmitter.event()
+                            .name("error")
+                            .data("{\"error\":\"바구니 정보가 올바르지 않습니다\"}"));
+                    errorEmitter.complete();
+                } catch (Exception ignored) {}
+                return errorEmitter;
+            }
+
             // SSE Emitter 생성 (30분 타임아웃)
             SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
 
             // SSE 서비스에 등록
-            basketSseService.addEmitter(boardMac, customerId, emitter);
+            basketSseService.addEmitter(basketId, customerId, emitter);
 
             // 연결 즉시 현재 바구니 상태 전송
             List<BasketCacheService.BasketItemInfo> currentItems =
-                    basketCacheService.getBasketItemsWithProductInfo(boardMac);
+                    basketCacheService.getBasketItemsWithProductInfo(basketId);
 
             try {
                 emitter.send(SseEmitter.event()
                         .name("basket-initial")
-                        .data(createBasketResponse(currentItems, boardMac)));
+                        .data(createBasketResponse(currentItems, basketId)));
 
                 System.out.println("SSE 초기 데이터 전송 완료");
             } catch (Exception e) {
                 System.err.println("초기 데이터 전송 실패: " + e.getMessage());
             }
 
-            System.out.println("바구니 SSE 연결 성공: 고객ID=" + customerId + ", MAC=" + boardMac);
+            System.out.println("바구니 SSE 연결 성공: 고객ID=" + customerId + ", basketId=" + basketId);
             return emitter; // 직접 SseEmitter 반환
 
         } catch (Exception e) {
@@ -119,7 +132,7 @@ public class BasketSseController {
     /**
      * SSE로 전송할 바구니 응답 데이터 생성
      */
-    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, String boardMac) {
+    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, Integer basketId) {
         // 총 가격 계산
         int totalPrice = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
@@ -134,7 +147,7 @@ public class BasketSseController {
         response.put("items", basketItems);
         response.put("totalCount", totalCount);
         response.put("totalPrice", totalPrice);
-        response.put("boardMac", boardMac);
+        response.put("basketId", basketId);
         response.put("timestamp", System.currentTimeMillis());
 
         return response;

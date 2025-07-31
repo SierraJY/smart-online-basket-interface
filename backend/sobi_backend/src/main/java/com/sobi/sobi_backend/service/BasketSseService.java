@@ -24,53 +24,53 @@ public class BasketSseService {
     private BasketCacheService basketCacheService;
 
     /**
-     * 바구니 MAC 주소별 SSE 연결 관리
-     * Key: boardMac (바구니 MAC 주소)
+     * 바구니 ID별 SSE 연결 관리
+     * Key: basketId (바구니 ID)
      * Value: Map<customerId, SseEmitter> (고객별 연결)
      */
-    private final Map<String, Map<Integer, SseEmitter>> basketEmitters = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<Integer, SseEmitter>> basketEmitters = new ConcurrentHashMap<>();
 
     /**
      * 고객별 현재 연결된 바구니 추적
      * Key: customerId
-     * Value: boardMac
+     * Value: basketId
      */
-    private final Map<Integer, String> customerBaskets = new ConcurrentHashMap<>();
+    private final Map<Integer, Integer> customerBaskets = new ConcurrentHashMap<>();
 
     /**
      * SSE 연결 추가
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      * @param customerId 고객 ID
      * @param emitter SSE Emitter
      */
-    public void addEmitter(String boardMac, Integer customerId, SseEmitter emitter) {
+    public void addEmitter(Integer basketId, Integer customerId, SseEmitter emitter) {
         try {
             // 기존 연결이 있다면 해제
             removeCustomerEmitter(customerId);
 
             // 새로운 연결 등록
-            basketEmitters.computeIfAbsent(boardMac, k -> new ConcurrentHashMap<>())
+            basketEmitters.computeIfAbsent(basketId, k -> new ConcurrentHashMap<>())
                     .put(customerId, emitter);
-            customerBaskets.put(customerId, boardMac);
+            customerBaskets.put(customerId, basketId);
 
             // 연결 종료 시 정리 작업 등록
             emitter.onCompletion(() -> {
-                System.out.println("SSE 연결 완료: 고객ID=" + customerId + ", MAC=" + boardMac);
-                removeEmitter(boardMac, customerId);
+                System.out.println("SSE 연결 완료: 고객ID=" + customerId + ", basketId=" + basketId);
+                removeEmitter(basketId, customerId);
             });
 
             emitter.onTimeout(() -> {
-                System.out.println("SSE 연결 타임아웃: 고객ID=" + customerId + ", MAC=" + boardMac);
-                removeEmitter(boardMac, customerId);
+                System.out.println("SSE 연결 타임아웃: 고객ID=" + customerId + ", basketId=" + basketId);
+                removeEmitter(basketId, customerId);
             });
 
             emitter.onError((ex) -> {
                 System.err.println("SSE 연결 오류: 고객ID=" + customerId + ", 오류=" + ex.getMessage());
-                removeEmitter(boardMac, customerId);
+                removeEmitter(basketId, customerId);
             });
 
-            System.out.println("SSE 연결 추가 완료: 고객ID=" + customerId + ", MAC=" + boardMac);
+            System.out.println("SSE 연결 추가 완료: 고객ID=" + customerId + ", basketId=" + basketId);
             logConnectionStatus();
 
         } catch (Exception e) {
@@ -82,24 +82,24 @@ public class BasketSseService {
     /**
      * 특정 바구니의 모든 연결된 클라이언트에게 업데이트 전송
      *
-     * @param boardMac 바구니 MAC 주소
+     * @param basketId 바구니 ID
      */
-    public void broadcastBasketUpdate(String boardMac) {
+    public void broadcastBasketUpdate(Integer basketId) {
         try {
-            Map<Integer, SseEmitter> emitters = basketEmitters.get(boardMac);
+            Map<Integer, SseEmitter> emitters = basketEmitters.get(basketId);
             if (emitters == null || emitters.isEmpty()) {
-                System.out.println("SSE 브로드캐스트 대상 없음: " + boardMac);
+                System.out.println("SSE 브로드캐스트 대상 없음: basketId=" + basketId);
                 return;
             }
 
             // 현재 바구니 상태 조회
             List<BasketCacheService.BasketItemInfo> basketItems =
-                    basketCacheService.getBasketItemsWithProductInfo(boardMac);
+                    basketCacheService.getBasketItemsWithProductInfo(basketId);
 
             // 응답 데이터 생성
-            Map<String, Object> responseData = createBasketResponse(basketItems, boardMac);
+            Map<String, Object> responseData = createBasketResponse(basketItems, basketId);
 
-            System.out.println("[SSE] 브로드캐스트 시작: " + boardMac + " → " + emitters.size() + "명 연결");
+            System.out.println("[SSE] 브로드캐스트 시작: basketId=" + basketId + " → " + emitters.size() + "명 연결");
 
             // 각 연결된 클라이언트에게 전송
             Iterator<Map.Entry<Integer, SseEmitter>> iterator = emitters.entrySet().iterator();
@@ -128,7 +128,7 @@ public class BasketSseService {
                 }
             }
 
-            System.out.println("[SSE] 브로드캐스트 완료: " + boardMac);
+            System.out.println("[SSE] 브로드캐스트 완료: basketId=" + basketId);
 
         } catch (Exception e) {
             System.err.println("SSE 브로드캐스트 중 오류: " + e.getMessage());
@@ -138,21 +138,21 @@ public class BasketSseService {
     /**
      * 특정 바구니-고객 연결 제거
      */
-    private void removeEmitter(String boardMac, Integer customerId) {
+    private void removeEmitter(Integer basketId, Integer customerId) {
         try {
-            Map<Integer, SseEmitter> emitters = basketEmitters.get(boardMac);
+            Map<Integer, SseEmitter> emitters = basketEmitters.get(basketId);
             if (emitters != null) {
                 emitters.remove(customerId);
 
                 // 해당 바구니에 연결된 클라이언트가 없으면 바구니 항목도 제거
                 if (emitters.isEmpty()) {
-                    basketEmitters.remove(boardMac);
+                    basketEmitters.remove(basketId);
                 }
             }
 
             customerBaskets.remove(customerId);
 
-            System.out.println("SSE 연결 제거: 고객ID=" + customerId + ", MAC=" + boardMac);
+            System.out.println("SSE 연결 제거: 고객ID=" + customerId + ", basketId=" + basketId);
             logConnectionStatus();
 
         } catch (Exception e) {
@@ -164,7 +164,7 @@ public class BasketSseService {
      * 고객의 기존 연결 제거 (중복 연결 방지)
      */
     private void removeCustomerEmitter(Integer customerId) {
-        String previousBasket = customerBaskets.get(customerId);
+        Integer previousBasket = customerBaskets.get(customerId);
         if (previousBasket != null) {
             Map<Integer, SseEmitter> emitters = basketEmitters.get(previousBasket);
             if (emitters != null) {
@@ -190,7 +190,7 @@ public class BasketSseService {
     /**
      * SSE로 전송할 바구니 응답 데이터 생성
      */
-    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, String boardMac) {
+    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, Integer basketId) {
         // 총 가격 계산
         int totalPrice = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
@@ -205,7 +205,7 @@ public class BasketSseService {
         response.put("items", basketItems);
         response.put("totalCount", totalCount);
         response.put("totalPrice", totalPrice);
-        response.put("boardMac", boardMac);
+        response.put("basketId", basketId);
         response.put("timestamp", System.currentTimeMillis());
 
         return response;
@@ -220,28 +220,5 @@ public class BasketSseService {
                 .sum();
 
         System.out.println("현재 SSE 연결 상태: " + basketEmitters.size() + "개 바구니, " + totalConnections + "개 연결");
-    }
-
-    /**
-     * 전체 연결 정보 조회 (관리자/디버깅용)
-     */
-    public Map<String, Object> getConnectionInfo() {
-        Map<String, Object> info = new HashMap<>();
-
-        Map<String, Integer> basketConnections = new HashMap<>();
-        for (Map.Entry<String, Map<Integer, SseEmitter>> entry : basketEmitters.entrySet()) {
-            basketConnections.put(entry.getKey(), entry.getValue().size());
-        }
-
-        int totalConnections = basketEmitters.values().stream()
-                .mapToInt(Map::size)
-                .sum();
-
-        info.put("totalBaskets", basketEmitters.size());
-        info.put("totalConnections", totalConnections);
-        info.put("basketConnections", basketConnections);
-        info.put("timestamp", System.currentTimeMillis());
-
-        return info;
     }
 }
