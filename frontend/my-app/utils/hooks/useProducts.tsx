@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 
 export type Product = {
   id: number
@@ -16,71 +16,54 @@ export type Product = {
   discountedPrice: number
 }
 
-// 확장: id도 받을 수 있게!
 interface Options {
   id?: string | number
   keyword?: string
   category?: string
 }
 
-export function useProducts(options: Options = {}) {
+async function fetchProducts(options: Options = {}) {
   const { id, keyword = "", category = "" } = options
 
-  const [product, setProduct] = useState<Product | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
+  // id가 있으면 단일 상품 조회
+  if (id) {
+    const res = await fetch(`/api/products/${id}`)
+    if (!res.ok) throw new Error("상품 데이터 로드 실패")
+    const data = await res.json()
+    return { product: data.product || null, products: [] }
+  }
 
-  useEffect(() => {
-    setLoading(true)
-    setError(null)
+  // 리스트(검색/카테고리)
+  let url = "/api/products"
+  if (keyword && keyword.trim().length > 0) {
+    url = `/api/products/search?keyword=${encodeURIComponent(keyword)}`
+  } else if (category && category !== "전체") {
+    url = `/api/products/category/${encodeURIComponent(category)}`
+  }
 
-    // id가 있으면 단일 상품 조회
-    if (id) {
-      fetch(`/api/products/${id}`)
-        .then(res => {
-          if (!res.ok) throw new Error("상품 데이터 로드 실패")
-          return res.json()
-        })
-        .then(data => {
-          setProduct(data.product || null)
-          setProducts([]) // 혹시 이전 리스트 남을 수 있으니 비움
-          setLoading(false)
-        })
-        .catch(e => {
-          setError(e)
-          setLoading(false)
-        })
-      return
-    }
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("상품 데이터 로드 실패")
+  const data = await res.json()
+  return { product: null, products: Array.isArray(data.products) ? data.products : [] }
+}
 
-    // 기존 리스트 조회 로직
-    let url = "/api/products"
-    if (keyword && keyword.trim().length > 0) {
-      url = `/api/products/search?keyword=${encodeURIComponent(keyword)}`
-    } else if (category && category !== "전체") {
-      url = `/api/products/category/${encodeURIComponent(category)}`
-    }
+export function useProducts(options: Options = {}) {
+  // 쿼리 키를 옵션별로 유니크하게!
+  const queryKey = ["products", options]
 
-    fetch(url)
-      .then(res => {
-        if (!res.ok) throw new Error("상품 데이터 로드 실패")
-        return res.json()
-      })
-      .then(data => {
-        setProducts(Array.isArray(data.products) ? data.products : [])
-        setProduct(null)
-        setLoading(false)
-      })
-      .catch(e => {
-        setError(e)
-        setLoading(false)
-      })
-  }, [id, keyword, category])
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey,
+    queryFn: () => fetchProducts(options),
+    staleTime: 1000 * 60, // 1분 동안 캐시 유지
+  })
 
   return {
-    product,
-    products,
+    product: data?.product ?? null,
+    products: data?.products ?? [],
     loading,
     error,
   }

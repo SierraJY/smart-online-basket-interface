@@ -6,6 +6,8 @@ import { X, ChevronRight } from 'lucide-react'
 import { CATEGORY_ICONS } from '../categoryIcons'
 import { useProducts } from '@/utils/hooks/useProducts'
 
+type Product = { category: string; [key: string]: any }
+
 interface CategoryModalProps {
   onClose: () => void
 }
@@ -15,8 +17,18 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
   const router = useRouter()
   const { products, loading, error } = useProducts()
 
-  const categories = useMemo(
-    () => ['전체', ...Array.from(new Set(products.map(p => p.category)))],
+  // 카테고리 배열 뽑기 (전체 + 중복제거 + 빈 문자열/공백 제외)
+  const categories: string[] = useMemo(
+    () => [
+      '전체',
+      ...Array.from(
+        new Set(
+          (products ?? [])
+            .map((p: Product) => (p.category ?? '').trim())
+            .filter((cat: string) => !!cat && cat.length > 0)
+        )
+      ) as string[],
+    ],
     [products]
   )
 
@@ -32,6 +44,8 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
   if (error) return <div className="text-center py-10">카테고리 정보를 불러오지 못했습니다.</div>
 
   const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/')
+  // console.log("products", products)
+  // console.log("categories", categories)
 
   return (
     <div
@@ -54,7 +68,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
           <X size={26} />
         </button>
       </div>
-      {/* 세로 한줄 스크롤 (스크롤바 숨김) */}
+      {/* 카테고리 리스트 */}
       <div
         className="flex flex-col gap-1 overflow-y-auto hide-scrollbar"
         style={{
@@ -87,7 +101,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
             >
               {replaceCategoryName(category)}
             </span>
-            {/* 화살표만 클릭 가능! */}
+            {/* 화살표 버튼 */}
             <button
               className="p-1 rounded-full transition hover:scale-110 active:scale-95"
               tabIndex={0}

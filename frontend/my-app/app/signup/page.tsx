@@ -1,36 +1,33 @@
+// 화원가입 페이지
+
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { signup } from '@/utils/api/auth'
-import { useAuthStore } from '@/store/useAuthStore'
+import { useAuth } from '@/utils/hooks/useAuth'
 import WhatsUrGenderOrAge from '@/components/modals/WhatsUrGenderOrAge'
 
 export default function SignupPage() {
   const [userId, setUserId] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [gender, setGender] = useState(1) // 기본값 남자
-  const [age, setAge] = useState(20) // 기본값 20세
+  const [gender, setGender] = useState(1)
+  const [age, setAge] = useState(20)
   const [message, setMessage] = useState('')
   const [showModal, setShowModal] = useState(false)
   const router = useRouter()
-  const { setIsLoggedIn, setUserId: setUserIdStore } = useAuthStore()
+  const { signup, signupLoading, signupError } = useAuth()
 
-  // 회원가입 (최종)
   const handleSubmit = async () => {
     try {
-      const result = await signup({ userId, password, gender, age })
-      setUserIdStore(result.userId)
-      setIsLoggedIn(true)
+      await signup({ userId, password, gender, age })
       router.push('/')
     } catch (err: any) {
-      setMessage(err.message || '회원가입 실패')
+      setMessage(err?.message || signupError?.message || '회원가입 실패')
     }
   }
 
-  // 1차 폼(아이디/비번)에서 회원가입 버튼
   const handleFirstStep = (e: React.FormEvent) => {
     e.preventDefault()
     if (password !== confirmPassword) {
@@ -41,7 +38,6 @@ export default function SignupPage() {
     setShowModal(true)
   }
 
-  // 모달에서 완료 버튼
   const handleModalSubmit = () => {
     setShowModal(false)
     handleSubmit()
@@ -49,7 +45,7 @@ export default function SignupPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-4 py-10 transition-colors duration-300">
-      <h1 className="text-2xl font-bold mb-6 text-[var(--foreground)]">회원가입</h1>
+      <h1 className="text-2xl font-bold mb-6 text-[var(--foreground)]">회원가입test</h1>
       <form onSubmit={handleFirstStep} className="w-full max-w-sm flex flex-col gap-4">
         <input
           type="text"
@@ -78,11 +74,12 @@ export default function SignupPage() {
         <button
           type="submit"
           className="rounded-md py-3 text-sm font-semibold transition-all bg-[var(--foreground)] text-[var(--background)]"
+          disabled={signupLoading}
         >
-          회원가입
+          {signupLoading ? "가입 중..." : "회원가입"}
         </button>
       </form>
-      {message && <p className="mt-4 text-sm text-red-600 text-center">{message}</p>}
+      {(message || signupError) && <p className="mt-4 text-sm text-red-600 text-center">{message || signupError?.message}</p>}
       <p className="text-xs mt-6 text-center w-full max-w-sm text-[var(--text-secondary)]">
         이미 계정이 있으신가요?{' '}
         <Link href="/login" className="underline text-green-700 dark:text-green-400">

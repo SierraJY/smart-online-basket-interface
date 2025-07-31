@@ -16,8 +16,8 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*', // 백엔드 API 주소
+        source: "/api/:path*",
+        destination: "http://localhost:8082/api/:path*", // 백엔드 API 주소
       },
     ]
   },

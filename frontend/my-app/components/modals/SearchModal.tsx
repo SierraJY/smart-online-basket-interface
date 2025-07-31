@@ -1,23 +1,35 @@
+'use client'
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
 import SearchBar from '@/components/SearchBar'
 import { useProducts } from '@/utils/hooks/useProducts'
 
+// 명시적 타입 선언!
+type Product = { category: string; [key: string]: any }
+
 export default function SearchModalContent({ onClose }: { onClose: () => void }) {
   const router = useRouter()
-  // ✅ 커스텀 훅으로 상품 데이터 받아오기!
   const { products, loading, error } = useProducts()
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('전체')
 
-  // ✅ 카테고리 목록 useMemo로 추출 (항상 return 위에서 선언!)
-  const categories = useMemo(
-    () => ['전체', ...new Set(products.map((p) => p.category))],
+  // 타입 안전하게 카테고리 추출
+  const categories: string[] = useMemo(
+    () => [
+      '전체',
+      ...Array.from(
+        new Set(
+          (products ?? [])
+            .map((p: Product) => (p.category ?? '').trim())
+            .filter((cat: string) => !!cat && cat.length > 0)
+        )
+      ) as string[],
+    ],
     [products]
   )
 
-  // ✅ ESC 누르면 모달 닫기
+  // ESC 누르면 모달 닫기
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -26,11 +38,10 @@ export default function SearchModalContent({ onClose }: { onClose: () => void })
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  // ✅ Hook 선언 끝난 뒤에 조건문 분기!
   if (loading) return null
   if (error) return <div className="text-center py-10">검색 정보를 불러오지 못했습니다.</div>
 
-  // ✅ 검색 이벤트 핸들러 (디자인/기능 동일!)
+  // 검색 이벤트
   const handleSearch = () => {
     if (!keyword.trim()) return
     const query = new URLSearchParams()
@@ -42,7 +53,7 @@ export default function SearchModalContent({ onClose }: { onClose: () => void })
 
   return (
     <div
-      className="w-full max-w-md p-6 rounded-4xl shadow-lg relative modal-fade-in" // 애니메이션 클래스 그대로!
+      className="w-full max-w-md p-6 rounded-4xl shadow-lg relative modal-fade-in"
       style={{
         background: 'var(--search-modal-bg, rgba(255,255,255,0.36))',
         border: '1.5px solid var(--search-modal-border, rgba(255,255,255,0.18))',

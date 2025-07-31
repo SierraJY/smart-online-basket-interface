@@ -94,3 +94,34 @@ headers : 'Authorization : Bearer + token
 '/api/baskets/my/stream'
 headers : 'Authorization : Bearer + token
 4. 2번의 요청이 모두 성공하면 사용자는 장바구니 페이지에서 백엔드에서 주는 정보를 통해 실시간으로 장바구니에 들어오고 나가는 상품 정보를 확인할 수 있다.
+
+현재 첫번째 요청은 받으나 두번째 요청인 SSE 실행이 안되고 있는 상황
+아마 중복 요청이 원인인듯
+--------
+25/07/30
+api 요청이 중복되는 현상을 고치기 위해 React Query를 이용해 전체 페이지 리팩토링 작업
+그와 동시에 store에서 관리하던 항목을 커스텀 훅에서 관리하도록 이전 작업
+
+gpt왈
+
+store → hook 전환, 현업에서도 하는 게 맞나?
+장단점 비교
+store(전역 상태, 예: Zustand, Recoil 등)
+
+✔️ 앱 전체에서 "동기화된 상태"를 초간단하게 공유
+
+✔️ 여러 컴포넌트에서 상태 자동 공유, 리렌더
+
+❌ 실제로 로그인/토큰 등은 보통 localStorage + hook만으로도 충분
+
+❌ 불필요한 전역상태/리렌더 증가할 수 있음
+
+hook(커스텀 훅, 예: useAuth)
+
+✔️ SSR/CSR 대응, localStorage와의 동기화까지 포함, 진짜 실전적!
+
+✔️ 로그인 상태/토큰 변화만 잘 관리하면 전역 상태 라이브러리 없이도 문제 없음
+
+✔️ Next.js, React Query, CSR 앱에선 사실상 industry standard
+
+❌ 아주 복잡한 상태 동기화/협업에서 store가 필요할 수도 있음

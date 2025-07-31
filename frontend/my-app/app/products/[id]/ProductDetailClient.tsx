@@ -2,10 +2,44 @@
 
 'use client'
 
+import { useState } from 'react'
 import { useProducts } from '@/utils/hooks/useProducts'
+import { useFavorite } from '@/utils/hooks/useFavorite'
+import { useAuth } from '@/utils/hooks/useAuth'
+import { getToken } from '@/utils/auth/authUtils'
+import { FaHeart, FaRegHeart } from "react-icons/fa"
 
 export default function ProductDetailClient({ id }: { id: string }) {
   const { product, loading, error } = useProducts({ id });
+  const { isLoggedIn } = useAuth();
+  const token = getToken();
+  const {
+    favoriteList,
+    loading: favoriteLoading,
+    addFavorite,
+    removeFavorite,
+  } = useFavorite(token);
+  const [FavoriteLoading, setFavoriteLoading] = useState<boolean>(false);
+
+  // 찜 토글 (React Query)
+  const handleToggleFavorite = async (productId: number) => {
+    if (!isLoggedIn || !token) {
+      alert('로그인 후 이용 가능합니다.')
+      return
+    }
+    setFavoriteLoading(true)
+    try {
+      if (favoriteList.includes(productId)) {
+        await removeFavorite({ productId, token })
+      } else {
+        await addFavorite({ productId, token })
+      }
+    } catch (err: any) {
+      alert(err.message || "찜 처리 오류")
+    } finally {
+      setFavoriteLoading(false)
+    }
+  }
 
   if (loading) {
     return <main className="min-h-screen flex items-center justify-center"><div>로딩 중...</div></main>
@@ -52,9 +86,25 @@ export default function ProductDetailClient({ id }: { id: string }) {
           transition: 'background-color 1.6s, color 1.6s, border-color 1.6s'
         }}
       >
-        <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>
-          {product.name}
-        </h1>
+        <div className="flex justify-between items-start mb-2">
+          <h1 className="text-2xl font-bold flex-1" style={{ color: 'var(--foreground)' }}>
+            {product.name}
+          </h1>
+          <button
+            onClick={async () => {
+              if (FavoriteLoading) return
+              await handleToggleFavorite(product.id)
+            }}
+            className={`ml-4 text-lg px-2 py-2 rounded-full hover:scale-110 transition-all z-10 ${FavoriteLoading ? 'opacity-60 pointer-events-none' : ''}`}
+            title={favoriteList.includes(product.id) ? '찜 해제' : '찜'}
+            disabled={FavoriteLoading}
+          >
+            {favoriteList.includes(product.id)
+              ? <FaHeart size={28} color="var(--foreground)" />
+              : <FaRegHeart size={28} color="var(--foreground)" />
+            }
+          </button>
+        </div>
         <p className="text-lg font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
           {product.price.toLocaleString()}원
         </p>

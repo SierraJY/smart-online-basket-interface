@@ -1,3 +1,5 @@
+// 상품 랜덤 흔들림 컴포넌트
+
 import React, { useEffect, useState } from "react"
 
 type Product = {
@@ -15,7 +17,7 @@ export default function ShakeWrapper({ item, children }: ShakeWrapperProps) {
   const [shaking, setShaking] = useState(false)
 
   useEffect(() => {
-    if (!(item.stock > 0 && item.stock < 30)) { // 흔들 애니메이션 기준 stock
+    if (!(item.stock > 0 && item.stock < 20)) { // 흔들 애니메이션 기준 stock
       setShaking(false)
       return
     }

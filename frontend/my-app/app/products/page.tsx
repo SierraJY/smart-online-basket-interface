@@ -1,18 +1,20 @@
+// 전체 상품 목록 페이지
+
 'use client'
 
 import { useMemo, useRef, createRef, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useProducts } from '@/utils/hooks/useProducts'
+import { useProducts, Product } from '@/utils/hooks/useProducts'
+import { useFavorite } from '@/utils/hooks/useFavorite'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import { useScrollRestore } from '@/store/useScrollRestore'
-import { useAuthStore } from '@/store/useAuthStore'
 import { getToken } from '@/utils/auth/authUtils'
-import { addFavorite, removeFavorite, fetchFavoriteList } from '@/utils/api/favorite'
+import { useAuth } from '@/utils/hooks/useAuth'
 
 const CATEGORY_LIMIT = 10
 
@@ -24,11 +26,18 @@ export default function ProductsPage() {
 
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
-  const [keyword, setKeyword] = useState(keywordFromURL)
-  const [category, setCategory] = useState(categoryFromURL)
-  const { favorite, setFavorite, isLoggedIn } = useAuthStore()
-  const [excludeOutOfStock, setExcludeOutOfStock] = useState(false)
-  const [FavoriteLoading, setFavoriteLoading] = useState(false)
+  const [keyword, setKeyword] = useState<string>(keywordFromURL)
+  const [category, setCategory] = useState<string>(categoryFromURL)
+  const { isLoggedIn } = useAuth()
+  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
+  const [FavoriteLoading, setFavoriteLoading] = useState<boolean>(false)
+  const token = getToken()
+  const {
+    favoriteList,
+    loading: favoriteLoading,
+    addFavorite,
+    removeFavorite,
+  } = useFavorite(token)
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
@@ -50,19 +59,8 @@ export default function ProductsPage() {
     router.replace(`?${params.toString()}`)
   }
 
-  // 로그인 or 새로고침 시 찜목록 동기화
-  useEffect(() => {
-    if (isLoggedIn && getToken()) {
-      fetchFavoriteList(getToken())
-        .then((data) => setFavorite(data.favoriteProducts.map((p: any) => p.id)))
-        .catch(() => setFavorite([]))
-    } else {
-      setFavorite([])
-    }
-  }, [isLoggedIn])
-
   // 필터링
-  const filtered = products.filter((item) => {
+  const filtered: Product[] = products.filter((item: Product) => {
     const matchesKeyword =
       [item.name, item.description, item.category]
         .join(' ')
@@ -73,14 +71,17 @@ export default function ProductsPage() {
     return matchesKeyword && matchesCategory && matchesStock
   })
 
-  const categoriesInFiltered = useMemo(
-    () => [...new Set(filtered.map((p) => p.category))],
+  // 카테고리 추출 (string[] 강제 명시!)
+  const categoriesInFiltered: string[] = useMemo(
+    () => [...new Set(filtered.map((p: Product) => p.category))],
     [filtered]
   )
 
-  const categorySections = category === '전체' ? categoriesInFiltered : [category]
+  // 현재 보여줄 카테고리
+  const categorySections: string[] = category === '전체' ? categoriesInFiltered : [category]
+  // 섹션별 ref 준비
   const sectionRefs = useRef<Record<string, React.RefObject<HTMLDivElement | null>>>({})
-  categorySections.forEach((cat) => {
+  categorySections.forEach((cat: string) => {
     if (!sectionRefs.current[cat]) {
       sectionRefs.current[cat] = createRef<HTMLDivElement>()
     }
@@ -96,8 +97,8 @@ export default function ProductsPage() {
       <div className="text-lg font-semibold text-[var(--foreground)]">전체 상품 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
-  );
-  
+  )
+
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center">
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
@@ -110,7 +111,7 @@ export default function ProductsPage() {
         새로고침
       </button>
     </div>
-  );
+  )
 
   const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/')
 
@@ -125,19 +126,17 @@ export default function ProductsPage() {
 
   // 찜 토글
   const handleToggleFavorite = async (productId: number) => {
-    if (!isLoggedIn || !getToken()) {
+    if (!isLoggedIn || !token) {
       alert('로그인 후 이용 가능합니다.')
       return
     }
     setFavoriteLoading(true)
     try {
-      if (favorite.includes(productId)) {
-        await removeFavorite(productId, getToken())
+      if (favoriteList.includes(productId)) {
+        await removeFavorite({ productId, token })
       } else {
-        await addFavorite(productId, getToken())
+        await addFavorite({ productId, token })
       }
-      const data = await fetchFavoriteList(getToken())
-      setFavorite(data.favoriteProducts.map((p: any) => p.id))
     } catch (err: any) {
       alert(err.message || "찜 처리 오류")
     } finally {
@@ -179,8 +178,8 @@ export default function ProductsPage() {
             검색 결과가 없습니다
           </p>
         )}
-        {categorySections.map((cat) => {
-          const items = filtered.filter((item) => item.category === cat)
+        {categorySections.map((cat: string) => {
+          const items: Product[] = filtered.filter((item: Product) => item.category === cat)
           if (items.length === 0) return null
           const scrollRef = sectionRefs.current[cat]!
           const showMore = items.length > CATEGORY_LIMIT
@@ -193,7 +192,7 @@ export default function ProductsPage() {
                 <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="ml-2 px-2 py-1 text-xs font-medium transition hover:scale-110"
                   style={{ color: 'var(--text-secondary)', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 500 }}>
                   {replaceCategoryName(cat)} 전체보기
-                  <ChevronRight size={16}/>
+                  <ChevronRight size={16} />
                 </Link>
               </div>
               <div className="relative">
@@ -210,7 +209,7 @@ export default function ProductsPage() {
                 </button>
                 {/* 상품 리스트 */}
                 <div ref={scrollRef} className="flex overflow-x-auto gap-5 snap-x snap-mandatory -mx-1 scrollbar-none cursor-pointer" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}>
-                  {items.slice(0, CATEGORY_LIMIT).map((item) => (
+                  {items.slice(0, CATEGORY_LIMIT).map((item: Product) => (
                     <div key={item.id} className={cardClass}>
                       <ShakeWrapper item={item}>
                         <Link href={`/products/${item.id}`}>
@@ -263,14 +262,14 @@ export default function ProductsPage() {
                       <button
                         onClick={async (e) => {
                           e.preventDefault()
-                          if (FavoriteLoading) return;
+                          if (FavoriteLoading) return
                           await handleToggleFavorite(item.id)
                         }}
                         className={`absolute top-2 right-2 text-lg px-1.5 py-1.5 rounded-full hover:scale-110 transition-all z-10 ${FavoriteLoading ? 'opacity-60 pointer-events-none' : ''}`}
-                        title={favorite.includes(item.id) ? '찜 해제' : '찜'}
+                        title={favoriteList.includes(item.id) ? '찜 해제' : '찜'}
                         disabled={FavoriteLoading}
                       >
-                        {favorite.includes(item.id)
+                        {favoriteList.includes(item.id)
                           ? <FaHeart size={25} color="var(--foreground)" />
                           : <FaRegHeart size={25} color="var(--foreground)" />
                         }

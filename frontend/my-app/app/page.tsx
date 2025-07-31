@@ -21,7 +21,10 @@ export default function Home() {
 
   // products에서 카테고리 추출 (products가 변경될 때만 연산)
   const categories = useMemo(
-    () => ['전체', ...Array.from(new Set(products.map((p) => p.category)))],
+    () =>
+      products && Array.isArray(products)
+        ? ['전체', ...Array.from(new Set(products.map((p) => p.category)))]
+        : ['전체'],
     [products]
   )
 

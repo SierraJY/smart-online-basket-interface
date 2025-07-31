@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/utils/auth/useAuth';
+import { useAuth } from '@/utils/hooks/useAuth';
 
 export default function AccessTokenRefreshButton() {
   const { refreshAccessToken, accessToken } = useAuth();

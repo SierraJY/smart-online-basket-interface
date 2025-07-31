@@ -1,10 +1,13 @@
 {
   "short_name": "SOBI",
-  "name": "SOBI",
+  "name": "SOBI - 스마트 장바구니",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#ffffff",
   "background_color": "#ffffff",
+  "description": "QR코드로 스마트 장바구니와 연동하여 실시간으로 상품을 확인하는 PWA",
+  "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "64.png",

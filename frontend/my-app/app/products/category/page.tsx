@@ -1,3 +1,5 @@
+// 카테고리별 상품 목록 페이지
+
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
@@ -5,14 +7,14 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ShakeWrapper from '@/components/ShakeWrapper'
-import { useProducts } from '@/utils/hooks/useProducts'
-import { useAuthStore } from '@/store/useAuthStore'
+import { useProducts, Product } from '@/utils/hooks/useProducts'
+import { useFavorite } from '@/utils/hooks/useFavorite'
 import { getToken } from '@/utils/auth/authUtils'
-import { addFavorite, removeFavorite, fetchFavoriteList } from '@/utils/api/favorite'
-import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
+import { useAuth } from '@/utils/hooks/useAuth'
 
-const ITEMS_PER_PAGE = 21
+const ITEMS_PER_PAGE = 18
 
 export default function CategoryPage() {
   const { products, loading, error } = useProducts()
@@ -21,13 +23,23 @@ export default function CategoryPage() {
 
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
-  const [keyword, setKeyword] = useState(keywordFromURL)
-  const [category, setCategory] = useState(categoryFromURL)
-  const [isMobile, setIsMobile] = useState(false)
+  const [keyword, setKeyword] = useState<string>(keywordFromURL)
+  const [category, setCategory] = useState<string>(categoryFromURL)
+  const [isMobile, setIsMobile] = useState<boolean>(false)
   const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-  const { favorite, setFavorite, isLoggedIn } = useAuthStore()
-  const [FavoriteLoading, setFavoriteLoading] = useState(false)
 
+  const { isLoggedIn } = useAuth()
+  const token = getToken()
+  const {
+    favoriteList,
+    loading: favoriteLoading,
+    addFavorite,
+    removeFavorite,
+  } = useFavorite(token)
+
+  const [FavoriteLoading, setFavoriteLoading] = useState<boolean>(false)
+
+  // 쿼리스트링 sync
   useEffect(() => {
     setKeyword(keywordFromURL)
     setCategory(categoryFromURL)
@@ -46,25 +58,15 @@ export default function CategoryPage() {
     router.replace(`?${params.toString()}`)
   }
 
-  // 로그인 or 새로고침 시 찜목록 동기화
-  useEffect(() => {
-    if (isLoggedIn && getToken()) {
-      fetchFavoriteList(getToken())
-        .then((data) => setFavorite(data.favoriteProducts.map((p: any) => p.id)))
-        .catch(() => setFavorite([]))
-    } else {
-      setFavorite([])
-    }
-  }, [isLoggedIn])
-
-  const filtered = products.filter(
-    (item) =>
+  // 필터
+  const filtered: Product[] = products.filter(
+    (item: Product) =>
       (category === '' || item.category === category) &&
       [item.name, item.description, item.category].join(' ').toLowerCase().includes(keyword.toLowerCase())
   )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE))
-  const pagedProducts = filtered.slice(
+  const pagedProducts: Product[] = filtered.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   )
@@ -78,21 +80,19 @@ export default function CategoryPage() {
     router.push(`?${params.toString()}`)
   }
 
-  // 찜 토글
+  // 찜 토글 (React Query)
   const handleToggleFavorite = async (productId: number) => {
-    if (!isLoggedIn || !getToken()) {
+    if (!isLoggedIn || !token) {
       alert('로그인 후 이용 가능합니다.')
       return
     }
     setFavoriteLoading(true)
     try {
-      if (favorite.includes(productId)) {
-        await removeFavorite(productId, getToken())
+      if (favoriteList.includes(productId)) {
+        await removeFavorite({ productId, token })
       } else {
-        await addFavorite(productId, getToken())
+        await addFavorite({ productId, token })
       }
-      const data = await fetchFavoriteList(getToken())
-      setFavorite(data.favoriteProducts.map((p: any) => p.id))
     } catch (err: any) {
       alert(err.message || "찜 처리 오류")
     } finally {
@@ -108,7 +108,7 @@ export default function CategoryPage() {
       <div className="text-lg font-semibold text-[var(--foreground)]">{replaceCategoryName(category)} 상품 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
-  );
+  )
   
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center">
@@ -122,41 +122,37 @@ export default function CategoryPage() {
         새로고침
       </button>
     </div>
-  );
+  )
 
   return (
-    <main className="min-h-screen px-2 py-7 pb-20 flex flex-col items-center" style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}>
-      <h1 className="text-2xl font-bold mb-5" style={{ color: 'var(--foreground)' }}>
+    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
+      style={{
+        background: 'var(--input-background)',
+        color: 'var(--foreground)',
+        transition: 'background-color 1.6s, color 1.6s'
+      }}>
+      {/* 헤더 */}
+      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--foreground)' }}>
         {replaceCategoryName(category)}
       </h1>
-      <div className="flex items-center w-full max-w-3xl mb-7"
-        style={{
-          borderRadius: '999px',
-          background: 'var(--modal-glass-bg, rgba(255,255,255,0.36))',
-          border: '1.5px solid var(--input-border)',
-          boxShadow: '0 1.5px 10px 0 rgba(0,0,0,0.06)',
-          overflow: 'hidden',
-          backdropFilter: 'blur(9px)',
-          WebkitBackdropFilter: 'blur(9px)',
-          transition: 'background 0.4s, border 0.4s',
-        }}>
-        <SearchBar
-          keyword={keyword}
-          setKeyword={onKeywordChange}
-          category={category}
-          setCategory={onCategoryChange}
-          onSearch={() => {}}
-          showCategorySelect={false}
-          showResultButton={false}
-        />
-      </div>
-      <section className="w-full max-w-7xl flex flex-wrap gap-3 justify-start">
+      {/* 🔥전체 상품 목록 페이지와 동일하게, 바로 아래에 SearchBar만! */}
+      <SearchBar
+        keyword={keyword}
+        setKeyword={onKeywordChange}
+        category={category}
+        setCategory={onCategoryChange}
+        onSearch={() => {}}
+        showCategorySelect={false}
+        showResultButton={false}
+      />
+      {/* 상품 목록 */}
+      <section className="w-full mt-10 max-w-4xl flex flex-wrap gap-3 justify-start">
         {pagedProducts.length === 0 && (
           <div className="w-full text-center text-lg mt-16 text-[var(--text-secondary)]">
             해당 카테고리 상품이 없습니다.
           </div>
         )}
-        {pagedProducts.map((item) => (
+        {pagedProducts.map((item: Product) => (
           <div key={item.id} className={cardClass}>
             <ShakeWrapper item={item}>
               <Link href={`/products/${item.id}`}>
@@ -173,14 +169,14 @@ export default function CategoryPage() {
             <button
               onClick={async (e) => {
                 e.preventDefault()
-                if (FavoriteLoading) return;
+                if (FavoriteLoading) return
                 await handleToggleFavorite(item.id)
               }}
               className={`absolute top-2 right-2 text-lg px-1.5 py-1.5 rounded-full hover:scale-110 transition-all z-10 ${FavoriteLoading ? 'opacity-60 pointer-events-none' : ''}`}
-              title={favorite.includes(item.id) ? '찜 해제' : '찜'}
+              title={favoriteList.includes(item.id) ? '찜 해제' : '찜'}
               disabled={FavoriteLoading}
             >
-              {favorite.includes(item.id)
+              {favoriteList.includes(item.id)
                 ? <FaHeart size={25} color="var(--foreground)" />
                 : <FaRegHeart size={25} color="var(--foreground)" />
               }
@@ -212,6 +208,7 @@ export default function CategoryPage() {
           </div>
         ))}
       </section>
+      {/* 페이지네이션 */}
       {totalPages > 1 && (
         <nav className="flex items-center gap-1 mt-5 mb-12">
           <button
@@ -222,15 +219,15 @@ export default function CategoryPage() {
             <ChevronLeft strokeWidth={1.5} />
           </button>
           {(() => {
-            const pageNumbers = [];
-            let start = Math.max(1, currentPage - 2);
-            let end = Math.min(totalPages, currentPage + 2);
+            const pageNumbers = []
+            let start = Math.max(1, currentPage - 2)
+            let end = Math.min(totalPages, currentPage + 2)
             if (end - start < 4) {
-              if (start === 1) end = Math.min(totalPages, start + 4);
-              else if (end === totalPages) start = Math.max(1, end - 4);
+              if (start === 1) end = Math.min(totalPages, start + 4)
+              else if (end === totalPages) start = Math.max(1, end - 4)
             }
             for (let i = start; i <= end; i++) {
-              pageNumbers.push(i);
+              pageNumbers.push(i)
             }
             return pageNumbers.map((pageNum) => (
               <button
@@ -241,7 +238,7 @@ export default function CategoryPage() {
                 onClick={() => gotoPage(pageNum)}
                 aria-current={pageNum === currentPage ? "page" : undefined}
               >{pageNum}</button>
-            ));
+            ))
           })()}
           <button
             className="px-2 py-1 text-sm font-medium hover:bg-neutral-100"
