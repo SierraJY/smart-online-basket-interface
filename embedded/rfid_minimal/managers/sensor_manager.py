@@ -96,14 +96,13 @@ class MultiSensorManager:
         
         # Run readers sequentially to prevent interference
         for reader in self.readers:
-            # Reset reader state before starting a new cycle
-            reader.reset()
-            
             # Check connection and reconnect if needed
             if not reader.connection.is_connected():
                 self.logger.warning(f"{reader.reader_id} not connected, attempting to reconnect")
                 reader.connection.connect()
                 time.sleep(0.5)  # Give some time for connection to stabilize
+                
+            # We'll skip the explicit reset() call here since start_multiple_polling will handle it
             
             # Start polling with detailed logging
             self.logger.debug(f"Starting multiple polling for {reader.reader_id} with count={self.polling_count}")
