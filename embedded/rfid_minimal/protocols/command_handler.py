@@ -52,13 +52,22 @@ class CommandHandler:
             command = self.create_command_frame(CMD_MULTIPLE_POLLING, parameters)
             self.logger.debug(f"Sending multiple polling command: {command.hex()}")
             
+            # Try to clear any pending data first
+            time.sleep(0.1)
+            
+            # Send the command
             success = self.connection.write_data(command)
             
             if success:
-                # Add a small delay to ensure command is processed
-                time.sleep(0.1)
+                # Add a larger delay to ensure command is processed
+                time.sleep(0.2)
                 self.last_response_time = time.time()
                 self.logger.info(f"Multiple polling command sent (count: {count})")
+                
+                # Debug check for any immediate response
+                in_waiting = self.connection.get_in_waiting()
+                if in_waiting > 0:
+                    self.logger.debug(f"Immediate response detected: {in_waiting} bytes in buffer")
             else:
                 self.logger.error("Failed to send multiple polling command")
             

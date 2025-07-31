@@ -106,13 +106,13 @@ class ConnectionHandler:
             
         try:
             self.logger.debug(f"{self.reader_id}: Writing {len(data)} bytes: {data.hex()}")
-            bytes_written = self.serial_conn.write(data)
-            # Flush to ensure data is sent immediately
+            # Match the old implementation - just call write() without checking return value
+            self.serial_conn.write(data)
+            # Flush to ensure data is sent immediately - this is critical
             self.serial_conn.flush()
-            success = bytes_written == len(data)
-            if not success:
-                self.logger.warning(f"{self.reader_id}: Wrote only {bytes_written} of {len(data)} bytes")
-            return success
+            # Reset the input buffer to clear any pending data
+            self.serial_conn.reset_input_buffer()
+            return True
         except Exception as e:
             self.logger.error(f"{self.reader_id}: Error writing data: {e}")
             return False

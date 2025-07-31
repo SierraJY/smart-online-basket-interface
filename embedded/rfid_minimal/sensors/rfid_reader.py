@@ -187,10 +187,31 @@ class RFIDReader:
             bool: Success status
         """
         self.reset()
+        self.logger.debug(f"{self.reader_id}: Starting multiple polling with count={count}")
+        
+        # Start the reading thread first
         self.is_running = True
         self.thread = threading.Thread(target=self._read_loop, daemon=True)
         self.thread.start()
-        return self.command_handler.send_multiple_polling_command(count)
+        
+        # Give the thread a moment to start
+        time.sleep(0.2)  # Increased delay to ensure thread is ready
+        
+        # Send the polling command - this is critical
+        # The order of operations is important here
+        self.logger.debug(f"{self.reader_id}: Sending polling command...")
+        result = self.command_handler.send_multiple_polling_command(count)
+        
+        if not result:
+            self.logger.error(f"{self.reader_id}: Failed to send multiple polling command")
+            self.is_running = False
+            return False
+        
+        # Give some time for the command to be processed by the device
+        time.sleep(0.2)  # Added delay after sending command
+        
+        self.logger.debug(f"{self.reader_id}: Polling started successfully")
+        return result
     
     def stop_multiple_polling(self) -> bool:
         """
@@ -216,6 +237,11 @@ class RFIDReader:
                     self.is_running = False
                     break
                 
+                # Explicitly check in_waiting before reading
+                in_waiting = self.connection.get_in_waiting()
+                if in_waiting > 0:
+                    self.logger.debug(f"{self.reader_id}: {in_waiting} bytes waiting in buffer")
+                
                 # Read available data
                 data = self.connection.read_data()
                 if data:
@@ -225,11 +251,11 @@ class RFIDReader:
                     # Add to buffer
                     buffer.extend(data)
                     
+                    # Log raw data for debugging
+                    self.logger.debug(f"{self.reader_id}: Raw data received: {data.hex()}")
+                    
                     # Process buffer
                     self._process_data(buffer)
-                    
-                    # Log raw data for debugging
-                    self.logger.debug(f"Raw data received: {data.hex()}")
                 else:
                     # Check for timeout
                     if time.time() - last_data_time > NO_RESPONSE_TIMEOUT:
