@@ -127,8 +127,6 @@ public class BasketSseService {
         }
     }
 
-
-
     /**
      * 고객의 기존 연결 제거 (새로고침/탭 이동 대응)
      */

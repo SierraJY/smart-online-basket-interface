@@ -27,8 +27,12 @@ public class BasketSseController {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+    // SSE 타임아웃 상수
+    private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L; // 30분
+    private static final long ERROR_EMITTER_TIMEOUT_MS = 5000L;  // 5초
+
+
     // 바구니 실시간 업데이트 SSE 스트림 연결
-    // SseEmitter : SSE 구현을 위한 클래스 [역할 : HTTP 연결 유지, 데이터 전송, 연결 상태 관리]
     @GetMapping(value = "/my/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamBasketUpdates(Authentication authentication) {
         try {
@@ -37,10 +41,7 @@ public class BasketSseController {
             // 인증된 사용자 정보 가져오기
             if (authentication == null || !authentication.isAuthenticated()) {
                 System.err.println("SSE 연결 실패: 인증되지 않은 사용자");
-
-                // 에러용 SseEmitter [짧은 타임 아웃, 즉시 종료]
-                // SSE 엔드포인트는 반드시 SseEmitter를 반환해야하므로, 비정상 상황에서도 SseEmitter 객체 만들어야함
-                SseEmitter errorEmitter = new SseEmitter(1000L);
+                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
                 try {
                     errorEmitter.send(SseEmitter.event()
                             .name("error")
@@ -58,7 +59,7 @@ public class BasketSseController {
             String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
             if (basketIdStr == null) {
                 System.err.println("SSE 연결 실패: 사용 중인 바구니가 없음");
-                SseEmitter errorEmitter = new SseEmitter(1000L);
+                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
                 try {
                     errorEmitter.send(SseEmitter.event()
                             .name("error")
@@ -73,7 +74,7 @@ public class BasketSseController {
                 basketId = Integer.parseInt(basketIdStr);
             } catch (NumberFormatException e) {
                 System.err.println("SSE 연결 실패: 바구니 ID 파싱 오류");
-                SseEmitter errorEmitter = new SseEmitter(1000L);
+                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
                 try {
                     errorEmitter.send(SseEmitter.event()
                             .name("error")
@@ -83,10 +84,10 @@ public class BasketSseController {
                 return errorEmitter;
             }
 
-            // SSE Emitter 생성 (30분 타임아웃)
-            SseEmitter emitter = new SseEmitter(30 * 60 * 1000L);
+            // SSE Emitter 생성 (상수 사용)
+            SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
-            // SSE 서비스에 등록
+            // SSE 서비스에 등록 (basketId 파라미터 제거)
             basketSseService.addEmitter(customerId, emitter);
 
             // 연결 즉시 현재 바구니 상태 전송
@@ -110,7 +111,7 @@ public class BasketSseController {
             System.err.println("바구니 SSE 연결 실패: " + e.getMessage());
             e.printStackTrace();
 
-            SseEmitter errorEmitter = new SseEmitter(1000L);
+            SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
             try {
                 errorEmitter.send(SseEmitter.event()
                         .name("error")

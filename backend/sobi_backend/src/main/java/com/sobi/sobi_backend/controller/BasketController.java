@@ -6,6 +6,7 @@ import com.sobi.sobi_backend.service.ReceiptService;
 import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,15 @@ public class BasketController {
 
     @Autowired
     private BasketCacheService basketCacheService; // 바구니 캐시 서비스
+
+    // application.properties에서 바구니 캐시 TTL 주입 (BasketCacheService와 동일)
+    @Value("${app.basket.cache-ttl-seconds}")
+    private long basketTtlSeconds;
+
+    // Properties에서 가져온 TTL 값으로 Duration 생성
+    private Duration getBasketTtl() {
+        return Duration.ofSeconds(basketTtlSeconds);
+    }
 
     // 바구니 사용 시작 (POST /api/baskets/start/{basketId})
     @PostMapping("/start/{basketId}")
@@ -86,12 +96,10 @@ public class BasketController {
             // 바구니 사용 시작 (상태 변경)
             basketService.startUsingBasket(basketId);
 
-            // Redis에 사용자-바구니 매핑 저장 (TTL 1시간)
-            redisTemplate.opsForValue().set(
-                    "user_basket:" + customerId,
-                    basketId.toString(),
-                    Duration.ofHours(1)
-            );
+            // Redis에 양방향 매핑 저장 (Properties에서 가져온 TTL 사용)
+            Duration ttl = getBasketTtl();
+            redisTemplate.opsForValue().set("user_basket:" + customerId, basketId.toString(), ttl);
+            redisTemplate.opsForValue().set("basket_user:" + basketId, customerId.toString(), ttl); // 역방향 매핑 추가
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "바구니 사용을 시작했습니다");
@@ -99,7 +107,7 @@ public class BasketController {
             response.put("customerId", customerId);
             response.put("basketId", basketId);
 
-            System.out.println("바구니 사용 시작 완료: basketId=" + basketId + ", 고객ID=" + customerId + ", Redis 저장 완료");
+            System.out.println("바구니 사용 시작 완료: basketId=" + basketId + ", 고객ID=" + customerId + ", Redis 양방향 매핑 저장 완료 (TTL: " + basketTtlSeconds + "초)");
             return ResponseEntity.ok(response); // 200 OK
         } catch (Exception e) {
             System.err.println("바구니 사용 시작 중 오류: " + e.getMessage());
@@ -140,6 +148,7 @@ public class BasketController {
             } catch (NumberFormatException e) {
                 // Redis 데이터 불일치 - 정리
                 redisTemplate.delete("user_basket:" + customerId);
+                redisTemplate.delete("basket_user:" + basketIdStr); // 역방향 매핑도 정리
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "바구니 정보가 올바르지 않습니다. 다시 시작해주세요");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
@@ -150,6 +159,7 @@ public class BasketController {
             if (basketOpt.isEmpty()) {
                 // Redis 데이터 불일치 - 정리
                 redisTemplate.delete("user_basket:" + customerId);
+                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "바구니 정보가 일치하지 않습니다. 다시 시작해주세요");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
@@ -221,6 +231,7 @@ public class BasketController {
             } catch (NumberFormatException e) {
                 // Redis 데이터 불일치 - 정리
                 redisTemplate.delete("user_basket:" + customerId);
+                redisTemplate.delete("basket_user:" + basketIdStr); // 역방향 매핑도 정리
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "바구니 정보가 올바르지 않습니다. 다시 시작해주세요");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
@@ -231,6 +242,7 @@ public class BasketController {
             if (basketOpt.isEmpty()) {
                 // Redis 데이터 불일치 - 정리
                 redisTemplate.delete("user_basket:" + customerId);
+                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "바구니 정보가 일치하지 않습니다. 다시 시작해주세요");
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
@@ -240,6 +252,7 @@ public class BasketController {
             if (basket.getUsable()) {
                 // Redis 데이터 불일치 - 정리
                 redisTemplate.delete("user_basket:" + customerId);
+                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "사용 중이지 않은 바구니입니다");
                 return ResponseEntity.badRequest().body(error); // 400 Bad Request
@@ -261,11 +274,12 @@ public class BasketController {
             // 바구니 반납 (결제 완료 후)
             basketService.returnBasket(basketId);
 
-            // Redis에서 바구니 데이터 삭제 (핵심!)
+            // Redis에서 바구니 데이터 삭제
             basketCacheService.clearBasketItems(basketId);
 
-            // Redis에서 사용자-바구니 매핑 삭제
+            // Redis에서 양방향 매핑 삭제
             redisTemplate.delete("user_basket:" + customerId);
+            redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 삭제
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "결제가 완료되었습니다");
@@ -275,7 +289,7 @@ public class BasketController {
             response.put("totalItems", epcPatterns.size());
             response.put("basketId", basketId);
 
-            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 영수증ID=" + receipt.getId() + ", Redis 삭제 완료");
+            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 영수증ID=" + receipt.getId() + ", Redis 양방향 매핑 삭제 완료");
             return ResponseEntity.ok(response); // 200 OK
         } catch (IllegalArgumentException e) { // 유효하지 않은 EPC 패턴 등
             System.err.println("바구니 결제 실패: " + e.getMessage());

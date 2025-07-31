@@ -115,34 +115,28 @@ public class BasketMqttHandler {
     }
 
     /**
-     * Redis에서 바구니를 사용하는 고객 ID 찾기
+     * Redis에서 바구니를 사용하는 고객 ID 찾기 [역방향 매핑 활용]
      *
      * @param basketId 바구니 ID
      * @return 고객 ID, 찾지 못하면 null
      */
     private Integer findCustomerByBasket(Integer basketId) {
         try {
-            // Redis에서 user_basket:* 패턴의 모든 키 조회
-            Set<String> keys = redisTemplate.keys("user_basket:*");
-            if (keys == null || keys.isEmpty()) {
-                System.out.println("Redis에 사용자-바구니 매핑이 없음");
+            // Redis에서 basket_user:{basketId} 키로 직접 조회 (O(1))
+            String customerIdStr = redisTemplate.opsForValue().get("basket_user:" + basketId);
+
+            if (customerIdStr != null) {
+                Integer customerId = Integer.parseInt(customerIdStr);
+                System.out.println("바구니 사용자 발견: basketId=" + basketId + " → 고객ID=" + customerId);
+                return customerId;
+            } else {
+                System.out.println("바구니 " + basketId + "를 사용하는 고객을 찾을 수 없음");
                 return null;
             }
 
-            for (String key : keys) {
-                String userBasketId = redisTemplate.opsForValue().get(key);
-                if (basketId.toString().equals(userBasketId)) {
-                    // "user_basket:123" → customerId = 123
-                    String customerIdStr = key.split(":")[1];
-                    Integer customerId = Integer.parseInt(customerIdStr);
-                    System.out.println("바구니 사용자 발견: basketId=" + basketId + " → 고객ID=" + customerId);
-                    return customerId;
-                }
-            }
-
-            System.out.println("바구니 " + basketId + "를 사용하는 고객을 찾을 수 없음");
+        } catch (NumberFormatException e) {
+            System.err.println("고객 ID 파싱 오류: " + e.getMessage());
             return null;
-
         } catch (Exception e) {
             System.err.println("고객 조회 중 오류: " + e.getMessage());
             return null;
