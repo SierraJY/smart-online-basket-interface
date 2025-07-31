@@ -48,42 +48,26 @@ class CommandHandler:
             count_lsb = count & 0xFF
             parameters = bytes([reserved, count_msb, count_lsb])
             
-            # Create and send command frame
+            # Create command frame
             command = self.create_command_frame(CMD_MULTIPLE_POLLING, parameters)
-            self.logger.debug(f"Sending multiple polling command: {command.hex()}")
             
-            # Try different approaches to ensure the command is received
+            # Clear buffers before sending
+            if self.connection.is_connected():
+                self.connection.serial_conn.reset_input_buffer()
+                self.connection.serial_conn.reset_output_buffer()
             
-            # 1. Clear any pending data first
-            self.connection.serial_conn.reset_input_buffer()
-            self.connection.serial_conn.reset_output_buffer()
-            time.sleep(0.2)
+            # Send command via connection handler
+            success = self.connection.write_data(command)
             
-            # 2. Send the command with proper flushing
-            self.logger.debug(f"Writing command to serial port: {command.hex()}")
-            bytes_written = self.connection.serial_conn.write(command)
-            self.logger.debug(f"Wrote {bytes_written} bytes")
-            
-            # 3. Flush output to ensure it's sent immediately
-            self.connection.serial_conn.flush()
-            self.logger.debug("Flushed output buffer")
-            
-            # 4. Wait for potential response
-            time.sleep(0.3)
-            
-            # 5. Check for immediate response
-            in_waiting = self.connection.get_in_waiting()
-            if in_waiting > 0:
-                self.logger.debug(f"Immediate response detected: {in_waiting} bytes in buffer")
-                # Try to read the response
-                response = self.connection.serial_conn.read(in_waiting)
-                self.logger.debug(f"Response data: {response.hex()}")
+            if success:
+                # Add a small delay to allow the reader to process the command
+                time.sleep(0.1)
+                self.last_response_time = time.time()
+                self.logger.info(f"Multiple polling command sent (count: {count})")
             else:
-                self.logger.debug("No immediate response detected")
+                self.logger.error("Failed to send multiple polling command")
             
-            self.last_response_time = time.time()
-            self.logger.info(f"Multiple polling command sent (count: {count})")
-            return True
+            return success
             
         except Exception as e:
             self.logger.error(f"Error sending multiple polling command: {e}")
@@ -97,36 +81,20 @@ class CommandHandler:
             bool: Success status
         """
         try:
-            # Create and send command frame (no parameters)
+            # Create command frame (no parameters)
             command = self.create_command_frame(CMD_STOP_MULTIPLE_POLLING)
-            self.logger.debug(f"Sending stop polling command: {command.hex()}")
             
-            # Use the same direct approach as with multiple polling
-            # 1. Clear any pending data first
-            self.connection.serial_conn.reset_input_buffer()
-            self.connection.serial_conn.reset_output_buffer()
-            time.sleep(0.1)
+            # Send command via connection handler
+            success = self.connection.write_data(command)
             
-            # 2. Send the command with proper flushing
-            self.logger.debug(f"Writing stop command to serial port: {command.hex()}")
-            bytes_written = self.connection.serial_conn.write(command)
-            self.logger.debug(f"Wrote {bytes_written} bytes")
+            if success:
+                # Add a small delay
+                time.sleep(0.1)
+                self.logger.info("Stop polling command sent")
+            else:
+                self.logger.error("Failed to send stop polling command")
             
-            # 3. Flush output to ensure it's sent immediately
-            self.connection.serial_conn.flush()
-            
-            # 4. Wait for potential response
-            time.sleep(0.2)
-            
-            # 5. Check for immediate response
-            in_waiting = self.connection.get_in_waiting()
-            if in_waiting > 0:
-                self.logger.debug(f"Immediate response to stop command: {in_waiting} bytes in buffer")
-                response = self.connection.serial_conn.read(in_waiting)
-                self.logger.debug(f"Stop command response: {response.hex()}")
-            
-            self.logger.info("Stop polling command sent")
-            return True
+            return success
             
         except Exception as e:
             self.logger.error(f"Error sending stop polling command: {e}")
@@ -147,18 +115,16 @@ class CommandHandler:
         if parameters is None:
             parameters = bytes()
             
-        # Calculate length (command + parameters)
-        length = 1 + len(parameters)
+        # Parameter length
+        param_len = len(parameters)
+        pl_msb = (param_len >> 8) & 0xFF
+        pl_lsb = param_len & 0xFF
         
-        # Create frame data: Type(1) + Length(1) + Command(1) + Parameters(n)
-        frame_data = bytes([FRAME_TYPE_COMMAND, length, command]) + parameters
+        # Data for checksum calculation (from Type to Parameter)
+        checksum_data = bytes([FRAME_TYPE_COMMAND, command, pl_msb, pl_lsb]) + parameters
+        checksum = self.frame_processor.calculate_checksum(checksum_data)
         
-        # Calculate checksum (XOR of all bytes in frame_data)
-        checksum = 0
-        for b in frame_data:
-            checksum ^= b
-            
-        # Assemble complete frame: Header(1) + Data(n) + Checksum(1) + End(1)
-        frame = bytes([FRAME_HEADER]) + frame_data + bytes([checksum, FRAME_END])
+        # Complete command frame
+        frame = bytes([FRAME_HEADER, FRAME_TYPE_COMMAND, command, pl_msb, pl_lsb]) + parameters + bytes([checksum, FRAME_END])
         
         return frame
