@@ -25,8 +25,8 @@ if __name__ == "__main__":
     # Parse command line arguments
     args = parse_arguments()
     
-    # Set up logging
-    setup_logging(args.log_level)
+    # Set up logging with DEBUG level to see more information
+    setup_logging("DEBUG")
     
     logger = logging.getLogger("rfid_minimal")
     logger.info("Starting RFID Minimal System from root directory")

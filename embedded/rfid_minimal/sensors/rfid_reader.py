@@ -227,11 +227,14 @@ class RFIDReader:
                     
                     # Process buffer
                     self._process_data(buffer)
+                    
+                    # Log raw data for debugging
+                    self.logger.debug(f"Raw data received: {data.hex()}")
                 else:
                     # Check for timeout
                     if time.time() - last_data_time > NO_RESPONSE_TIMEOUT:
                         # No data received for a while, assume polling is complete
-                        self.logger.debug("No response timeout")
+                        self.logger.debug(f"No response timeout for {self.reader_id}")
                         self.is_running = False
                         break
                 
@@ -239,7 +242,7 @@ class RFIDReader:
                 time.sleep(0.01)
                 
             except Exception as e:
-                self.logger.error(f"Error in read loop: {e}")
+                self.logger.error(f"Error in read loop for {self.reader_id}: {e}")
                 self.is_running = False
                 break
     
@@ -253,8 +256,13 @@ class RFIDReader:
         # Extract frames from buffer
         frames = self.frame_processor.process_response_buffer(buffer)
         
+        if frames:
+            self.logger.debug(f"Extracted {len(frames)} frames from buffer")
+        
         # Process each frame
         for frame, is_notification in frames:
+            self.logger.debug(f"Processing frame: {frame.hex()}, is_notification: {is_notification}")
+            
             if is_notification:
                 # Parse tag data
                 tag_info = self.frame_processor.parse_tag_data(frame)
@@ -262,6 +270,7 @@ class RFIDReader:
                 if tag_info:
                     # Store tag info
                     self.processed_tags[tag_info.raw_tag_id] = tag_info
+                    self.logger.info(f"Tag detected: {tag_info.raw_tag_id} (RSSI: {tag_info.rssi})")
                     
                     # Call callback if set
                     if self.tag_callback:
@@ -269,6 +278,8 @@ class RFIDReader:
                             self.tag_callback(self.reader_id, tag_info)
                         except Exception as e:
                             self.logger.error(f"Error in tag callback: {e}")
+                else:
+                    self.logger.debug(f"Failed to parse tag data from notification frame")
     
     def __enter__(self) -> "RFIDReader":
         """Context manager entry"""

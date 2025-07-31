@@ -50,13 +50,15 @@ class CommandHandler:
             
             # Create and send command frame
             command = self.create_command_frame(CMD_MULTIPLE_POLLING, parameters)
+            self.logger.debug(f"Sending multiple polling command: {command.hex()}")
+            
             success = self.connection.write_data(command)
             
             if success:
                 # Add a small delay to ensure command is processed
                 time.sleep(0.1)
                 self.last_response_time = time.time()
-                self.logger.debug(f"Multiple polling command sent (count: {count})")
+                self.logger.info(f"Multiple polling command sent (count: {count})")
             else:
                 self.logger.error("Failed to send multiple polling command")
             
@@ -76,12 +78,14 @@ class CommandHandler:
         try:
             # Create and send command frame (no parameters)
             command = self.create_command_frame(CMD_STOP_MULTIPLE_POLLING)
+            self.logger.debug(f"Sending stop polling command: {command.hex()}")
+            
             success = self.connection.write_data(command)
             
             if success:
                 # Add a small delay to ensure command is processed
                 time.sleep(0.1)
-                self.logger.debug("Stop polling command sent")
+                self.logger.info("Stop polling command sent")
             else:
                 self.logger.error("Failed to send stop polling command")
             

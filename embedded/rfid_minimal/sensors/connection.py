@@ -71,19 +71,23 @@ class ConnectionHandler:
             bytes: Read data
         """
         if not self.is_connected():
+            self.logger.debug(f"{self.reader_id}: Not connected, cannot read data")
             return b''
             
         try:
             if size is None:
                 # Read all available data
-                if self.serial_conn.in_waiting > 0:
-                    return self.serial_conn.read(self.serial_conn.in_waiting)
+                in_waiting = self.serial_conn.in_waiting
+                if in_waiting > 0:
+                    self.logger.debug(f"{self.reader_id}: Reading {in_waiting} bytes from buffer")
+                    return self.serial_conn.read(in_waiting)
                 return b''
             else:
                 # Read specific number of bytes
+                self.logger.debug(f"{self.reader_id}: Reading {size} bytes")
                 return self.serial_conn.read(size)
         except Exception as e:
-            self.logger.error(f"Error reading data: {e}")
+            self.logger.error(f"{self.reader_id}: Error reading data: {e}")
             return b''
     
     def write_data(self, data: bytes) -> bool:
@@ -97,13 +101,20 @@ class ConnectionHandler:
             bool: Success status
         """
         if not self.is_connected():
+            self.logger.warning(f"{self.reader_id}: Not connected, cannot write data")
             return False
             
         try:
+            self.logger.debug(f"{self.reader_id}: Writing {len(data)} bytes: {data.hex()}")
             bytes_written = self.serial_conn.write(data)
-            return bytes_written == len(data)
+            # Flush to ensure data is sent immediately
+            self.serial_conn.flush()
+            success = bytes_written == len(data)
+            if not success:
+                self.logger.warning(f"{self.reader_id}: Wrote only {bytes_written} of {len(data)} bytes")
+            return success
         except Exception as e:
-            self.logger.error(f"Error writing data: {e}")
+            self.logger.error(f"{self.reader_id}: Error writing data: {e}")
             return False
     
     def get_in_waiting(self) -> int:
