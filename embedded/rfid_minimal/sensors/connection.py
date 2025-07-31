@@ -4,6 +4,7 @@ Serial connection handler for RFID readers
 
 import logging
 import serial
+import time
 from typing import Optional
 
 from rfid_minimal.config.constants import NO_RESPONSE_TIMEOUT
@@ -116,19 +117,39 @@ class ConnectionHandler:
             return b''
             
         try:
+            # Add a small delay before reading to allow data to arrive
+            time.sleep(0.01)
+            
             if size is None:
                 # Read all available data
-                in_waiting = self.serial_conn.in_waiting
-                if in_waiting > 0:
-                    self.logger.debug(f"{self.reader_id}: Reading {in_waiting} bytes from buffer")
-                    return self.serial_conn.read(in_waiting)
-                return b''
+                try:
+                    in_waiting = self.serial_conn.in_waiting
+                    if in_waiting > 0:
+                        self.logger.debug(f"{self.reader_id}: Reading {in_waiting} bytes from buffer")
+                        data = self.serial_conn.read(in_waiting)
+                        return data
+                    return b''
+                except Exception as e:
+                    self.logger.warning(f"{self.reader_id}: Error checking in_waiting: {e}")
+                    # Fall back to read with timeout
+                    return self.serial_conn.read(1)
             else:
-                # Read specific number of bytes
+                # Read specific number of bytes with timeout
                 self.logger.debug(f"{self.reader_id}: Reading {size} bytes")
                 return self.serial_conn.read(size)
         except Exception as e:
             self.logger.error(f"{self.reader_id}: Error reading data: {e}")
+            # Try to recover connection if needed
+            if "device reports readiness to read but returned no data" in str(e):
+                self.logger.warning(f"{self.reader_id}: Possible timing issue with serial port, trying to recover")
+                try:
+                    # Reset the serial port
+                    if self.serial_conn and self.serial_conn.is_open:
+                        self.serial_conn.close()
+                        time.sleep(0.5)
+                        self.connect()
+                except Exception as recover_error:
+                    self.logger.error(f"{self.reader_id}: Failed to recover connection: {recover_error}")
             return b''
     
     def write_data(self, data: bytes) -> bool:

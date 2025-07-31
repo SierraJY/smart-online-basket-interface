@@ -261,19 +261,24 @@ class RFIDReader:
                     self.logger.debug(f"{self.reader_id}: {in_waiting} bytes waiting in buffer")
                 
                 # Read available data
-                data = self.connection.read_data()
-                if data:
-                    # Update last data time
-                    last_data_time = time.time()
-                    
-                    # Add to buffer
-                    buffer.extend(data)
-                    
-                    # Log raw data for debugging
-                    self.logger.debug(f"{self.reader_id}: Raw data received: {data.hex()}")
-                    
-                    # Process buffer
-                    self._process_data(buffer)
+                try:
+                    data = self.connection.read_data()
+                    if data:
+                        # Update last data time
+                        last_data_time = time.time()
+                        
+                        # Add to buffer
+                        buffer.extend(data)
+                        
+                        # Log raw data for debugging
+                        self.logger.debug(f"{self.reader_id}: Raw data received: {data.hex()}")
+                        
+                        # Process buffer
+                        self._process_data(buffer)
+                except Exception as e:
+                    self.logger.error(f"{self.reader_id}: Error in read loop while reading data: {e}")
+                    # Short pause to avoid tight loop if there are persistent errors
+                    time.sleep(0.1)
                 else:
                     # Check for timeout
                     elapsed_time = time.time() - last_data_time
