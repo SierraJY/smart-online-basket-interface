@@ -36,10 +36,10 @@ def generate_report():
     raw_association, image_association = generate_association_summary()
 
     # 2. 각 요약 텍스트를 LLM에 넣어 문장 정제
-    summary_customer = summarize_with_llm(raw_customer)
-    summary_prophet = summarize_with_llm(raw_prophet)
-    summary_restock = summarize_with_llm(raw_restock)
-    summary_association = summarize_with_llm(raw_association)
+    summary_customer = summarize_with_llm(raw_customer, system_message="고객 세분화 결과를 마케팅팀 보고서 스타일로 요약해줘.")
+    summary_prophet = summarize_with_llm(raw_prophet, system_message="판매 예측 결과를 마케팅 전략 보고서 형식으로 요약해줘.")
+    summary_restock = summarize_with_llm(raw_restock, system_message="재고 및 발주 예측 결과를 요약해줘. 강조점은 관리자에게 전달할 정보야.")
+    summary_association = summarize_with_llm(raw_association, system_message="연관 규칙 분석 결과를 매대 구성 및 묶음 상품 추천 전략 중심으로 요약해줘.")
 
     # 3. 템플릿에 넣을 context 구성
     context = {
