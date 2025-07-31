@@ -110,7 +110,7 @@ class CartManager:
         self.items_returned_this_cycle.clear()
         self.cart_changed = False
     
-    def process_cycle_results(self, cycle_results: Dict[str, Set[str]], sensor_manager: 'MultiSensorManager') -> None:
+    def process_cycle_results(self, cycle_results: Dict[str, Set[str]], sensor_manager: Any) -> None:
         """
         Process the results of a polling cycle.
         
@@ -226,17 +226,36 @@ class CartManager:
         Returns:
             Dictionary with cart data and change information
         """
-        from rfid_minimal.core.parser import parse_pid, format_cart_for_mqtt
+        from rfid_minimal.core.parser import parse_pid
         from rfid_minimal.config.config import BASKET_ID
+        import json
+        from collections import Counter
         
-        # Format cart data for MQTT
-        cart_data = format_cart_for_mqtt(self.confirmed_items, BASKET_ID)
+        # Parse PIDs from all confirmed items (similar to format_cart_for_mqtt but returning a dict)
+        product_counts = Counter()
         
-        # Add change information
-        cart_data["changes"] = {
-            "added": [tag_id for tag_id in self.items_added_this_cycle],
-            "removed": [tag_id for tag_id in self.items_removed_this_cycle],
-            "returned": [tag_id for tag_id in self.items_returned_this_cycle]
+        for item in self.confirmed_items:
+            try:
+                parsed = parse_pid(item)
+                pid = parsed.get('pid', '')
+                
+                # Only count items with valid PIDs (4 characters)
+                if pid and len(pid) == 4:
+                    product_counts[pid] += 1
+                else:
+                    self.logger.warning(f"Skipping item with invalid PID: {item}")
+            except Exception as e:
+                self.logger.error(f"Error processing item {item} for MQTT: {e}")
+        
+        # Create the MQTT message format as a dictionary (not a string)
+        cart_data = {
+            "id": BASKET_ID,
+            "list": dict(product_counts),
+            "changes": {
+                "added": [tag_id for tag_id in self.items_added_this_cycle],
+                "removed": [tag_id for tag_id in self.items_removed_this_cycle],
+                "returned": [tag_id for tag_id in self.items_returned_this_cycle]
+            }
         }
         
         return cart_data

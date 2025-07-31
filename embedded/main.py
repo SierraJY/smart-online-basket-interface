@@ -150,8 +150,11 @@ def run_rfid_system(
             def on_cart_change(cart_data: Dict[str, Any]) -> None:
                 """Callback function for cart changes that publishes to MQTT"""
                 try:
-                    logger.info(f"Cart changed - Publishing to MQTT: {cart_data}")
-                    publish_result = publish_message(message=cart_data)
+                    import json
+                    # Convert dictionary to JSON string for MQTT
+                    cart_json = json.dumps(cart_data)
+                    logger.info(f"Cart changed - Publishing to MQTT: {cart_json}")
+                    publish_result = publish_message(message=cart_json)
                     
                     if publish_result:
                         logger.info("MQTT publish successful")
@@ -250,8 +253,10 @@ def run_rfid_system(
                 if should_publish:
                     try:
                         # Publish to MQTT (scheduled update)
-                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_data}")
-                        publish_result = publish_message(message=cart_data)
+                        import json
+                        cart_json = json.dumps(cart_data)
+                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_json}")
+                        publish_result = publish_message(message=cart_json)
                         
                         if publish_result:
                             logger.info("MQTT publish successful")
@@ -365,8 +370,13 @@ if __name__ == "__main__":
     if not "error" in result and mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
         try:
             final_cart_data = result["final_cart_data"]
-            logger.info(f"Publishing cart data to MQTT: {final_cart_data}")
-            publish_result = publish_message(message=final_cart_data)
+            import json
+            if isinstance(final_cart_data, dict):
+                final_cart_json = json.dumps(final_cart_data)
+            else:
+                final_cart_json = final_cart_data
+            logger.info(f"Publishing cart data to MQTT: {final_cart_json}")
+            publish_result = publish_message(message=final_cart_json)
             
             if publish_result:
                 logger.info("MQTT publish successful")
