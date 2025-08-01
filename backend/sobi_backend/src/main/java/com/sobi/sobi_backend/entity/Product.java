@@ -3,15 +3,14 @@ package com.sobi.sobi_backend.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "product",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"name", "image_url"}))
+@Table(name = "product")
 public class Product {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
 
     @Column(name = "price", nullable = false)

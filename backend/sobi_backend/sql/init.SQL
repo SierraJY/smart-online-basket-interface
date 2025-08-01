@@ -21,7 +21,7 @@ CREATE TABLE customer (
 -- Create product table (상품 정보)
 CREATE TABLE product (
                          id SERIAL PRIMARY KEY,
-                         name VARCHAR(255) NOT NULL,
+                         name VARCHAR(255) NOT NULL UNIQUE, -- name만 UNIQUE 제약조건
                          price INTEGER NOT NULL,
                          stock INTEGER NOT NULL DEFAULT 0,
                          category VARCHAR(255) DEFAULT NULL,
@@ -31,10 +31,7 @@ CREATE TABLE product (
                          tag VARCHAR(255) DEFAULT NULL, -- "#tag1#tag2#tag3" 형식
                          location VARCHAR(255) DEFAULT NULL,
                          description TEXT DEFAULT NULL,
-                         brand VARCHAR(255) DEFAULT NULL, -- 브랜드 (NULL 가능)
-
-    -- name과 image_url 조합의 UNIQUE 제약조건 추가
-                         CONSTRAINT unique_product_name_image UNIQUE (name, image_url)
+                         brand VARCHAR(255) DEFAULT NULL -- 브랜드 (NULL 가능)
 );
 
 -- Create basket table (바구니 매핑)
