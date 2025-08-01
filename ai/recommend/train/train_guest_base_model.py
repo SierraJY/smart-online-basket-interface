@@ -6,9 +6,12 @@ import joblib
 from collections import Counter, defaultdict
 
 
-def build_co_purchase_dict(purchase_df, product_col='id', session_col='purchased_at', top_n=5):
+def build_co_purchase_dict(purchase_df, product_col='product_id', session_col='session_id', top_n=5):
+    """
+    같은 session_id 안에서 함께 구매된 product_id들을 기준으로 공동구매 사전 생성
+    """
     co_purchase = defaultdict(Counter)
-    for purchased_at, group in purchase_df.groupby(session_col):
+    for session_id, group in purchase_df.groupby(session_col):
         items = group[product_col].tolist()
         for i in range(len(items)):
             for j in range(len(items)):
@@ -22,7 +25,7 @@ def build_co_purchase_dict(purchase_df, product_col='id', session_col='purchased
 
 def train_full_initial_model(
     tag_csv_path,
-    purchase_jsonl_path,
+    purchase_history_csv_path,
     save_dir='../parameters/guest_model',
     top_n=6,
     n_neighbors=5
@@ -36,16 +39,18 @@ def train_full_initial_model(
 
     # 2. TF-IDF 벡터 학습
     vectorizer = TfidfVectorizer()
-    tag_matrix = vectorizer.fit_transform(df_items['tag'])  # '#단짠 #간식' 형식 → 공백 기준 분리
+    tag_matrix = vectorizer.fit_transform(df_items['tag'])
 
     # 3. KNN 학습
     knn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine')
     knn.fit(tag_matrix)
 
     # 4. 공동구매 사전 생성
-    df_purchase = pd.read_json(purchase_jsonl_path, lines=True)
-    assert 'purchased_at' in df_purchase.columns and 'id' in df_purchase.columns
-    co_purchase_dict = build_co_purchase_dict(df_purchase, product_col='id', session_col='purchased_at', top_n=top_n)
+    df_purchase = pd.read_csv(purchase_history_csv_path)
+    assert 'session_id' in df_purchase.columns and 'product_id' in df_purchase.columns
+    co_purchase_dict = build_co_purchase_dict(
+        df_purchase, product_col='product_id', session_col='session_id', top_n=top_n
+    )
 
     # 5. 모델 저장
     joblib.dump(vectorizer, os.path.join(save_dir, 'tfidf_vectorizer.pkl'))
@@ -56,8 +61,9 @@ def train_full_initial_model(
 
     print(f"[✓] 초기 학습 및 저장 완료 → {save_dir}/")
 
+
 if __name__ == "__main__":
     train_full_initial_model(
-        tag_csv_path='../data/products_all_tagged.csv',
-        purchase_jsonl_path='../data/purchase_history.jsonl'
+        tag_csv_path='../data/products.csv',
+        purchase_history_csv_path='../data/purchased_history.csv'
     )
