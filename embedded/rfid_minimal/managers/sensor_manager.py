@@ -79,6 +79,72 @@ class MultiSensorManager:
             self.readers.append(reader)
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
+        
+        # Configure all readers
+        self.configure_readers()
+        
+    def configure_readers(self, work_area: int = 6, freq_hopping: int = 1, power_dbm: int = 26, channel_index: int = 1) -> None:
+        """
+        Configure all readers with the specified settings
+        
+        Args:
+            work_area: Work area code
+                - 1: China 900MHz (CH_Index * 0.25MHz + 920.125MHz)
+                - 2: US (CH_Index * 0.5MHz + 902.25MHz)
+                - 3: EU (CH_Index * 0.2MHz + 865.1MHz)
+                - 4: China 800MHz (CH_Index * 0.25MHz + 840.125MHz)
+                - 6: Korea (CH_Index * 0.2MHz + 917.1MHz)
+            freq_hopping: Frequency hopping mode (0: disable, 1: enable)
+            power_dbm: Transmitting power in dBm (typically 0-30)
+            channel_index: Working channel index (1-50)
+                If freq_hopping is enabled, this parameter is ignored
+        """
+        # Map region codes to names for better logging
+        region_map = {
+            1: "China 900MHz",
+            2: "US",
+            3: "EU",
+            4: "China 800MHz",
+            6: "Korea"
+        }
+        region_name = region_map.get(work_area, f"Unknown({work_area})")
+        
+        # Calculate frequency based on region and channel index
+        freq_info = ""
+        if work_area == 1:  # China 900MHz
+            freq = 920.125 + (channel_index * 0.25)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 2:  # US
+            freq = 902.25 + (channel_index * 0.5)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 3:  # EU
+            freq = 865.1 + (channel_index * 0.2)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 4:  # China 800MHz
+            freq = 840.125 + (channel_index * 0.25)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 6:  # Korea
+            freq = 917.1 + (channel_index * 0.2)
+            freq_info = f", freq={freq:.3f}MHz"
+        
+        channel_info = f", channel={channel_index}{freq_info}" if not freq_hopping else ""
+        self.logger.info(f"Configuring {len(self.readers)} readers: region={region_name}, freq_hopping={'enabled' if freq_hopping else 'disabled'}, power={power_dbm}dBm{channel_info}")
+        
+        for reader in self.readers:
+            try:
+                if not reader.connection.is_connected():
+                    reader.connection.connect()
+                
+                success = reader.configure_reader(work_area, freq_hopping, power_dbm, channel_index)
+                if success:
+                    self.logger.info(f"{reader.reader_id}: Configuration successful")
+                else:
+                    self.logger.warning(f"{reader.reader_id}: Configuration failed")
+            except Exception as e:
+                self.logger.error(f"Error configuring reader {reader.reader_id}: {e}")
+                
+        # Wait a moment for all readers to apply settings
+        time.sleep(0.5)
     
     def run_polling_cycle(self, timeout: float = 0.5) -> Dict[str, Set[str]]:
         """

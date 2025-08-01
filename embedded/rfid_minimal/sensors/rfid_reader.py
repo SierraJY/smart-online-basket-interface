@@ -181,6 +181,99 @@ class RFIDReader:
         # Add a small delay after connecting to ensure device is ready
         time.sleep(0.1)
         
+    def configure_reader(self, work_area: int = 6, freq_hopping: int = 1, power_dbm: int = 26, channel_index: int = 1) -> bool:
+        """
+        Configure reader settings (work area, frequency hopping, transmitting power, working channel)
+        
+        Args:
+            work_area: Work area code
+                - 1: China 900MHz (CH_Index * 0.25MHz + 920.125MHz)
+                - 2: US (CH_Index * 0.5MHz + 902.25MHz)
+                - 3: EU (CH_Index * 0.2MHz + 865.1MHz)
+                - 4: China 800MHz (CH_Index * 0.25MHz + 840.125MHz)
+                - 6: Korea (CH_Index * 0.2MHz + 917.1MHz)
+            freq_hopping: Frequency hopping mode (0: disable, 1: enable)
+            power_dbm: Transmitting power in dBm (typically 0-30)
+            channel_index: Working channel index (1-50)
+                If freq_hopping is enabled, this parameter is ignored
+            
+        Returns:
+            bool: Success status
+        """
+        # Map region codes to names for better logging
+        region_map = {
+            1: "China 900MHz",
+            2: "US",
+            3: "EU",
+            4: "China 800MHz",
+            6: "Korea"
+        }
+        region_name = region_map.get(work_area, f"Unknown({work_area})")
+        
+        # Calculate frequency based on region and channel index
+        freq_info = ""
+        if work_area == 1:  # China 900MHz
+            freq = 920.125 + (channel_index * 0.25)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 2:  # US
+            freq = 902.25 + (channel_index * 0.5)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 3:  # EU
+            freq = 865.1 + (channel_index * 0.2)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 4:  # China 800MHz
+            freq = 840.125 + (channel_index * 0.25)
+            freq_info = f", freq={freq:.3f}MHz"
+        elif work_area == 6:  # Korea
+            freq = 917.1 + (channel_index * 0.2)
+            freq_info = f", freq={freq:.3f}MHz"
+        
+        self.logger.info(f"{self.reader_id}: Configuring reader (region={region_name}, freq_hopping={'enabled' if freq_hopping else 'disabled'}, power={power_dbm}dBm, channel={channel_index}{freq_info})")
+        
+        # Make sure we're connected
+        if not self.connection.is_connected():
+            success = self.connection.connect()
+            if not success:
+                self.logger.error(f"{self.reader_id}: Failed to connect for configuration")
+                return False
+                
+        # Set work area (frequency band)
+        success = self.command_handler.send_set_work_area_command(work_area)
+        if not success:
+            self.logger.error(f"{self.reader_id}: Failed to set work area")
+            return False
+            
+        # Small delay between commands
+        time.sleep(0.2)
+        
+        # Set frequency hopping
+        success = self.command_handler.send_set_frequency_hopping_command(freq_hopping)
+        if not success:
+            self.logger.error(f"{self.reader_id}: Failed to set frequency hopping")
+            return False
+            
+        # Small delay between commands
+        time.sleep(0.2)
+        
+        # Set working channel if frequency hopping is disabled
+        if not freq_hopping:
+            success = self.command_handler.send_set_working_channel_command(channel_index)
+            if not success:
+                self.logger.error(f"{self.reader_id}: Failed to set working channel")
+                return False
+                
+            # Small delay between commands
+            time.sleep(0.2)
+        
+        # Set transmitting power
+        success = self.command_handler.send_set_transmitting_power_command(power_dbm)
+        if not success:
+            self.logger.error(f"{self.reader_id}: Failed to set transmitting power")
+            return False
+            
+        self.logger.info(f"{self.reader_id}: Reader configuration completed successfully")
+        return True
+        
         # Only send a stop command if we're not already in a clean state
         # This prevents sending unnecessary stop commands that might disrupt the connection
         if self.connection.get_in_waiting() > 0:

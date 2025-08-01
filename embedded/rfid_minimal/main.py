@@ -64,6 +64,35 @@ def parse_arguments():
     )
     
     parser.add_argument(
+        "--work-area", 
+        type=int, 
+        default=6, 
+        help="Work area code (1: China 900MHz, 2: US, 3: EU, 4: China 800MHz, 6: Korea) (default: 6)"
+    )
+    
+    parser.add_argument(
+        "--channel", 
+        type=int, 
+        default=1, 
+        help="Working channel index (1-50, only used when freq-hopping=0) (default: 1)"
+    )
+    
+    parser.add_argument(
+        "--freq-hopping", 
+        type=int, 
+        choices=[0, 1], 
+        default=1, 
+        help="Frequency hopping mode (0: disable, 1: enable) (default: 1)"
+    )
+    
+    parser.add_argument(
+        "--power", 
+        type=int, 
+        default=26, 
+        help="Transmitting power in dBm (0-30) (default: 26)"
+    )
+    
+    parser.add_argument(
         "--presence-threshold", 
         type=int, 
         default=2, 
@@ -120,7 +149,11 @@ def run_rfid_system(
     absence_threshold: int = 2,
     timeout: float = 5.0,
     mqtt_enabled: bool = None,
-    basket_id: str = None
+    basket_id: str = None,
+    work_area: int = 6,
+    freq_hopping: int = 1,
+    power_dbm: int = 26,
+    channel_index: int = 1
 ) -> Dict[str, Any]:
     """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
@@ -132,6 +165,9 @@ def run_rfid_system(
             polling_count=polling_count,
             rssi_threshold=rssi_threshold
         )
+        
+        # Configure readers with specified settings
+        manager.configure_readers(work_area=work_area, freq_hopping=freq_hopping, power_dbm=power_dbm, channel_index=channel_index)
         
         # Create cart manager
         cart_manager = CartManager(
@@ -322,7 +358,13 @@ if __name__ == "__main__":
         rssi_threshold=args.rssi_threshold,
         presence_threshold=args.presence_threshold,
         absence_threshold=args.absence_threshold,
-        timeout=args.timeout
+        timeout=args.timeout,
+        mqtt_enabled=args.mqtt_enabled,
+        basket_id=args.basket_id,
+        work_area=args.work_area,
+        freq_hopping=args.freq_hopping,
+        power_dbm=args.power,
+        channel_index=args.channel
     )
     
     # Print result summary
