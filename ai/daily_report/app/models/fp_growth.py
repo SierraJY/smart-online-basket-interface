@@ -1,10 +1,11 @@
 import pandas as pd
-import psycopg2
 from sqlalchemy import create_engine
 from mlxtend.frequent_patterns import fpgrowth, association_rules
 import matplotlib.pyplot as plt
 import os
 from datetime import datetime, timedelta
+
+plt.rcParams["font.family"] = "Malgun Gothic"
 
 # 도커 네트워크 기준 PostgreSQL 주소
 DB_URL = 'postgresql://user:password@db:5432/mydatabase'
@@ -93,12 +94,14 @@ def generate_association_summary():
     if isinstance(df['cart_list'].iloc[0], str):
         df['cart_list'] = df['cart_list'].apply(eval)
 
-    # 4. FP-Growth 분석 및 시각화
-    image_path = 'static/images/assoc_rules.png'
+    # 4. 분석 및 시각화
+    output_dir = "./output"
+    os.makedirs(output_dir, exist_ok=True)
+    image_path = os.path.abspath(os.path.join(output_dir, "fp_growth_rules.png"))
+
     model = FPGrowthRecommender(min_support=0.01, min_confidence=0.5)
     model.fit(df)
     sentences = model.get_rule_sentences(save_path=image_path)
 
-    # 5. 요약 문장과 이미지 경로 반환
+    # 5. 리포트 텍스트 + 시각화 이미지 절대경로 반환
     return '\n'.join(sentences), image_path
-

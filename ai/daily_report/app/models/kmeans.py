@@ -8,6 +8,8 @@ from collections import Counter
 import os
 from datetime import datetime, timedelta
 
+plt.rcParams["font.family"] = "Malgun Gothic"
+
 DB_URL = "postgresql://user:password@db:5432/mydb"
 
 
@@ -25,8 +27,12 @@ def get_age_group(age):
         return "20대"
     elif age < 40:
         return "30대"
+    elif age < 50:
+        return "40대"
+    elif age < 60:
+        return "50대"
     else:
-        return "40대 이상"
+        return "60대 이상"
 
 
 def load_and_preprocess():
@@ -37,7 +43,7 @@ def load_and_preprocess():
     query = f"""
     SELECT r.user_id, r.product_list, r.purchased_at, u.gender, u.age
     FROM receipt r
-    INNER JOIN user u ON r.user_id = u.id
+    INNER JOIN "user" u ON r.user_id = u.id
     WHERE r.purchased_at BETWEEN '{start_date}' AND '{end_date}'
     """
     df = pd.read_sql(query, engine)
@@ -69,14 +75,16 @@ def load_and_preprocess():
     return agg
 
 
-def perform_clustering(df, n_clusters=4, save_path='static/images/spend_kmeans.png'):
+def perform_clustering(df, n_clusters=4, save_dir="./output", filename="kmeans_clusters.png"):
+    # 피처 표준화
     scaler = StandardScaler()
     X = scaler.fit_transform(df[['total_amount', 'avg_amount', 'purchase_count']])
 
+    # 군집화
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     df['cluster'] = kmeans.fit_predict(X)
 
-    # 리포트 생성
+    # 요약 생성
     results = []
     for cluster_id, group in df.groupby('cluster'):
         mean_total = int(group['total_amount'].mean())
@@ -95,21 +103,23 @@ def perform_clustering(df, n_clusters=4, save_path='static/images/spend_kmeans.p
         )
         results.append(summary)
 
-    # 시각화
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    plt.figure(figsize=(8, 6))
+    # 시각화 저장
+    os.makedirs(save_dir, exist_ok=True)
+    image_path = os.path.abspath(os.path.join(save_dir, filename))
+
     cluster_counts = df['cluster'].value_counts().sort_index()
-    plt.bar(cluster_counts.index.astype(str), cluster_counts.values, color='orange')
+    plt.figure(figsize=(8, 6))
+    bars = plt.bar(cluster_counts.index.astype(str), cluster_counts.values, color='orange')
     plt.title('클러스터별 고객 수')
     plt.xlabel('Cluster ID')
     plt.ylabel('고객 수')
     for i, v in enumerate(cluster_counts.values):
         plt.text(i, v + 0.5, str(v), ha='center')
     plt.tight_layout()
-    plt.savefig(save_path)
+    plt.savefig(image_path)
     plt.close()
 
-    return '\n\n'.join(results), save_path
+    return '\n\n'.join(results), image_path
 
 
 def generate_spend_cluster_summary():
