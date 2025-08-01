@@ -12,6 +12,7 @@ from rfid_minimal.sensors.connection import ConnectionHandler
 from rfid_minimal.protocols.command_handler import CommandHandler
 from rfid_minimal.protocols.frame_processor import FrameProcessor
 from rfid_minimal.core.models import TagInfo
+from rfid_minimal.utils.frequency_calculator import get_frequency_info
 
 class RFIDReader:
     """RFID Reader class for multi-polling operations"""
@@ -200,35 +201,16 @@ class RFIDReader:
         Returns:
             bool: Success status
         """
-        # Map region codes to names for better logging
-        region_map = {
-            1: "China 900MHz",
-            2: "US",
-            3: "EU",
-            4: "China 800MHz",
-            6: "Korea"
-        }
-        region_name = region_map.get(work_area, f"Unknown({work_area})")
+        # Get frequency information using the utility function
+        freq_info = get_frequency_info(work_area, channel_index)
+        region_name = freq_info["region_name"]
         
-        # Calculate frequency based on region and channel index
-        freq_info = ""
-        if work_area == 1:  # China 900MHz
-            freq = 920.125 + (channel_index * 0.25)
-            freq_info = f", freq={freq:.3f}MHz"
-        elif work_area == 2:  # US
-            freq = 902.25 + (channel_index * 0.5)
-            freq_info = f", freq={freq:.3f}MHz"
-        elif work_area == 3:  # EU
-            freq = 865.1 + (channel_index * 0.2)
-            freq_info = f", freq={freq:.3f}MHz"
-        elif work_area == 4:  # China 800MHz
-            freq = 840.125 + (channel_index * 0.25)
-            freq_info = f", freq={freq:.3f}MHz"
-        elif work_area == 6:  # Korea
-            freq = 917.1 + (channel_index * 0.2)
-            freq_info = f", freq={freq:.3f}MHz"
+        # Format frequency information for logging
+        freq_str = ""
+        if "frequency_str" in freq_info and not freq_hopping:
+            freq_str = f", freq={freq_info['frequency_str']}"
         
-        self.logger.info(f"{self.reader_id}: Configuring reader (region={region_name}, freq_hopping={'enabled' if freq_hopping else 'disabled'}, power={power_dbm}dBm, channel={channel_index}{freq_info})")
+        self.logger.info(f"{self.reader_id}: Configuring reader (region={region_name}, freq_hopping={'enabled' if freq_hopping else 'disabled'}, power={power_dbm}dBm, channel={channel_index}{freq_str})")
         
         # Make sure we're connected
         if not self.connection.is_connected():
