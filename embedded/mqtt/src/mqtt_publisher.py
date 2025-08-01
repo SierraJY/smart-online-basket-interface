@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
-import config
+import logging
+from mqtt import config
 
 def publish_message(topic=None, message=None, qos=0, retain=False):
     """
@@ -36,11 +37,12 @@ def publish_message(topic=None, message=None, qos=0, retain=False):
         result = client.publish(topic, message, qos=qos, retain=retain)
         
         # Check if publish was successful
+        logger = logging.getLogger("rfid_minimal")
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            print(f"[SENT] Topic: {topic} / Message: {message}")
+            logger.info(f"[MQTT] SENT Topic: {topic} / Message: {message}")
             success = True
         else:
-            print(f"[ERROR] Failed to publish message. Return code: {result.rc}")
+            logger.error(f"[MQTT] Failed to publish message. Return code: {result.rc}")
             success = False
             
         # Disconnect
@@ -48,9 +50,19 @@ def publish_message(topic=None, message=None, qos=0, retain=False):
         return success
         
     except Exception as e:
-        print(f"[ERROR] Exception while publishing: {str(e)}")
+        logger = logging.getLogger("rfid_minimal")
+        logger.error(f"[MQTT] Exception while publishing: {str(e)}")
         return False
 
 if __name__ == "__main__":
+    # Set up basic logging for standalone usage
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    logger = logging.getLogger("rfid_minimal")
+    
     # Example usage
-    publish_message(message="Hello from MQTT Publisher!") 
+    logger.info("Testing MQTT Publisher...")
+    result = publish_message(message="Hello from MQTT Publisher!")
+    logger.info(f"Publish result: {result}") 

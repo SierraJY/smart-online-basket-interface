@@ -7,11 +7,24 @@ import logging
 import argparse
 import sys
 import time
+import importlib.util
 from typing import Dict, Set, List
 
 from rfid_minimal.sensor_manager import MultiSensorManager
 from rfid_minimal.models import TagInfo
 from rfid_minimal.cart_manager import CartManager
+from rfid_minimal.parser import parse_pid, format_cart_for_mqtt
+import rfid_minimal.config as config
+
+# Try to import MQTT publisher
+mqtt_available = False
+try:
+    mqtt_spec = importlib.util.find_spec('mqtt.src.mqtt_publisher')
+    if mqtt_spec:
+        from mqtt.src.mqtt_publisher import publish_message
+        mqtt_available = True
+except ImportError:
+    pass
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -80,6 +93,24 @@ def parse_arguments():
         help="Polling timeout in seconds (default: 5.0)"
     )
     
+    parser.add_argument(
+        "--mqtt-enabled",
+        action="store_true",
+        help="Enable MQTT publishing (default: use config setting)"
+    )
+    
+    parser.add_argument(
+        "--mqtt-disabled",
+        action="store_true",
+        help="Disable MQTT publishing (default: use config setting)"
+    )
+    
+    parser.add_argument(
+        "--basket-id",
+        type=str,
+        help="Set the basket ID for MQTT publishing (default: from config)"
+    )
+    
     return parser.parse_args()
 
 # Removed on_tag_detected function as it's now defined inline in run_rfid_system
@@ -90,7 +121,9 @@ def run_rfid_system(
     rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
-    timeout: float = 5.0
+    timeout: float = 5.0,
+    mqtt_enabled: bool = None,
+    basket_id: str = None
 ) -> None:
     """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
@@ -164,10 +197,43 @@ def run_rfid_system(
             for item in cart_summary["confirmed_items"]:
                 item_details = cart_manager.get_item_details(item)
                 if item_details:
-                    logger.info(f"  - {item} (Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
+                    # Parse the tag ID to extract the PID
+                    parsed_info = parse_pid(item)
+                    pid = parsed_info.get('pid', 'Unknown')
+                    logger.info(f"  - {item} (PID: {pid}, Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
             for item in cart_summary["removed_items"]:
-                logger.info(f"  - {item} (Removed)")
+                # Parse removed items as well
+                parsed_info = parse_pid(item)
+                pid = parsed_info.get('pid', 'Unknown')
+                logger.info(f"  - {item} (PID: {pid}, Removed)")
 
+            # Publish cart data to MQTT if enabled
+            if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else config.MQTT_ENABLED):
+                # Check if we should publish this cycle
+                should_publish = (config.MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle % config.MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle == cycles)
+                
+                if should_publish:
+                    try:
+                        # Format cart data for MQTT
+                        basket_id_to_use = basket_id if basket_id else config.BASKET_ID
+                        mqtt_message = format_cart_for_mqtt(
+                            cart_summary["confirmed_items"], 
+                            basket_id_to_use
+                        )
+                        
+                        # Publish to MQTT
+                        logger.info(f"Publishing cart data to MQTT: {mqtt_message}")
+                        publish_result = publish_message(message=mqtt_message)
+                        
+                        if publish_result:
+                            logger.info("MQTT publish successful")
+                        else:
+                            logger.error("MQTT publish failed")
+                    except Exception as e:
+                        logger.error(f"Error publishing to MQTT: {e}")
+            
             # Wait between cycles
             if cycle < cycles:
                 time.sleep(1.0)
@@ -194,11 +260,17 @@ def run_rfid_system(
         for item in confirmed_items:
             item_details = cart_manager.get_item_details(item)
             if item_details:
-                logger.info(f"  - {item} (Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
+                # Parse the tag ID to extract the PID
+                parsed_info = parse_pid(item)
+                pid = parsed_info.get('pid', 'Unknown')
+                logger.info(f"  - {item} (PID: {pid}, Avg RSSI: {item_details.avg_rssi:.1f}, Detections: {item_details.detection_count})")
         
         logger.info(f"Items removed from cart: {len(removed_items)}")
         for item in removed_items:
-            logger.info(f"  - {item}")
+            # Parse removed items as well
+            parsed_info = parse_pid(item)
+            pid = parsed_info.get('pid', 'Unknown')
+            logger.info(f"  - {item} (PID: {pid})")
         
     except KeyboardInterrupt:
         logger.info("User interrupted execution")
@@ -217,6 +289,13 @@ if __name__ == "__main__":
     # Set up logging
     setup_logging(args.log_level)
     
+    # Determine MQTT status
+    mqtt_status = None
+    if args.mqtt_enabled:
+        mqtt_status = True
+    elif args.mqtt_disabled:
+        mqtt_status = False
+    
     # Run the RFID system
     run_rfid_system(
         cycles=args.cycles,
@@ -224,5 +303,7 @@ if __name__ == "__main__":
         rssi_threshold=args.rssi_threshold,
         presence_threshold=args.presence_threshold,
         absence_threshold=args.absence_threshold,
-        timeout=args.timeout
+        timeout=args.timeout,
+        mqtt_enabled=mqtt_status,
+        basket_id=args.basket_id
     ) 
