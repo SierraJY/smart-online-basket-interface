@@ -148,8 +148,9 @@ public class BasketSseService {
 
     /**
      * SSE로 전송할 바구니 응답 데이터 생성
+     * Controller에서도 사용할 수 있도록 public으로 변경
      */
-    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, Integer basketId) {
+    public Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, Integer basketId) {
         // 총 가격 계산
         int totalPrice = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)

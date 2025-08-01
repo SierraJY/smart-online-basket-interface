@@ -10,9 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/baskets")
@@ -97,7 +95,7 @@ public class BasketSseController {
             try {
                 emitter.send(SseEmitter.event()
                         .name("basket-initial")
-                        .data(createBasketResponse(currentItems, basketId)));
+                        .data(basketSseService.createBasketResponse(currentItems, basketId)));
 
                 System.out.println("SSE 초기 데이터 전송 완료");
             } catch (Exception e) {
@@ -120,29 +118,5 @@ public class BasketSseController {
             } catch (Exception ignored) {}
             return errorEmitter;
         }
-    }
-
-    /**
-     * SSE로 전송할 바구니 응답 데이터 생성
-     */
-    private Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems, Integer basketId) {
-        // 총 가격 계산
-        int totalPrice = basketItems.stream()
-                .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
-                .sum();
-
-        // 총 아이템 개수 계산
-        int totalCount = basketItems.stream()
-                .mapToInt(BasketCacheService.BasketItemInfo::getQuantity)
-                .sum();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("items", basketItems);
-        response.put("totalCount", totalCount);
-        response.put("totalPrice", totalPrice);
-        response.put("basketId", basketId);
-        response.put("timestamp", System.currentTimeMillis());
-
-        return response;
     }
 }
