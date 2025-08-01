@@ -155,7 +155,6 @@ public class BasketSseService {
         int totalPrice = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
                 .sum();
-
         // 총 아이템 개수 계산
         int totalCount = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getQuantity)
