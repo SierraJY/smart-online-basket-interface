@@ -4,7 +4,7 @@ import React from 'react';
 import { useAuth } from '@/utils/hooks/useAuth';
 
 export default function AccessTokenRefreshButton() {
-  const { refreshAccessToken, accessToken } = useAuth();
+  const { refreshAccessToken } = useAuth();
   const handleRefresh = async () => {
     try {
       const newToken = await refreshAccessToken();

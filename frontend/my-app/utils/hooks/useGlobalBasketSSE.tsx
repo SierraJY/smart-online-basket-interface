@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useBasketStore } from "@/store/useBasketStore";
 import { useAuth } from "@/utils/hooks/useAuth";
+import { authStorage } from "@/utils/storage";
+import { config } from "@/config/env";
 
 // 전역 SSE 연결 관리
 let globalSSERef: AbortController | null = null;
@@ -9,9 +11,14 @@ let globalListeners: Set<(data: any) => void> = new Set();
 let globalStore: any = null; // store 참조 저장
 let globalEventSource: EventSource | null = null;
 let globalConnectionMonitor: NodeJS.Timeout | null = null; // 연결 모니터링 전역 변수
+let globalReconnectAttempts: number = 0; // 재연결 시도 횟수
+let globalMaxReconnectAttempts: number = 5; // 최대 재연결 시도 횟수
+let globalReconnectDelay: number = 1000; // 재연결 지연 시간 (ms)
 
 // 전역 SSE 연결 함수
 function connectGlobalSSE(basketId: string | null, token: string | null) {
+  console.log("[Global SSE] 연결 시도 - basketId:", basketId, "hasToken:", !!token);
+  
   // 기존 연결 정리
   if (globalEventSource) {
     globalEventSource.close();
@@ -30,7 +37,7 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
   }
 
   if (!basketId || !token) {
-    console.log("[Global SSE] 연결 조건 불충분 - basketId:", basketId, "token:", token);
+    console.log("[Global SSE] 연결 조건 불충분 - basketId:", basketId, "hasToken:", !!token);
     globalBasketData = null;
     globalListeners.forEach(listener => listener(null));
     return;
@@ -40,8 +47,10 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
   const activatedBasketId = globalStore?.getState()?.activatedBasketId || null;
   const needsActivation = basketId && (activatedBasketId !== basketId);
   
+  console.log("[Global SSE] 활성화 상태 확인 - basketId:", basketId, "activatedBasketId:", activatedBasketId, "needsActivation:", needsActivation);
+  
   if (needsActivation) {
-    console.log("[Global SSE] 활성화 필요 - basketId:", basketId, "needsActivation:", needsActivation);
+    console.log("[Global SSE] 활성화 필요 - basketId:", basketId, "activatedBasketId:", activatedBasketId);
     globalBasketData = null;
     globalListeners.forEach(listener => listener(null));
     return;
@@ -54,7 +63,7 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
       console.log("[Global SSE] 연결 시도! basketId:", basketId, "token:", token);
 
       // 임시로 fetch 방식 사용 (백엔드에서 쿼리 파라미터 처리 구현 후 EventSource로 변경)
-      const response = await fetch(`http://localhost:8082/api/baskets/my/stream`, {
+      const response = await fetch(config.API_ENDPOINTS.BASKET_STREAM, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -65,15 +74,16 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
 
       if (!response.ok) {
         console.error("[Global SSE] 연결 실패: HTTP", response.status, response.statusText);
-        return;
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       if (!response.body) {
         console.error("[Global SSE] 연결 실패: response.body 없음");
-        return;
+        throw new Error("Response body is null");
       }
 
       console.log("[Global SSE] 연결 성공! 스트림 읽기 시작...");
+      globalReconnectAttempts = 0; // 연결 성공 시 재연결 시도 횟수 리셋
 
       const reader = response.body.getReader();
       let buf = "";
@@ -83,17 +93,30 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
       globalConnectionMonitor = setInterval(() => {
         const now = Date.now();
         const timeSinceLastData = now - lastDataTime;
-        console.log(`[Global SSE] 연결 상태 - 마지막 데이터 수신 후 ${timeSinceLastData}ms 경과`);
+        const secondsSinceLastData = Math.round(timeSinceLastData / 1000);
+        console.log(`[Global SSE] 연결 상태 - 마지막 데이터 수신 후 ${secondsSinceLastData}초 경과`);
         
-        // 현재는 자동 재연결 비활성화 (수동 재연결 버튼 사용)
-        // if (timeSinceLastData > 30000) {
-        //   console.log("[Global SSE] 30초간 데이터 없음 - 재연결 시도");
-        //   clearInterval(globalConnectionMonitor);
-        //   globalConnectionMonitor = null;
-        //   if (globalSSERef) {
-        //     globalSSERef.abort();
-        //   }
-        // }
+        // 30초간 데이터가 없으면 재연결 시도
+        if (timeSinceLastData > 30000) {
+          console.log("[Global SSE] 30초간 데이터 없음 - 재연결 시도");
+          if (globalConnectionMonitor !== null) {
+            clearInterval(globalConnectionMonitor);
+            globalConnectionMonitor = null;
+          }
+          if (globalSSERef) {
+            globalSSERef.abort();
+          }
+          // 재연결 시도
+          setTimeout(() => {
+            if (globalReconnectAttempts < globalMaxReconnectAttempts) {
+              globalReconnectAttempts++;
+              console.log(`[Global SSE] 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`);
+              connectGlobalSSE(basketId, token);
+            } else {
+              console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
+            }
+          }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
+        }
       }, 10000); // 10초마다 체크
 
       while (true) {
@@ -172,10 +195,21 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
         console.log("[Global SSE] 연결 종료(Abort)", e);
       } else {
         console.error("[Global SSE] 연결 에러!", e);
+        
+        // 에러 발생 시 재연결 시도
+        if (globalReconnectAttempts < globalMaxReconnectAttempts) {
+          globalReconnectAttempts++;
+          console.log(`[Global SSE] 에러로 인한 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`);
+          setTimeout(() => {
+            connectGlobalSSE(basketId, token);
+          }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
+        } else {
+          console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
+        }
       }
       
       // 에러 발생 시에도 connectionMonitor 정리
-      if (globalConnectionMonitor) {
+      if (globalConnectionMonitor !== null) {
         clearInterval(globalConnectionMonitor);
         globalConnectionMonitor = null;
       }
@@ -249,10 +283,33 @@ export function disconnectGlobalSSE() {
     globalSSERef.abort();
     globalSSERef = null;
   }
-  if (globalConnectionMonitor) {
+  if (globalConnectionMonitor !== null) {
     clearInterval(globalConnectionMonitor);
     globalConnectionMonitor = null;
   }
   globalBasketData = null;
   globalListeners.clear();
+  globalReconnectAttempts = 0; // 재연결 시도 횟수 리셋
+}
+
+// 수동 재연결 함수
+export function reconnectGlobalSSE() {
+  console.log('[Global SSE] 수동 재연결 시도');
+  globalReconnectAttempts = 0; // 재연결 시도 횟수 리셋
+  
+  // 현재 store 상태에서 basketId 가져오기
+  const currentState = globalStore?.getState();
+  const basketId = currentState?.basketId;
+  
+  // authStorage에서 token 가져오기 (useAuth와 동일한 방식)
+  const token = authStorage.getAccessToken();
+  
+  if (basketId && token) {
+    connectGlobalSSE(basketId, token);
+  } else {
+    console.error('[Global SSE] 재연결 실패: basketId 또는 token이 없습니다', {
+      basketId,
+      hasToken: !!token
+    });
+  }
 } 

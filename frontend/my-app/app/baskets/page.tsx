@@ -2,13 +2,15 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useBasketStore } from "@/store/useBasketStore";
-import { useAuth } from "@/utils/hooks/useAuth";
-import { useActivateBasket } from "@/utils/hooks/useActivateBasket";
-import { ShoppingBasket, RefreshCw, AlertCircle, Package, DollarSign } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useBasketStore } from '@/store/useBasketStore';
+import { useAuth } from '@/utils/hooks/useAuth';
+import { useActivateBasket } from '@/utils/hooks/useActivateBasket';
+import { reconnectGlobalSSE } from '@/utils/hooks/useGlobalBasketSSE';
+import { Package, ShoppingBasket, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
 
 export default function BasketsPage() {
   const router = useRouter();
@@ -29,19 +31,20 @@ export default function BasketsPage() {
   const { mutate: activate, isPending } = useActivateBasket(basketId, token);
 
   // ⬇️ 4. 활성화 완료 후 SSE 재연결 트리거
-  const [activationCompleted, setActivationCompleted] = useState(false);
+  const triggerSSEReconnect = () => {
+    console.log('[BasketsPage] SSE 재연결 트리거');
+    reconnectGlobalSSE();
+  };
 
   useEffect(() => {
     if (!token || !basketId) return;
     if (!needsActivation) return; // 이미 활성화
     activate(undefined, {
       onSuccess: () => {
+        console.log('[BasketsPage] 활성화 성공 - SSE 재연결 예약');
         // 활성화 성공 후 짧은 지연으로 SSE 재연결 트리거
         setTimeout(() => {
-          setActivationCompleted(true);
-          if (typeof window !== 'undefined' && (window as any).triggerSSEReconnect) {
-            (window as any).triggerSSEReconnect();
-          }
+          triggerSSEReconnect();
         }, 1000);
       },
       onError: () => {
@@ -53,25 +56,21 @@ export default function BasketsPage() {
         router.replace('/scan');
       }
     });
-    // eslint-disable-next-line
   }, [token, basketId, needsActivation, activate, setBasketId, router]);
 
   // ⬇️ 5. 전역 SSE는 layout에서 실행되므로 store의 데이터만 사용
   const basket = useBasketStore(s => s.basketData);
-  const setBasketData = useBasketStore(s => s.setBasketData);
 
   // ⬇️ 7. 수동 재연결 버튼 (테스트용)
   const handleReconnect = () => {
-    if (typeof window !== 'undefined' && (window as any).triggerSSEReconnect) {
-      (window as any).triggerSSEReconnect();
-    }
+    reconnectGlobalSSE();
   };
 
   // ⬇️ 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
@@ -94,7 +93,7 @@ export default function BasketsPage() {
   if (!basketId) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <Package className="w-12 h-12 text-blue-500 mb-4" />
         <h2 className="text-lg font-semibold mb-2 text-center">QR 코드를 스캔해주세요</h2>
@@ -117,7 +116,7 @@ export default function BasketsPage() {
   if (isPending) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
         <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
@@ -129,7 +128,7 @@ export default function BasketsPage() {
   if (activateError) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h2 className="text-lg font-semibold mb-2">활성화 실패</h2>
@@ -152,7 +151,7 @@ export default function BasketsPage() {
   if (!basket) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <ShoppingBasket className="w-12 h-12 text-gray-400 mb-4" />
         <h2 className="text-lg font-semibold mb-2">장바구니가 비어있습니다</h2>
@@ -185,14 +184,14 @@ export default function BasketsPage() {
         {/* 헤더 */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <ShoppingBasket className="w-8 h-8 text-green-600 mr-3" />
+            <ShoppingBasket className="w-8 h-8 mr-3" style={{ color: 'var(--sobi-green)' }} />
             <h1 className="text-3xl font-bold">스마트 장바구니</h1>
           </div>
           <div className="text-sm px-4 py-2 rounded-full inline-block"
             style={{
-              backgroundColor: 'var(--input-background)',
-              border: '1px solid var(--input-border)',
-              color: 'var(--text-secondary)',
+              backgroundColor: 'var(--sobi-green-light)',
+              border: '1px solid var(--sobi-green-border)',
+              color: 'var(--sobi-green)',
             }}
           >
             장바구니 ID: {basketId}
@@ -205,9 +204,9 @@ export default function BasketsPage() {
             onClick={handleReconnect}
             className="inline-flex items-center gap-2 py-2 px-4 text-sm rounded-lg hover:opacity-80 transition-all"
             style={{
-              border: '1px solid var(--input-border)',
-              backgroundColor: 'var(--input-background)',
-              color: 'var(--foreground)',
+              border: '1px solid var(--sobi-green-border)',
+              backgroundColor: 'var(--sobi-green-light)',
+              color: 'var(--sobi-green)',
             }}
           >
             <RefreshCw className="w-4 h-4" />
@@ -223,7 +222,7 @@ export default function BasketsPage() {
           }}
         >
           <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <DollarSign className="w-6 h-6 mr-3 text-green-600" />
+            <DollarSign className="w-6 h-6 mr-3" style={{ color: 'var(--sobi-green)' }} />
             결제 요약
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -234,7 +233,7 @@ export default function BasketsPage() {
               }}
             >
               <span className="text-base" style={{ color: 'var(--text-secondary)' }}>상품 개수</span>
-              <span className="text-xl font-bold text-green-600">{basket.totalCount}개</span>
+              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket.totalCount}개</span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg"
               style={{
@@ -243,7 +242,7 @@ export default function BasketsPage() {
               }}
             >
               <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
-              <span className="text-2xl font-bold text-green-600">{basket.totalPrice.toLocaleString()}원</span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket.totalPrice.toLocaleString()}원</span>
             </div>
           </div>
         </div>
@@ -256,7 +255,7 @@ export default function BasketsPage() {
           }}
         >
           <h2 className="text-xl font-semibold mb-6 flex items-center">
-            <Package className="w-6 h-6 mr-3 text-green-600" />
+            <Package className="w-6 h-6 mr-3" style={{ color: 'var(--sobi-green)' }} />
             상품 목록
           </h2>
           
@@ -276,9 +275,11 @@ export default function BasketsPage() {
                   }}
                 >
                   <Link href={`/products/${item.product.id}`} className="flex-shrink-0">
-                    <img
+                    <Image
                       src={item.product.imageUrl}
                       alt={item.product.name}
+                      width={64}
+                      height={64}
                       className="w-16 h-16 object-cover rounded-lg bg-white dark:bg-gray-600 hover:opacity-80 transition-opacity cursor-pointer"
                     />
                   </Link>
@@ -291,7 +292,7 @@ export default function BasketsPage() {
                     </p>
                   </div>
                   <div className="text-right ml-4 flex-shrink-0">
-                    <div className="font-bold text-green-600 text-xl">
+                    <div className="font-bold text-xl" style={{ color: 'var(--sobi-green)' }}>
                       {item.totalPrice.toLocaleString()}원
                     </div>
                   </div>

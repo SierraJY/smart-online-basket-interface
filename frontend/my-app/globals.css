@@ -25,6 +25,13 @@
   --text-link: #34cd55;
   --search-modal-bg: rgba(255,255,255,0.36);
   --search-modal-border: rgba(255,255,255,0.18);
+  
+  /* SOBI 브랜드 컬러 */
+  --sobi-green: #128211;
+  --sobi-green-light: rgba(18, 130, 17, 0.1);
+  --sobi-green-lighter: rgba(18, 130, 17, 0.05);
+  --sobi-green-border: rgba(18, 130, 17, 0.2);
+  --sobi-green-border-light: rgba(18, 130, 17, 0.1);
 }
 
 .dark {
@@ -41,6 +48,13 @@
   --text-link: #eeeeee;
   --search-modal-bg: rgba(34,34,34,0.32);
   --search-modal-border: rgba(160,160,180,0.13);
+  
+  /* SOBI 브랜드 컬러 (다크모드) */
+  --sobi-green: #4ade80;  /* 다크모드에서는 더 밝은 그린 */
+  --sobi-green-light: rgba(74, 222, 128, 0.15);
+  --sobi-green-lighter: rgba(74, 222, 128, 0.08);
+  --sobi-green-border: rgba(74, 222, 128, 0.25);
+  --sobi-green-border-light: rgba(74, 222, 128, 0.15);
 }
 
 html {

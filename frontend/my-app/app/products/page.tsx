@@ -4,7 +4,8 @@
 
 import { useMemo, useRef, createRef, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useProducts, Product } from '@/utils/hooks/useProducts'
+import { useProducts } from '@/utils/hooks/useProducts'
+import { Product } from '@/types'
 import { useFavorite } from '@/utils/hooks/useFavorite'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -13,8 +14,8 @@ import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import { useScrollRestore } from '@/store/useScrollRestore'
-import { getToken } from '@/utils/auth/authUtils'
 import { useAuth } from '@/utils/hooks/useAuth'
+import { replaceCategoryName, extractCategories, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
 
 const CATEGORY_LIMIT = 10
 
@@ -28,16 +29,9 @@ export default function ProductsPage() {
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
   const [category, setCategory] = useState<string>(categoryFromURL)
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, accessToken: token } = useAuth()
   const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
-  const [FavoriteLoading, setFavoriteLoading] = useState<boolean>(false)
-  const token = getToken()
-  const {
-    favoriteList,
-    loading: favoriteLoading,
-    addFavorite,
-    removeFavorite,
-  } = useFavorite(token)
+  const { favoriteList, addFavorite, removeFavorite } = useFavorite(token);
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
@@ -71,9 +65,9 @@ export default function ProductsPage() {
     return matchesKeyword && matchesCategory && matchesStock
   })
 
-  // 카테고리 추출 (string[] 강제 명시!)
+  // 카테고리 추출 (유틸리티 함수 사용)
   const categoriesInFiltered: string[] = useMemo(
-    () => [...new Set(filtered.map((p: Product) => p.category))],
+    () => extractCategories(filtered),
     [filtered]
   )
 
@@ -113,7 +107,7 @@ export default function ProductsPage() {
     </div>
   )
 
-  const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/')
+
 
   const scrollByCard = (ref: React.RefObject<HTMLDivElement | null> | undefined, dir: number) => {
     if (!ref?.current) return
@@ -130,7 +124,6 @@ export default function ProductsPage() {
       alert('로그인 후 이용 가능합니다.')
       return
     }
-    setFavoriteLoading(true)
     try {
       if (favoriteList.includes(productId)) {
         await removeFavorite({ productId, token })
@@ -139,14 +132,12 @@ export default function ProductsPage() {
       }
     } catch (err: any) {
       alert(err.message || "찜 처리 오류")
-    } finally {
-      setFavoriteLoading(false)
     }
   }
 
   return (
-    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" style={{ background: 'var(--input-background)', color: 'var(--foreground)', transition: 'background-color 1.6s, color 1.6s' }}>
-      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--foreground)' }}>전체 상품 목록</h1>
+    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)', transition: 'background-color 1.6s, color 1.6s' }}>
+      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>전체 상품 목록</h1>
       <SearchBar
         keyword={keyword}
         setKeyword={onKeywordChange}
@@ -165,7 +156,7 @@ export default function ProductsPage() {
             onChange={e => setExcludeOutOfStock(e.target.checked)}
             className="sr-only peer"
           />
-          <div className={`w-11 h-6 transition-all backdrop-blur-md peer-focus:outline-none rounded-full peer peer-checked:bg-[#1d9e0e] bg-[var(--text-secondary)] shadow-inner`} style={{ boxShadow: '0 0 0 2px #42b88320' }}></div>
+          <div className={`w-11 h-6 transition-all backdrop-blur-md peer-focus:outline-none rounded-full peer peer-checked:bg-[var(--sobi-green)] bg-[var(--text-secondary)] shadow-inner`} style={{ boxShadow: '0 0 0 2px #42b88320' }}></div>
           <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-md transition-transform peer-checked:translate-x-5"></div>
         </label>
         <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
@@ -190,7 +181,7 @@ export default function ProductsPage() {
                   {replaceCategoryName(cat)}
                 </h2>
                 <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="ml-2 px-2 py-1 text-xs font-medium transition hover:scale-110"
-                  style={{ color: 'var(--text-secondary)', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 500 }}>
+                  style={{ color: 'var(--sobi-green)', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 500 }}>
                   {replaceCategoryName(cat)} 전체보기
                   <ChevronRight size={16} />
                 </Link>
@@ -200,7 +191,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   className="hidden md:flex absolute z-20 left-[-50px] top-1/2 -translate-y-1/2 rounded-full p-1 hover:scale-110 transition-all"
-                  style={{ pointerEvents: 'auto' }}
+                  style={{ pointerEvents: 'auto', color: 'var(--sobi-green)' }}
                   onClick={() => scrollByCard(scrollRef, -1.5)}
                   tabIndex={-1.5}
                   aria-label="왼쪽으로 이동"
@@ -217,9 +208,11 @@ export default function ProductsPage() {
                             src={item.imageUrl}
                             alt={item.name}
                             className="object-contain w-full h-full rounded-2xl"
-                            style={{ maxHeight: 110, maxWidth: 120, background: 'var(--input-background)' }}
+                            style={{ maxHeight: 110, maxWidth: 120, backgroundColor: 'var(--input-background)' }}
                             width={24}
                             height={24}
+                            priority={false}
+                            loading="lazy"
                           />
                         </Link>
                       </ShakeWrapper>
@@ -240,46 +233,51 @@ export default function ProductsPage() {
                           {item.name}
                         </span>
                         {/* 가격 부분 */}
-                        {item.discountRate > 0 ? (
-                          <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
-                            <span className="text-[13px] text-gray-400 line-through opacity-70">
-                              {item.price.toLocaleString()}원
-                            </span>
-                            <span className="bg-red-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5 shadow-sm">
-                              {item.discountRate}% OFF
-                            </span>
-                            <span className="text-[18px] font-extrabold text-red-700">
-                              {Math.round(item.price * (1 - item.discountRate / 100)).toLocaleString()}원
-                            </span>
-                          </div>
-                        ) : (
-                          <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
-                            {item.price.toLocaleString()}원
-                          </span>
-                        )}
+                                                 {item.discountRate > 0 ? (
+                           <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
+                             <span className="text-[13px] text-gray-400 line-through opacity-70">
+                               {formatPrice(item.price)}
+                             </span>
+                             <span className="bg-red-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5 shadow-sm">
+                               {item.discountRate}% OFF
+                             </span>
+                             <span className="text-[18px] font-extrabold text-red-700">
+                               {formatPrice(calculateDiscountedPrice(item.price, item.discountRate))}
+                             </span>
+                           </div>
+                         ) : (
+                           <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
+                             {formatPrice(item.price)}
+                           </span>
+                         )}
                       </Link>
                       {/* 찜버튼 */}
                       <button
                         onClick={async (e) => {
                           e.preventDefault()
-                          if (FavoriteLoading) return
                           await handleToggleFavorite(item.id)
                         }}
-                        className={`absolute top-2 right-2 text-lg px-1.5 py-1.5 rounded-full hover:scale-110 transition-all z-10 ${FavoriteLoading ? 'opacity-60 pointer-events-none' : ''}`}
+                        className={`absolute top-2 right-2 text-lg px-1.5 py-1.5 rounded-full hover:scale-110 transition-all z-10 ${favoriteList.includes(item.id) ? 'opacity-60 pointer-events-none' : ''}`}
                         title={favoriteList.includes(item.id) ? '찜 해제' : '찜'}
-                        disabled={FavoriteLoading}
                       >
                         {favoriteList.includes(item.id)
-                          ? <FaHeart size={25} color="var(--foreground)" />
-                          : <FaRegHeart size={25} color="var(--foreground)" />
+                          ? <FaHeart size={25} style={{ color: 'var(--sobi-green)' }} />
+                          : <FaRegHeart size={25} style={{ color: 'var(--sobi-green)' }} />
                         }
                       </button>
                     </div>
                   ))}
                   {/* 더보기 카드 */}
                   {showMore && (
-                    <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="flex-shrink-0 w-[100px] h-[100px] snap-start flex flex-col items-center justify-center bg-[var(--input-background)] text-[var(--text-secondary)] hover:scale-110 transition-all font-semibold text-md cursor-pointer"
-                      style={{ minHeight: '225px', height: '225px', alignItems: 'center' }}>
+                    <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="flex-shrink-0 w-[100px] h-[100px] snap-start flex flex-col items-center justify-center hover:scale-110 transition-all font-semibold text-md cursor-pointer"
+                      style={{ 
+                        minHeight: '225px', 
+                        height: '225px', 
+                        alignItems: 'center',
+                        backgroundColor: 'var(--input-background)',
+                        color: 'var(--text-secondary)',
+                        borderRadius: '8px'
+                      }}>
                       <span className="mb-1 text-3xl">+</span>
                       <span>더보기</span>
                     </Link>
@@ -289,7 +287,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   className="hidden md:flex absolute z-20 right-[-50px] top-1/2 -translate-y-1/2 rounded-full p-1 hover:scale-110 transition-all"
-                  style={{ pointerEvents: 'auto' }}
+                  style={{ pointerEvents: 'auto', color: 'var(--sobi-green)' }}
                   onClick={() => scrollByCard(scrollRef, 1.5)}
                   tabIndex={-1.5}
                   aria-label="오른쪽으로 이동"

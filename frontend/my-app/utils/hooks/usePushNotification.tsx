@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
+import { config } from '@/config/env';
 
 export const usePushNotification = () => {
   const [pushToken, setPushToken] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export const usePushNotification = () => {
     if (!accessToken) return;
 
     try {
-      const response = await fetch('/api/push/register', {
+      const response = await fetch(config.API_ENDPOINTS.PUSH_REGISTER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

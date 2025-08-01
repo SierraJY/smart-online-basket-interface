@@ -1,7 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { config } from '@/config/env'
+import { FavoriteRequest, FavoriteListResponse } from '@/types'
 
-export const fetchFavoriteList = async (token: string) => {
-  const res = await fetch('/api/favorites/my', {
+export const fetchFavoriteList = async (token: string): Promise<FavoriteListResponse> => {
+  if (!token || token.length === 0) {
+    throw new Error('토큰이 없습니다. 로그인이 필요합니다.')
+  }
+  
+  const res = await fetch(config.API_ENDPOINTS.FAVORITES_MY, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: 'include',
   })
@@ -9,8 +15,12 @@ export const fetchFavoriteList = async (token: string) => {
   return res.json()
 }
 
-export const addFavorite = async ({ productId, token }: { productId: number, token: string }) => {
-  const res = await fetch(`/api/favorites/${productId}`, {
+export const addFavorite = async ({ productId, token }: FavoriteRequest) => {
+  if (!token || token.length === 0) {
+    throw new Error('토큰이 없습니다. 로그인이 필요합니다.')
+  }
+  
+  const res = await fetch(`${config.API_ENDPOINTS.FAVORITES}/${productId}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     credentials: 'include',
@@ -19,8 +29,12 @@ export const addFavorite = async ({ productId, token }: { productId: number, tok
   return res.json()
 }
 
-export const removeFavorite = async ({ productId, token }: { productId: number, token: string }) => {
-  const res = await fetch(`/api/favorites/${productId}`, {
+export const removeFavorite = async ({ productId, token }: FavoriteRequest) => {
+  if (!token || token.length === 0) {
+    throw new Error('토큰이 없습니다. 로그인이 필요합니다.')
+  }
+  
+  const res = await fetch(`${config.API_ENDPOINTS.FAVORITES}/${productId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
     credentials: 'include',
@@ -35,14 +49,47 @@ export function useFavorite(token: string | null) {
   const { data, isLoading } = useQuery({
     queryKey: ['favorites', token],
     queryFn: () => fetchFavoriteList(token!),
-    enabled: !!token,
-    staleTime: 1000 * 60 * 5,
+    enabled: !!token && token.length > 0,
+    // 찜 목록은 자주 변경되므로 짧은 캐시 시간
+    staleTime: 30 * 1000, // 30초
+    gcTime: 5 * 60 * 1000, // 5분
+    // 에러 발생 시 재시도 설정
+    retry: (failureCount, error: any) => {
+      // 4xx 에러는 재시도하지 않음
+      if (error?.status >= 400 && error?.status < 500) {
+        return false;
+      }
+      // 최대 2번까지만 재시도
+      return failureCount < 2;
+    },
   })
 
   const add = useMutation({
     mutationFn: ({ productId, token }: { productId: number, token: string }) =>
       addFavorite({ productId, token }),
-    onSuccess: () => {
+    onMutate: async ({ productId }) => {
+      // Optimistic update: UI를 즉시 업데이트
+      await queryClient.cancelQueries({ queryKey: ['favorites', token] })
+      const previousFavorites = queryClient.getQueryData(['favorites', token])
+      
+      queryClient.setQueryData(['favorites', token], (old: any) => {
+        if (!old?.favoriteProducts) return old
+        return {
+          ...old,
+          favoriteProducts: [...old.favoriteProducts, { id: productId }]
+        }
+      })
+      
+      return { previousFavorites }
+    },
+    onError: (err, variables, context) => {
+      // 에러 발생 시 이전 상태로 롤백
+      if (context?.previousFavorites) {
+        queryClient.setQueryData(['favorites', token], context.previousFavorites)
+      }
+    },
+    onSettled: () => {
+      // 성공/실패 관계없이 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['favorites', token] })
     },
   })
@@ -50,7 +97,29 @@ export function useFavorite(token: string | null) {
   const remove = useMutation({
     mutationFn: ({ productId, token }: { productId: number, token: string }) =>
       removeFavorite({ productId, token }),
-    onSuccess: () => {
+    onMutate: async ({ productId }) => {
+      // Optimistic update: UI를 즉시 업데이트
+      await queryClient.cancelQueries({ queryKey: ['favorites', token] })
+      const previousFavorites = queryClient.getQueryData(['favorites', token])
+      
+      queryClient.setQueryData(['favorites', token], (old: any) => {
+        if (!old?.favoriteProducts) return old
+        return {
+          ...old,
+          favoriteProducts: old.favoriteProducts.filter((p: any) => p.id !== productId)
+        }
+      })
+      
+      return { previousFavorites }
+    },
+    onError: (err, variables, context) => {
+      // 에러 발생 시 이전 상태로 롤백
+      if (context?.previousFavorites) {
+        queryClient.setQueryData(['favorites', token], context.previousFavorites)
+      }
+    },
+    onSettled: () => {
+      // 성공/실패 관계없이 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['favorites', token] })
     },
   })

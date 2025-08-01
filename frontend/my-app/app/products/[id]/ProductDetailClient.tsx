@@ -2,20 +2,20 @@
 
 'use client'
 
-import { useState } from 'react'
-import { useProducts } from '@/utils/hooks/useProducts'
-import { useFavorite } from '@/utils/hooks/useFavorite'
-import { useAuth } from '@/utils/hooks/useAuth'
-import { getToken } from '@/utils/auth/authUtils'
-import { FaHeart, FaRegHeart } from "react-icons/fa"
+import { useState } from 'react';
+import { useAuth } from '@/utils/hooks/useAuth';
+import { useFavorite } from '@/utils/hooks/useFavorite';
+import { useProducts } from '@/utils/hooks/useProducts';
+import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import Image from 'next/image';
 
 export default function ProductDetailClient({ id }: { id: string }) {
-  const { product, loading, error } = useProducts({ id });
-  const { isLoggedIn } = useAuth();
-  const token = getToken();
+  const { isLoggedIn, accessToken } = useAuth();
+  const { products, loading, error } = useProducts();
+  const product = products.find((p: any) => String(p.id) === String(id));
+  const token = accessToken;
   const {
     favoriteList,
-    loading: favoriteLoading,
     addFavorite,
     removeFavorite,
   } = useFavorite(token);
@@ -63,10 +63,11 @@ export default function ProductDetailClient({ id }: { id: string }) {
       }}
     >
       <div className="relative w-screen max-w-[540px] h-[32vh] sm:h-[280px] mx-auto overflow-hidden rounded-b-2xl">
-        <img
+        <Image
           src={product.imageUrl}
           alt={product.name}
-          className="w-full h-full object-cover"
+          layout="fill"
+          objectFit="cover"
           style={{
             objectPosition: 'center top',
             transition: 'filter 0.7s',

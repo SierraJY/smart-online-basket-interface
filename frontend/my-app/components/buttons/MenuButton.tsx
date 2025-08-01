@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from "react"
-import { BiCategory } from "react-icons/bi";
 import { Package, PackageOpen } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"

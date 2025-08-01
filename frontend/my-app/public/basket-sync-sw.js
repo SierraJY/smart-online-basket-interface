@@ -41,8 +41,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: '장바구니에 새로운 상품이 추가되었습니다!',
-    icon: '/logo192.png',
-    badge: '/logo192.png',
+    icon: '/256.png', // 올바른 아이콘 경로로 수정
+    badge: '/64.png', // 작은 아이콘으로 수정
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -52,12 +52,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'open',
         title: '장바구니 보기',
-        icon: '/logo192.png'
+        icon: '/64.png' // 올바른 아이콘 경로로 수정
       },
       {
         action: 'close',
         title: '닫기',
-        icon: '/logo192.png'
+        icon: '/64.png' // 올바른 아이콘 경로로 수정
       }
     ]
   };
@@ -88,13 +88,48 @@ self.addEventListener('message', (event) => {
     // 장바구니 데이터 업데이트 시 캐시에 저장
     event.waitUntil(
       caches.open(CACHE_NAME).then((cache) => {
-        return cache.put(SSE_CACHE_KEY, new Response(JSON.stringify(event.data.basketData)));
+        try {
+          return cache.put(SSE_CACHE_KEY, new Response(JSON.stringify(event.data.basketData)));
+        } catch (error) {
+          console.error('[SW] 캐시 저장 실패:', error);
+          return Promise.resolve();
+        }
       })
     );
     
-    // 백그라운드 동기화 등록
+    // 백그라운드 동기화 등록 (지원되는 경우에만)
+    if ('sync' in self.registration) {
+      try {
+        event.waitUntil(
+          self.registration.sync.register('basket-sync')
+        );
+      } catch (error) {
+        console.warn('[SW] Background Sync 등록 실패 (지원되지 않음):', error);
+      }
+    } else {
+      console.log('[SW] Background Sync API가 지원되지 않습니다. 즉시 동기화를 수행합니다.');
+      // Background Sync가 지원되지 않으면 즉시 동기화
+      event.waitUntil(syncBasketData());
+    }
+  }
+  
+  // 즉시 동기화 메시지 처리
+  if (event.data.type === 'BASKET_UPDATE_IMMEDIATE') {
+    console.log('[SW] 즉시 동기화 요청 수신');
+    
+    // 장바구니 데이터 업데이트 시 캐시에 저장
     event.waitUntil(
-      self.registration.sync.register('basket-sync')
+      caches.open(CACHE_NAME).then((cache) => {
+        try {
+          return cache.put(SSE_CACHE_KEY, new Response(JSON.stringify(event.data.basketData)));
+        } catch (error) {
+          console.error('[SW] 캐시 저장 실패:', error);
+          return Promise.resolve();
+        }
+      }).then(() => {
+        // 즉시 동기화 수행
+        return syncBasketData();
+      })
     );
   }
 });
@@ -115,10 +150,14 @@ async function syncBasketData() {
       // 모든 클라이언트에게 데이터 전송
       const clients = await self.clients.matchAll();
       clients.forEach((client) => {
-        client.postMessage({
-          type: 'BASKET_SYNC_UPDATE',
-          basketData: basketData
-        });
+        try {
+          client.postMessage({
+            type: 'BASKET_SYNC_UPDATE',
+            basketData: basketData
+          });
+        } catch (error) {
+          console.error('[SW] 클라이언트 메시지 전송 실패:', error);
+        }
       });
     }
   } catch (error) {
@@ -145,8 +184,14 @@ self.addEventListener('fetch', (event) => {
             caches.open(CACHE_NAME).then((cache) => {
               // GET 요청만 캐시 (안전장치)
               if (event.request.method === 'GET') {
-                cache.put(event.request, responseClone);
+                try {
+                  cache.put(event.request, responseClone);
+                } catch (error) {
+                  console.error('[SW] 캐시 저장 실패:', error);
+                }
               }
+            }).catch((error) => {
+              console.error('[SW] 캐시 열기 실패:', error);
             });
           }
           return response;

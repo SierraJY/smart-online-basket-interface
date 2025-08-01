@@ -14,9 +14,7 @@ export default function BackButton() {
       onClick={() => router.back()}
       className="fixed top-4 left-4 z-50 p-2 hover:scale-120 active:scale-120 transition"
     >
-    <ChevronLeft size={30} color='var(--foreground)' strokeWidth={2} />
-       
-
+      <ChevronLeft size={30} color='var(--foreground)' strokeWidth={2} />
     </button>
   )
 }

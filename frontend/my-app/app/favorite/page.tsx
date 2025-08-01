@@ -17,7 +17,6 @@ export default function FavoritePage() {
   const {
     favoriteList,   // ex: [1, 5, 8]
     loading,
-    addFavorite,
     removeFavorite,
   } = useFavorite(token);
 
@@ -32,7 +31,7 @@ export default function FavoritePage() {
   // 1. 로그인 필요
   if (!isLoggedIn || !token) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}>
+      style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}>
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
       <div className="font-bold text-lg text-red-500 mb-2">로그인이 필요합니다!</div>
       <Link
@@ -47,7 +46,7 @@ export default function FavoritePage() {
   // 2. 로딩
   if (loading || productsLoading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}>
+      style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}>
       <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">찜 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
@@ -57,7 +56,7 @@ export default function FavoritePage() {
   // 3. 에러 (찜/상품 둘 다 체크)
   if (productsError) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
-      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}>
+      style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}>
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
       <div className="font-bold text-lg text-red-500 mb-2">문제가 발생했어요!</div>
       <div className="text-gray-500 dark:text-gray-300 text-base mb-4">{productsError.message || String(productsError)}</div>
@@ -73,7 +72,7 @@ export default function FavoritePage() {
   // 4. 비어있는 경우
   if (!favoriteProducts || favoriteProducts.length === 0) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}>
+      style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}>
       <FaHeart size={56} className="mb-4 text-gray-300 dark:text-gray-700 animate-pulse" />
       <div className="font-semibold text-lg text-[var(--foreground)] mb-2">찜한 상품이 없습니다!</div>
       <div className="text-sm text-gray-400 mb-6">
@@ -93,7 +92,7 @@ export default function FavoritePage() {
     <main
       className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
       style={{
-        background: 'var(--input-background)',
+        backgroundColor: 'var(--input-background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
       }}
@@ -114,7 +113,7 @@ export default function FavoritePage() {
                 width={80}
                 height={80}
                 className="w-20 h-20 object-cover rounded-xl bg-[var(--input-background)]"
-                style={{ background: 'var(--input-background)', minWidth: 80 }}
+                style={{ backgroundColor: 'var(--input-background)', minWidth: 80 }}
                 priority
               />
               <div className="min-w-0">

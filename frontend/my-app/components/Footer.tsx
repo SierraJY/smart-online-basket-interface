@@ -4,21 +4,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/utils/hooks/useAuth'
 import {
-  LogOut, PackageSearch, Heart, CircleUserRound, Home, ShoppingBasket,
+  PackageSearch, Heart, Home, ShoppingBasket,
 } from 'lucide-react'
 
 export default function Footer() {
   const router = useRouter()
   const { isLoggedIn, logout, mounted } = useAuth();
-
-  // localStorage 상태 동기화 (실시간)
-  const realLoggedIn =
-    (typeof window !== "undefined" && !!localStorage.getItem("accessToken")) || isLoggedIn;
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
 
   if (!mounted) return null;
 

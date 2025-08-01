@@ -1,56 +1,9 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { initializeApp } from "firebase/app"
-import { getMessaging, getToken, onMessage, Messaging } from "firebase/messaging"
-import { firebaseConfig } from "@/firebase-config"
 import { Bell } from "lucide-react"
 
 export default function PushSubscribeButton() {
-  const [, setToken] = useState('')
-  const messagingRef = useRef<Messaging | null>(null)
-
-  useEffect(() => {
-    const app = initializeApp(firebaseConfig)
-    const messaging = getMessaging(app)
-    messagingRef.current = messaging
-    const unsubscribe = onMessage(messaging, (payload) => {
-      alert("포그라운드 푸쉬!\n" + JSON.stringify(payload))
-    })
-    return () => unsubscribe()
-  }, [])
-
-  const handleSubscribe = async () => {
-    if (!('serviceWorker' in navigator)) {
-      alert('Service Worker 미지원 브라우저!')
-      return
-    }
-    await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
-    if (!registration) {
-      alert('Service Worker 등록 실패!')
-      return
-    }
-    const messaging = messagingRef.current
-    if (!messaging) {
-      alert('Messaging 인스턴스 없음!')
-      return
-    }
-    const vapidKey = "BILSyMWlpLmzrQ6ucJp7Sa22cstcNdOU8T2fuYmL0nNqYe7gO0fMQK60j5QUe7IyE1l-0dpH520v0ivxahscqLw"
-    try {
-      const currentToken = await getToken(messaging, {
-        vapidKey,
-        serviceWorkerRegistration: registration,
-      })
-      if (currentToken) {
-        setToken(currentToken)
-        alert('FCM 토큰 발급 성공!\n(이 토큰으로 서버에서 푸쉬 보낼 수 있음)')
-        console.log('FCM 토큰:', currentToken)
-      } else {
-        alert('권한 거부 or 토큰 발급 실패!')
-      }
-    } catch (e: any) {
-      alert('FCM 토큰 발급 오류: ' + e.message)
-    }
+  const handleSubscribe = () => {
+    alert('푸시 알림 기능이 현재 비활성화되어 있습니다.');
   }
 
   return (
@@ -77,7 +30,7 @@ export default function PushSubscribeButton() {
         fontWeight: 400,
         fontSize: 14,
         color: 'var(--text-secondary)'
-      }}>(토큰 콘솔확인)</span>
+      }}>(비활성화됨)</span>
     </button>
   )
 }

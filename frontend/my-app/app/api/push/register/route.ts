@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { config } from '@/config/env';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 백엔드에 푸시 토큰 전달
-    const response = await fetch('http://localhost:8082/api/push/register', {
+    const response = await fetch(config.API_ENDPOINTS.PUSH_REGISTER, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

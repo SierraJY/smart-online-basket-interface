@@ -7,12 +7,15 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ShakeWrapper from '@/components/ShakeWrapper'
-import { useProducts, Product } from '@/utils/hooks/useProducts'
+import { useProducts } from '@/utils/hooks/useProducts'
+import { Product } from '@/types'
 import { useFavorite } from '@/utils/hooks/useFavorite'
-import { getToken } from '@/utils/auth/authUtils'
+
 import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import { useAuth } from '@/utils/hooks/useAuth'
+import Image from 'next/image';
+import { replaceCategoryName, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
 
 const ITEMS_PER_PAGE = 18
 
@@ -25,14 +28,11 @@ export default function CategoryPage() {
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
   const [category, setCategory] = useState<string>(categoryFromURL)
-  const [isMobile, setIsMobile] = useState<boolean>(false)
   const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
 
-  const { isLoggedIn } = useAuth()
-  const token = getToken()
+  const { isLoggedIn, accessToken: token } = useAuth()
   const {
     favoriteList,
-    loading: favoriteLoading,
     addFavorite,
     removeFavorite,
   } = useFavorite(token)
@@ -71,7 +71,7 @@ export default function CategoryPage() {
     currentPage * ITEMS_PER_PAGE
   )
 
-  const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/')
+
   const cardClass = "item-card flex-shrink-0 w-[115px] h-[210px] md:w-[135px] md:h-[235px] flex flex-col items-center px-1 pt-3 pb-2 transition-all relative bg-transparent"
 
   const gotoPage = (page: number) => {
@@ -132,7 +132,7 @@ export default function CategoryPage() {
         transition: 'background-color 1.6s, color 1.6s'
       }}>
       {/* 헤더 */}
-      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--foreground)' }}>
+      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>
         {replaceCategoryName(category)}
       </h1>
       {/* 🔥전체 상품 목록 페이지와 동일하게, 바로 아래에 SearchBar만! */}
@@ -157,11 +157,14 @@ export default function CategoryPage() {
             <ShakeWrapper item={item}>
               <Link href={`/products/${item.id}`}>
                 <div className="w-full h-[80px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)]">
-                  <img
+                  <Image
                     src={item.imageUrl}
                     alt={item.name}
+                    width={90}
+                    height={80}
                     className="object-contain w-full h-full"
-                    style={{ maxHeight: isMobile ? 80 : 110, maxWidth: isMobile ? 90 : 120, background: 'var(--input-background)' }}
+                    style={{ backgroundColor: 'var(--input-background)' }}
+                    loading="lazy"
                   />
                 </div>
               </Link>
@@ -177,8 +180,8 @@ export default function CategoryPage() {
               disabled={FavoriteLoading}
             >
               {favoriteList.includes(item.id)
-                ? <FaHeart size={25} color="var(--foreground)" />
-                : <FaRegHeart size={25} color="var(--foreground)" />
+                ? <FaHeart size={25} style={{ color: 'var(--sobi-green)' }} />
+                : <FaRegHeart size={25} style={{ color: 'var(--sobi-green)' }} />
               }
             </button>
             <Link href={`/products/${item.id}`} className="w-full flex flex-col items-center">
@@ -187,23 +190,23 @@ export default function CategoryPage() {
                 title={item.name}>
                 {item.name}
               </span>
-              {item.discountRate > 0 ? (
-                <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
-                  <span className="bg-red-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5 shadow-sm">
-                    {item.discountRate}% OFF
-                  </span>
-                  <span className="text-[18px] font-extrabold text-red-700">
-                    {Math.round(item.price * (1 - item.discountRate / 100)).toLocaleString()}원
-                  </span>
-                  <span className="text-[13px] text-gray-400 line-through opacity-70">
-                    {item.price.toLocaleString()}원
-                  </span>
-                </div>
-              ) : (
-                <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
-                  {item.price.toLocaleString()}원
-                </span>
-              )}
+                             {item.discountRate > 0 ? (
+                 <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
+                   <span className="bg-red-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5 shadow-sm">
+                     {item.discountRate}% OFF
+                   </span>
+                   <span className="text-[18px] font-extrabold text-red-700">
+                     {formatPrice(calculateDiscountedPrice(item.price, item.discountRate))}
+                   </span>
+                   <span className="text-[13px] text-gray-400 line-through opacity-70">
+                     {formatPrice(item.price)}
+                   </span>
+                 </div>
+               ) : (
+                 <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
+                   {formatPrice(item.price)}
+                 </span>
+               )}
             </Link>
           </div>
         ))}
@@ -215,7 +218,11 @@ export default function CategoryPage() {
             className="px-2 py-1 text-sm font-medium hover:bg-neutral-100"
             disabled={currentPage === 1}
             onClick={() => gotoPage(currentPage - 1)}
-            style={{ opacity: currentPage === 1 ? 0.4 : 1, pointerEvents: currentPage === 1 ? 'none' : undefined }}>
+            style={{ 
+              opacity: currentPage === 1 ? 0.4 : 1, 
+              pointerEvents: currentPage === 1 ? 'none' : undefined,
+              color: 'var(--sobi-green)'
+            }}>
             <ChevronLeft strokeWidth={1.5} />
           </button>
           {(() => {
@@ -233,8 +240,11 @@ export default function CategoryPage() {
               <button
                 key={pageNum}
                 className={`px-2.5 py-1 rounded-full font-medium
-                  ${pageNum === currentPage ? 'bg-green-600 text-white' : 'text-[var(--foreground)]'}
+                  ${pageNum === currentPage ? 'text-white' : 'text-[var(--foreground)]'}
                 `}
+                style={{
+                  backgroundColor: pageNum === currentPage ? 'var(--sobi-green)' : 'transparent',
+                }}
                 onClick={() => gotoPage(pageNum)}
                 aria-current={pageNum === currentPage ? "page" : undefined}
               >{pageNum}</button>
@@ -244,7 +254,11 @@ export default function CategoryPage() {
             className="px-2 py-1 text-sm font-medium hover:bg-neutral-100"
             disabled={currentPage === totalPages}
             onClick={() => gotoPage(currentPage + 1)}
-            style={{ opacity: currentPage === totalPages ? 0.4 : 1, pointerEvents: currentPage === totalPages ? 'none' : undefined }}>
+            style={{ 
+              opacity: currentPage === totalPages ? 0.4 : 1, 
+              pointerEvents: currentPage === totalPages ? 'none' : undefined,
+              color: 'var(--sobi-green)'
+            }}>
             <ChevronRight strokeWidth={1.5} />
           </button>
         </nav>

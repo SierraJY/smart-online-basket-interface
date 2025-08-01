@@ -1,6 +1,8 @@
+import { config } from '@/config/env';
+
 // 로그인 요청
 export async function login({ userId, userPasswd }: { userId: string; userPasswd: string }) {
-  const res = await fetch("/api/customers/login", {
+  const res = await fetch(config.API_ENDPOINTS.CUSTOMERS_LOGIN, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, userPasswd }),
@@ -11,7 +13,7 @@ export async function login({ userId, userPasswd }: { userId: string; userPasswd
 
 // 회원가입 요청
 export async function signup({ userId, password, gender, age }: { userId: string; password: string; gender: number; age: number }) {
-  const res = await fetch("/api/customers/signup", {
+  const res = await fetch(config.API_ENDPOINTS.CUSTOMERS_SIGNUP, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, password, gender, age }),
@@ -22,7 +24,7 @@ export async function signup({ userId, password, gender, age }: { userId: string
 
 // 내 정보 fetch
 export async function fetchMe(token: string) {
-  const res = await fetch("/api/customer/profile ", {
+  const res = await fetch(config.API_ENDPOINTS.CUSTOMERS_PROFILE, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("회원정보 조회 실패");
@@ -31,7 +33,7 @@ export async function fetchMe(token: string) {
 
 // accessToken 리프레시
 export async function refreshToken(refreshToken: string) {
-  const res = await fetch("/api/auth/refresh", {
+  const res = await fetch(config.API_ENDPOINTS.AUTH_REFRESH, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
