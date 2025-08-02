@@ -22,11 +22,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ServiceWorkerProvider />
           <GlobalBasketSSE />
           <BackButton />
-          <TransitionWrapper>
+          {/* <TransitionWrapper> */}
             <Suspense fallback={null}>
               {children}
             </Suspense>
-          </TransitionWrapper>
+          {/* </TransitionWrapper> */}
           {/* 왼쪽 하단 모바일 접속 권장 문구 */}
           <div className="fixed left-4 bottom-4 text-sm text-left text-gray-600 z-40">
             <p className='hidden md:block' style={{color: 'var(--foreground)'}}>

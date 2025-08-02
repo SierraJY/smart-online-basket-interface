@@ -17,7 +17,7 @@ export default function ShakeWrapper({ item, children }: ShakeWrapperProps) {
   const [shaking, setShaking] = useState(false)
 
   useEffect(() => {
-    if (!(item.stock > 0 && item.stock < 20)) { // 흔들 애니메이션 기준 stock
+    if (!(item.stock > 0 && item.stock <= 30)) { // 흔들 애니메이션 기준 stock
       setShaking(false)
       return
     }

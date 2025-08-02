@@ -57,12 +57,11 @@ export default function ProductDetailClient({ id }: { id: string }) {
     <main
       className="min-h-screen flex flex-col items-center"
       style={{
-        background: 'var(--input-background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}
     >
-      <div className="relative w-screen max-w-[540px] h-[32vh] sm:h-[280px] mx-auto overflow-hidden rounded-b-2xl">
+      <div className="relative w-screen max-w-[540px] h-[45vh] sm:h-[400px] mx-auto overflow-hidden rounded-b-2xl">
         <Image
           src={product.imageUrl}
           alt={product.name}
@@ -77,7 +76,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
       </div>
       {/* 상세정보 영역 */}
       <div
-        className="w-full max-w-[540px] -mt-5 px-6 pt-7 pb-75 rounded-2xl shadow-xl relative z-10"
+        className="w-full max-w-[540px] -mt-8 px-6 pt-7 pb-75 rounded-2xl shadow-xl relative z-10"
         style={{
           background: 'var(--footer-background)',
           border: '1.5px solid var(--footer-border)',

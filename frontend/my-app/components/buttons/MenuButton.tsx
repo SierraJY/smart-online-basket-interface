@@ -107,9 +107,11 @@ export default function MenuButton() {
         onClick={() => setOpen(!open)}
         className={`
           w-14 h-14 flex items-center justify-center rounded-full
-          bg-[var(--toggle-bg)] z-50
-          hover:scale-110 transition-all
+          z-50 hover:scale-110 transition-all
         `}
+        style={{
+          backgroundColor: isDark ? 'var(--toggle-bg)' : '#42b883'
+        }}
         aria-label="Menu"
       >
         {open ? (

@@ -173,7 +173,6 @@ export default function ScanPage() {
   return (
     <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
       style={{ 
-        background: 'var(--input-background)', 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}

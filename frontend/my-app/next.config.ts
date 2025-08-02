@@ -6,12 +6,13 @@ const withPWA = nextPWA({
   dest: 'public',
   register: true,
   skipWaiting: true,
-  disable: false,
+  disable: process.env.NODE_ENV === 'development',
 });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // output: 'export',
+  output: 'standalone',
   reactStrictMode: true,
   experimental: {
     serverActions: {},

@@ -5,14 +5,13 @@ import { authStorage } from "@/utils/storage";
 import { config } from "@/config/env";
 
 // 전역 SSE 연결 관리
-let globalSSERef: AbortController | null = null;
 let globalBasketData: any = null;
 let globalListeners: Set<(data: any) => void> = new Set();
 let globalStore: any = null; // store 참조 저장
 let globalEventSource: EventSource | null = null;
 let globalConnectionMonitor: NodeJS.Timeout | null = null; // 연결 모니터링 전역 변수
 let globalReconnectAttempts: number = 0; // 재연결 시도 횟수
-let globalMaxReconnectAttempts: number = 10; // 최대 재연결 시도 횟수
+let globalMaxReconnectAttempts: number = 5; // 최대 재연결 시도 횟수
 let globalReconnectDelay: number = 1000; // 재연결 지연 시간 (ms)
 
 // 전역 SSE 연결 함수
@@ -23,11 +22,6 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
   if (globalEventSource) {
     globalEventSource.close();
     globalEventSource = null;
-  }
-  
-  if (globalSSERef) {
-    globalSSERef.abort();
-    globalSSERef = null;
   }
 
   // 기존 connectionMonitor 정리
@@ -56,37 +50,20 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
     return;
   }
 
-  globalSSERef = new AbortController();
 
-  async function connectSSE() {
+
+  function connectSSE() {
     try {
       console.log("[Global SSE] 연결 시도! basketId:", basketId, "token:", token);
 
-      // 임시로 fetch 방식 사용 (백엔드에서 쿼리 파라미터 처리 구현 후 EventSource로 변경)
-      const response = await fetch(config.API_ENDPOINTS.BASKET_STREAM, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "text/event-stream",
-        },
-        signal: globalSSERef?.signal,
+      // EventSource 방식으로 변경
+      const eventSource = new EventSource(`${config.API_ENDPOINTS.BASKET_STREAM}?token=${encodeURIComponent(token || '')}`, {
+        withCredentials: true
       });
 
-      if (!response.ok) {
-        console.error("[Global SSE] 연결 실패: HTTP", response.status, response.statusText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.body) {
-        console.error("[Global SSE] 연결 실패: response.body 없음");
-        throw new Error("Response body is null");
-      }
-
-      console.log("[Global SSE] 연결 성공! 스트림 읽기 시작...");
+      globalEventSource = eventSource;
       globalReconnectAttempts = 0; // 연결 성공 시 재연결 시도 횟수 리셋
 
-      const reader = response.body.getReader();
-      let buf = "";
       let lastDataTime = Date.now();
       
       // 연결 상태 모니터링 (디버깅용) - 전역 변수로 관리
@@ -103,8 +80,8 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
             clearInterval(globalConnectionMonitor);
             globalConnectionMonitor = null;
           }
-          if (globalSSERef) {
-            globalSSERef.abort();
+          if (globalEventSource) {
+            globalEventSource.close();
           }
           // 재연결 시도
           setTimeout(() => {
@@ -119,82 +96,46 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
         }
       }, 10000); // 10초마다 체크
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log("[Global SSE] 연결 종료 (done==true)");
-          if (globalConnectionMonitor) {
-            clearInterval(globalConnectionMonitor);
-            globalConnectionMonitor = null;
+      // EventSource 이벤트 리스너
+      eventSource.onopen = () => {
+        console.log("[Global SSE] 연결 성공! EventSource 열림");
+      };
+
+      eventSource.onmessage = (event) => {
+        console.log("[Global SSE] 메시지 수신:", event.data);
+        lastDataTime = Date.now(); // 데이터 수신 시간 업데이트
+
+        if (event.data.trim() === "") {
+          console.log("[Global SSE] 빈 데이터 건너뛰기");
+          return;
+        }
+
+        try {
+          const data = JSON.parse(event.data);
+          globalBasketData = data;
+          console.log("[Global SSE] 새 데이터 수신!", data, "items:", data.items, "count:", data.items?.length);
+
+          // 모든 리스너에게 데이터 전달
+          for (const listener of globalListeners) {
+            if (listener) listener(data);
           }
-          break;
-        }
 
-        const chunk = new TextDecoder().decode(value);
-        console.log("[Global SSE] 청크 수신:", chunk.length, "bytes");
-        buf += chunk;
-
-        // SSE 파싱
-        let lines = buf.split("\n");
-        console.log("[Global SSE] 버퍼 라인 수:", lines.length, "전체 버퍼:", JSON.stringify(buf));
-        
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
-          console.log("[Global SSE] 라인", i, ":", line);
-          
-          if (line.startsWith("data:")) {
-            const jsonString = line.replace(/^data:\s*/, "");
-            console.log("[Global SSE] JSON 문자열:", jsonString);
-            
-            if (jsonString.trim() === "") {
-              console.log("[Global SSE] 빈 데이터 건너뛰기");
-              continue;
-            }
-
-            try {
-              const data = JSON.parse(jsonString);
-              globalBasketData = data;
-              lastDataTime = Date.now(); // 데이터 수신 시간 업데이트
-              console.log("[Global SSE] 새 데이터 수신!", data, "items:", data.items, "count:", data.items?.length);
-
-              // 모든 리스너에게 데이터 전달
-              for (const listener of globalListeners) {
-                if (listener) listener(data);
-              }
-
-              // store에도 저장
-              if (globalStore?.setBasketData) {
-                globalStore.setBasketData(data);
-              }
-
-              // 서비스 워커에 데이터 전송
-              if (typeof window !== 'undefined' && (window as any).sendBasketUpdateToSW) {
-                (window as any).sendBasketUpdateToSW(data);
-              }
-            } catch (e) {
-              console.error("[Global SSE] JSON 파싱 실패! 원본:", jsonString, "에러:", e);
-            }
+          // store에도 저장
+          if (globalStore?.setBasketData) {
+            globalStore.setBasketData(data);
           }
-        }
-        
-        // 버퍼 관리: 완전한 라인이 아닌 경우 남겨둠
-        const lastLine = lines[lines.length - 1];
-        console.log("[Global SSE] 마지막 라인:", lastLine, "길이:", lastLine.length);
-        
-        if (lastLine.includes("data:") && !lastLine.endsWith("\n")) {
-          buf = lastLine;
-          console.log("[Global SSE] 버퍼 유지:", buf);
-        } else {
-          buf = "";
-          console.log("[Global SSE] 버퍼 초기화");
-        }
-      }
 
-    } catch (e: any) {
-      if (e.name === "AbortError") {
-        console.log("[Global SSE] 연결 종료(Abort)", e);
-      } else {
-        console.error("[Global SSE] 연결 에러!", e);
+          // 서비스 워커에 데이터 전송
+          if (typeof window !== 'undefined' && (window as any).sendBasketUpdateToSW) {
+            (window as any).sendBasketUpdateToSW(data);
+          }
+        } catch (e) {
+          console.error("[Global SSE] JSON 파싱 실패! 원본:", event.data, "에러:", e);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("[Global SSE] EventSource 에러:", error);
         
         // 에러 발생 시 재연결 시도
         if (globalReconnectAttempts < globalMaxReconnectAttempts) {
@@ -206,6 +147,26 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
         } else {
           console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
         }
+        
+        // 에러 발생 시에도 connectionMonitor 정리
+        if (globalConnectionMonitor !== null) {
+          clearInterval(globalConnectionMonitor);
+          globalConnectionMonitor = null;
+        }
+      };
+
+    } catch (e: any) {
+      console.error("[Global SSE] 연결 에러!", e);
+      
+      // 에러 발생 시 재연결 시도
+      if (globalReconnectAttempts < globalMaxReconnectAttempts) {
+        globalReconnectAttempts++;
+        console.log(`[Global SSE] 에러로 인한 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`);
+        setTimeout(() => {
+          connectGlobalSSE(basketId, token);
+        }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
+      } else {
+        console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
       }
       
       // 에러 발생 시에도 connectionMonitor 정리
@@ -278,10 +239,6 @@ export function disconnectGlobalSSE() {
   if (globalEventSource) {
     globalEventSource.close();
     globalEventSource = null;
-  }
-  if (globalSSERef) {
-    globalSSERef.abort();
-    globalSSERef = null;
   }
   if (globalConnectionMonitor !== null) {
     clearInterval(globalConnectionMonitor);

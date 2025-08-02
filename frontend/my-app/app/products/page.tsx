@@ -6,11 +6,10 @@ import { useMemo, useRef, createRef, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useProducts } from '@/utils/hooks/useProducts'
 import { Product } from '@/types'
-import { useFavorite } from '@/utils/hooks/useFavorite'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { FaHeart, FaRegHeart, FaExclamationTriangle } from "react-icons/fa"
+import { FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import { useScrollRestore } from '@/store/useScrollRestore'
@@ -31,7 +30,6 @@ export default function ProductsPage() {
   const [category, setCategory] = useState<string>(categoryFromURL)
   const { isLoggedIn, accessToken: token } = useAuth()
   const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
-  const { favoriteList, addFavorite, removeFavorite } = useFavorite(token);
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
@@ -81,7 +79,7 @@ export default function ProductsPage() {
     }
   })
 
-  const cardClass = "item-card flex-shrink-0 w-[120px] h-[200px] md:w-[150px] md:h-[250px] snap-start flex flex-col items-center px-2 pt-2 pb-1 transition-all relative bg-transparent"
+  const cardClass = "item-card flex-shrink-0 w-[120px] h-[180px] md:w-[150px] md:h-[200px] snap-start flex flex-col items-center px-2 pt-2 pb-1 transition-all relative bg-transparent"
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
@@ -118,25 +116,10 @@ export default function ProductsPage() {
     }
   }
 
-  // 찜 토글
-  const handleToggleFavorite = async (productId: number) => {
-    if (!isLoggedIn || !token) {
-      alert('로그인 후 이용 가능합니다.')
-      return
-    }
-    try {
-      if (favoriteList.includes(productId)) {
-        await removeFavorite({ productId, token })
-      } else {
-        await addFavorite({ productId, token })
-      }
-    } catch (err: any) {
-      alert(err.message || "찜 처리 오류")
-    }
-  }
+
 
   return (
-    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)', transition: 'background-color 1.6s, color 1.6s' }}>
+    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" style={{ color: 'var(--foreground)', transition: 'background-color 1.6s, color 1.6s' }}>
       <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>전체 상품 목록</h1>
       <SearchBar
         keyword={keyword}
@@ -148,20 +131,35 @@ export default function ProductsPage() {
         showResultButton={false}
       />
       <div className="flex items-center gap-3 mb-6 mt-4 select-none">
-        <label htmlFor="excludeOutOfStock" className="relative mb-1 inline-flex items-center cursor-pointer group" style={{ userSelect: "none" }}>
-          <input
-            type="checkbox"
-            id="excludeOutOfStock"
-            checked={excludeOutOfStock}
-            onChange={e => setExcludeOutOfStock(e.target.checked)}
-            className="sr-only peer"
-          />
-          <div className={`w-11 h-6 transition-all backdrop-blur-md peer-focus:outline-none rounded-full peer peer-checked:bg-[var(--sobi-green)] bg-[var(--text-secondary)] shadow-inner`} style={{ boxShadow: '0 0 0 2px #42b88320' }}></div>
-          <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-white rounded-full shadow-md transition-transform peer-checked:translate-x-5"></div>
+        <label htmlFor="excludeOutOfStock" className="flex items-center gap-2 cursor-pointer group" style={{ userSelect: "none" }}>
+          <div className="relative">
+            <input
+              type="checkbox"
+              id="excludeOutOfStock"
+              checked={excludeOutOfStock}
+              onChange={e => setExcludeOutOfStock(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className={`w-5 h-5 border-2 rounded transition-all peer-focus:outline-none ${
+              excludeOutOfStock 
+                ? 'bg-[var(--sobi-green)] border-[var(--sobi-green)]' 
+                : 'bg-transparent border-[var(--text-secondary)]'
+            }`}>
+              {excludeOutOfStock && (
+                <svg 
+                  className="w-3 h-3 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" 
+                  fill="currentColor" 
+                  viewBox="0 0 20 20"
+                >
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
+            품절 상품 제외
+          </span>
         </label>
-        <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
-          {excludeOutOfStock ? "품절 상품 제외" : "품절 상품 포함"}
-        </span>
       </div>
       <div className="w-full mt-10 max-w-4xl">
         {categorySections.length === 0 && (
@@ -203,78 +201,69 @@ export default function ProductsPage() {
                   {items.slice(0, CATEGORY_LIMIT).map((item: Product) => (
                     <div key={item.id} className={cardClass}>
                       <ShakeWrapper item={item}>
-                        <Link href={`/products/${item.id}`}>
+                        <Link href={`/products/${item.id}`} className="hover:scale-105 transition-all duration-200 hover:scale-105 block w-full h-[110px] flex items-center justify-center relative">
                           <Image
                             src={item.imageUrl}
                             alt={item.name}
-                            className="object-contain w-full h-full rounded-2xl"
-                            style={{ maxHeight: 110, maxWidth: 120, backgroundColor: 'var(--input-background)' }}
-                            width={24}
-                            height={24}
+                            className="object-cover w-full h-full rounded-2xl"
+                            style={{ 
+                              maxHeight: 110, 
+                              maxWidth: 120, 
+                              backgroundColor: 'var(--input-background)',
+                              minHeight: 110,
+                              minWidth: 120
+                            }}
+                            width={120}
+                            height={110}
                             priority={false}
                             loading="lazy"
+                            onLoad={(e) => {
+                              // 이미지 로드 완료 후 레이아웃 안정화
+                              const target = e.target as HTMLImageElement;
+                              target.style.opacity = '1';
+                            }}
+                            onError={(e) => {
+                              // 에러 시에도 레이아웃 유지
+                              const target = e.target as HTMLImageElement;
+                              target.style.opacity = '1';
+                            }}
                           />
+                          {/* 할인 배지 */}
+                          {item.discountRate > 0 && (
+                            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                              {item.discountRate}%
+                            </div>
+                          )}
                         </Link>
                       </ShakeWrapper>
                       <Link href={`/products/${item.id}`}>
-                        <span
-                          className="block text-[15px] font-medium mt-1 mb-0.5 text-center leading-tight max-w-[135px]"
-                          style={{
-                            color: 'var(--foreground)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            minHeight: '40px',
-                          }}
-                          title={item.name}
-                        >
-                          {item.name}
-                        </span>
                         {/* 가격 부분 */}
-                                                 {item.discountRate > 0 ? (
-                           <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
-                             <span className="text-[13px] text-gray-400 line-through opacity-70">
+                        <div className="h-[55px] flex flex-col justify-center">
+                           {item.discountRate > 0 ? (
+                             <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
+                               <span className="text-[13px] text-gray-400 line-through opacity-70">
+                                 {formatPrice(item.price)}
+                               </span>
+                               <span className="text-[16px] font-bold text-red-700">
+                                 {formatPrice(calculateDiscountedPrice(item.price, item.discountRate))}
+                               </span>
+                             </div>
+                           ) : (
+                             <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
                                {formatPrice(item.price)}
                              </span>
-                             <span className="bg-red-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full mb-0.5 shadow-sm">
-                               {item.discountRate}% OFF
-                             </span>
-                             <span className="text-[18px] font-extrabold text-red-700">
-                               {formatPrice(calculateDiscountedPrice(item.price, item.discountRate))}
-                             </span>
-                           </div>
-                         ) : (
-                           <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
-                             {formatPrice(item.price)}
-                           </span>
-                         )}
+                           )}
+                         </div>
                       </Link>
-                      {/* 찜버튼 */}
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          await handleToggleFavorite(item.id)
-                        }}
-                        className={`absolute top-2 right-2 text-lg px-1.5 py-1.5 rounded-full hover:scale-110 transition-all z-10 ${favoriteList.includes(item.id) ? 'opacity-60 pointer-events-none' : ''}`}
-                        title={favoriteList.includes(item.id) ? '찜 해제' : '찜'}
-                      >
-                        {favoriteList.includes(item.id)
-                          ? <FaHeart size={25} style={{ color: 'var(--sobi-green)' }} />
-                          : <FaRegHeart size={25} style={{ color: 'var(--sobi-green)' }} />
-                        }
-                      </button>
                     </div>
                   ))}
                   {/* 더보기 카드 */}
                   {showMore && (
                     <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="flex-shrink-0 w-[100px] h-[100px] snap-start flex flex-col items-center justify-center hover:scale-110 transition-all font-semibold text-md cursor-pointer"
                       style={{ 
-                        minHeight: '225px', 
-                        height: '225px', 
+                        minHeight: '155px', 
+                        height: '155px', 
                         alignItems: 'center',
-                        backgroundColor: 'var(--input-background)',
                         color: 'var(--text-secondary)',
                         borderRadius: '8px'
                       }}>

@@ -3,6 +3,34 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
+@font-face {
+  font-family: 'Yeongwol';
+  src: url('./font/Yeongwol.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Hangul';
+  src: url('./font/hangul.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Jejudoldam';
+  src: url('./font/jejudoldam.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Ownglyph_daelong-Rg';
+  src: url('./font/Ownglyph_daelong-Rg.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 .test-font {
   font-family: 'Jua', 'Cafe24Ssurround', 'Pretendard', Arial, sans-serif;
   font-size: 0.8rem;
@@ -27,11 +55,16 @@
   --search-modal-border: rgba(255,255,255,0.18);
   
   /* SOBI 브랜드 컬러 */
-  --sobi-green: #128211;
+  --sobi-green: #42b883;
   --sobi-green-light: rgba(18, 130, 17, 0.1);
   --sobi-green-lighter: rgba(18, 130, 17, 0.05);
   --sobi-green-border: rgba(18, 130, 17, 0.2);
   --sobi-green-border-light: rgba(18, 130, 17, 0.1);
+  
+  /* 배경 이미지 오버레이 (라이트모드) */
+  --background-overlay: rgba(255, 255, 255, 0.4);
+  --background-overlay-light: rgba(255, 255, 255, 0.2);
+  --background-overlay-heavy: rgba(255, 255, 255, 0.7);
 }
 
 .dark {
@@ -55,21 +88,44 @@
   --sobi-green-lighter: rgba(74, 222, 128, 0.08);
   --sobi-green-border: rgba(74, 222, 128, 0.25);
   --sobi-green-border-light: rgba(74, 222, 128, 0.15);
+  
+  /* 배경 이미지 오버레이 (다크모드) */
+  --background-overlay: rgba(18, 18, 18, 0.85);
+  --background-overlay-light: rgba(18, 18, 18, 0.75);
+  --background-overlay-heavy: rgba(18, 18, 18, 0.92);
+}
+
+.dark body {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 html {
   overscroll-behavior: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 main {
-  background-color: var(--input-background);
+  background-color: transparent;
   /* color: var(--input-foreground); */
 }
 
 body {
   color: var(--foreground);
-  background-color: var(--input-background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: transparent;
+  font-family: 'Ownglyph_daelong-Rg', Arial, Helvetica, sans-serif;
+  background-image: 
+    linear-gradient(var(--background-overlay), var(--background-overlay)),
+    url('/paper2.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 input,
@@ -93,6 +149,37 @@ textarea {
 
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* 배경 이미지 유틸리티 클래스 */
+.background-paper {
+  background-image: 
+    linear-gradient(var(--background-overlay), var(--background-overlay)),
+    url('/paper2.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.background-paper-heavy {
+  background-image: 
+    linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
+    url('/paper2.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.background-paper-light {
+  background-image: 
+    linear-gradient(var(--background-overlay-light), var(--background-overlay-light)),
+    url('/paper2.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
 
 @keyframes shake {
   0% { transform: translateX(0); }
@@ -126,6 +213,74 @@ textarea {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  transition: background-color 1.6s ease, color 1.6s ease;
+  transition: background-color 0.4s ease, color 0.8s ease;
+}
 
+/* 이미지 드래그 방지 */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+/* Next.js Image 컴포넌트의 img 태그도 드래그 방지 */
+img[data-nimg] {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+/* 링크 드래그 방지 */
+a {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 내부의 모든 요소 드래그 방지 */
+.overflow-x-auto {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.overflow-x-auto * {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 내부의 모든 요소 드래그 방지 */
+.drag-scroll-container {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.drag-scroll-container * {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 부드러운 스크롤 */
+.drag-scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }

@@ -46,7 +46,7 @@ export default function SearchBar({
         style={{
           borderRadius: '999px',
           background: 'var(--modal-glass-bg,rgba(255,255,255,0.36))',
-          border: '1.5px solid var(--modal-glass-border,rgba(255,255,255,0.18))',
+          border: '1.8px solid var(--modal-glass-border,rgba(85, 64, 64, 0.35))',
           boxShadow: '0 1.5px 10px 0 rgba(0,0,0,0.06)',
           backdropFilter: 'blur(9px)',
           WebkitBackdropFilter: 'blur(9px)',
