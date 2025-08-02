@@ -1,7 +1,6 @@
 services:
   # nginx:
   #   image: nginx:1.25.5-alpine
-  #   container_name: sobi-nginx
   #   ports:
   #     - "8080:80"
   #   volumes:
@@ -11,7 +10,6 @@ services:
   # backend:
   #   build: ./backend
   #   image: sobi/backend:1.0
-  #   container_name: sobi-backend
   #   ports:
   #     - "8081:8080"
   #   environment:
@@ -27,7 +25,6 @@ services:
   
   db:
     image: postgres:15.4
-    container_name: sobi-db
     environment:
       - POSTGRES_DB=sobi
       - POSTGRES_USER=sobiuser
@@ -39,13 +36,11 @@ services:
 
   redis:
     image: redis:7.2.1
-    container_name: sobi-redis
     ports:
       - "6379:6379"
   
   mqtt:
     image: eclipse-mosquitto:2.0
-    container_name: sobi-mqtt
     ports:
       - "1883:1883"
 
