@@ -29,7 +29,6 @@ public class BasketSseController {
     private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L; // 30분
     private static final long ERROR_EMITTER_TIMEOUT_MS = 5000L;  // 5초
 
-
     // 바구니 실시간 업데이트 SSE 스트림 연결
     @GetMapping(value = "/my/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamBasketUpdates(Authentication authentication) {
@@ -39,14 +38,7 @@ public class BasketSseController {
             // 인증된 사용자 정보 가져오기
             if (authentication == null || !authentication.isAuthenticated()) {
                 System.err.println("SSE 연결 실패: 인증되지 않은 사용자");
-                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
-                try {
-                    errorEmitter.send(SseEmitter.event()
-                            .name("error")
-                            .data("{\"error\":\"로그인이 필요합니다\"}"));
-                    errorEmitter.complete();
-                } catch (Exception ignored) {}
-                return errorEmitter;
+                return makeErrorEmitter("error", "{\"error\":\"로그인이 필요합니다\"}");
             }
 
             JwtAuthenticationFilter.JwtUserPrincipal principal =
@@ -57,14 +49,7 @@ public class BasketSseController {
             String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
             if (basketIdStr == null) {
                 System.err.println("SSE 연결 실패: 사용 중인 바구니가 없음");
-                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
-                try {
-                    errorEmitter.send(SseEmitter.event()
-                            .name("error")
-                            .data("{\"error\":\"사용 중인 바구니가 없습니다\"}"));
-                    errorEmitter.complete();
-                } catch (Exception ignored) {}
-                return errorEmitter;
+                return makeErrorEmitter("error", "{\"error\":\"사용 중인 바구니가 없습니다\"}");
             }
 
             Integer basketId;
@@ -72,14 +57,7 @@ public class BasketSseController {
                 basketId = Integer.parseInt(basketIdStr);
             } catch (NumberFormatException e) {
                 System.err.println("SSE 연결 실패: 바구니 ID 파싱 오류");
-                SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
-                try {
-                    errorEmitter.send(SseEmitter.event()
-                            .name("error")
-                            .data("{\"error\":\"바구니 정보가 올바르지 않습니다\"}"));
-                    errorEmitter.complete();
-                } catch (Exception ignored) {}
-                return errorEmitter;
+                return makeErrorEmitter("error", "{\"error\":\"바구니 정보가 올바르지 않습니다\"}");
             }
 
             // SSE Emitter 생성 (상수 사용)
@@ -109,14 +87,22 @@ public class BasketSseController {
             System.err.println("바구니 SSE 연결 실패: " + e.getMessage());
             e.printStackTrace();
 
-            SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
-            try {
-                errorEmitter.send(SseEmitter.event()
-                        .name("error")
-                        .data("{\"error\":\"SSE 연결 중 오류가 발생했습니다\"}"));
-                errorEmitter.complete();
-            } catch (Exception ignored) {}
-            return errorEmitter;
+            return makeErrorEmitter("error", "{\"error\":\"SSE 연결 중 오류가 발생했습니다\"}");
         }
+    }
+
+    /**
+     * 에러 응답용 SseEmitter 생성
+     */
+    private SseEmitter makeErrorEmitter(String eventName, String data) {
+        SseEmitter errorEmitter = new SseEmitter(ERROR_EMITTER_TIMEOUT_MS);
+
+        try {
+            errorEmitter.send(SseEmitter.event()
+                    .name(eventName)
+                    .data(data));
+            errorEmitter.complete();
+        } catch (Exception ignored) {}
+        return errorEmitter;
     }
 }
