@@ -19,6 +19,14 @@ export default function QrScanner({ onScan }: {
       try { await html5QrcodeRef.current.clear(); } catch {}
       html5QrcodeRef.current = null;
     }
+    
+    // 모든 카메라 스트림 강제 중지
+    try {
+      const streams = await navigator.mediaDevices.getUserMedia({ video: true });
+      streams.getTracks().forEach(track => {
+        track.stop();
+      });
+    } catch {}
   }
 
   useEffect(() => {

@@ -40,9 +40,29 @@ export default function ScanPage() {
       }
       setIsScanning(false);
       
-      // basketId 저장 및 페이지 이동
+      // 모든 카메라 스트림 강제 중지
+      try {
+        const streams = navigator.mediaDevices.getUserMedia({ video: true });
+        streams.then(stream => {
+          stream.getTracks().forEach(track => {
+            track.stop();
+          });
+        }).catch(() => {});
+      } catch {}
+      
+      // basketId 저장
       setBasketId(basketId);
       localStorage.removeItem("activatedBasketId");
+      
+      // 즉시 SSE 연결 시작 (활성화 전에 미리 연결)
+      if (typeof window !== 'undefined' && (window as any).reconnectSSE) {
+        console.log('[ScanPage] QR 스캔 성공 - 즉시 SSE 연결 시작');
+        setTimeout(() => {
+          (window as any).reconnectSSE();
+        }, 100);
+      }
+      
+      // 페이지 이동
       router.replace('/baskets');
       
     } catch (err) {
@@ -60,7 +80,6 @@ export default function ScanPage() {
   // QrScanner용 핸들러
   const handleQrScannerScan = async (decodedText: string, stopCamera: () => Promise<void>) => {
     console.log("QrScanner QR 스캔 성공:", decodedText);
-    await stopCamera();
     
     try {
       // QR 코드에서 basketId 추출
@@ -74,9 +93,29 @@ export default function ScanPage() {
       
       console.log("추출된 basketId:", basketId);
       
-      // basketId 저장 및 페이지 이동
+      // 카메라 완전 정리
+      await stopCamera();
+      
+      // 추가로 모든 카메라 스트림 강제 중지
+      try {
+        const streams = await navigator.mediaDevices.getUserMedia({ video: true });
+        streams.getTracks().forEach(track => {
+          track.stop();
+        });
+      } catch {}
+      
+      // basketId 저장
       setBasketId(basketId);
       localStorage.removeItem("activatedBasketId");
+      
+      // 즉시 SSE 연결 시작 (활성화 전에 미리 연결)
+      if (typeof window !== 'undefined' && (window as any).reconnectSSE) {
+        console.log('[ScanPage] QR 스캔 성공 - 즉시 SSE 연결 시작');
+        // 즉시 연결 (지연 없이)
+        (window as any).reconnectSSE();
+      }
+      
+      // 페이지 이동
       router.replace('/baskets');
       
     } catch (err) {

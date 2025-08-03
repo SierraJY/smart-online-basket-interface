@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Package, PackageOpen } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
-import QrButton from './QrButton'
+import LogoutButton from './LogoutButton'
 import CategoryButton from './CategoryButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
@@ -66,7 +66,7 @@ export default function MenuButton() {
               transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
-              <QrButton />
+              <LogoutButton />
             </motion.div>
             <motion.div
               key="category"
@@ -110,14 +110,16 @@ export default function MenuButton() {
           z-50 hover:scale-110 transition-all
         `}
         style={{
-          backgroundColor: isDark ? 'var(--toggle-bg)' : '#42b883'
+          backgroundColor: 'var(--footer-background)',
+          border: '1px solid var(--footer-border)',
+          backdropFilter: 'blur(10px) saturate(140%)'
         }}
         aria-label="Menu"
       >
         {open ? (
-          <PackageOpen size={30} color={isDark ? "#fff" : "#222"} strokeWidth={1.2} />
+          <PackageOpen size={30} color="var(--foreground)" strokeWidth={1.2} />
         ) : (
-          <Package size={30} color={isDark ? "#fff" : "#222"} strokeWidth={1.2} />
+          <Package size={30} color="var(--foreground)" strokeWidth={1.2} />
         )}
       </button>
     </div>

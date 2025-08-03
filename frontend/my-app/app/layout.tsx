@@ -7,9 +7,9 @@ import TransitionWrapper from './transition-wrapper'
 import { ReactNode, Suspense } from 'react'
 import MenuButton from '@/components/buttons/MenuButton'
 import ReactQueryProvider from "@/components/ReactQueryProvider"
-import LoginOrLogout from '@/components/LoginOrLogout'
 import GlobalBasketSSE from '@/components/GlobalBasketSSE'
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider'
+import { Toaster } from 'react-hot-toast'
 
 export { metadata }
 
@@ -21,7 +21,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReactQueryProvider>
           <ServiceWorkerProvider />
           <GlobalBasketSSE />
-          <BackButton />
           {/* <TransitionWrapper> */}
             <Suspense fallback={null}>
               {children}
@@ -29,15 +28,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {/* </TransitionWrapper> */}
           {/* 왼쪽 하단 모바일 접속 권장 문구 */}
           <div className="fixed left-4 bottom-4 text-sm text-left text-gray-600 z-40">
-            <p className='hidden md:block' style={{color: 'var(--foreground)'}}>
+            <p className='text-lg hidden md:block' style={{color: 'var(--foreground)'}}>
               해당 페이지는 모바일에 최적화 되어있습니다
             </p>
           </div>
-          <div className="fixed right-5 bottom-30 flex flex-col items-center z-50 select-none">
+          <Footer />
+          
+          {/* MenuButton - 오른쪽에 배치 */}
+          <div className="fixed bottom-6 right-4 z-50">
             <MenuButton />
           </div>
-          <LoginOrLogout />
-          <Footer />
+          
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              duration: 2000,
+              style: {
+                background: 'var(--footer-background)',
+                color: 'var(--foreground)',
+                border: '1px solid var(--footer-border)',
+              },
+            }}
+          />
         </ReactQueryProvider>
       </body>
     </html>

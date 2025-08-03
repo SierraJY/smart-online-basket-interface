@@ -2,66 +2,59 @@
 
 'use client'
 
-import { useState } from 'react';
 import { useAuth } from '@/utils/hooks/useAuth';
-import { useFavorite } from '@/utils/hooks/useFavorite';
 import { useProducts } from '@/utils/hooks/useProducts';
-import { FaHeart, FaRegHeart } from 'react-icons/fa';
+import FavoriteIcon from '@/components/FavoriteIcon';
 import Image from 'next/image';
+import { Tag } from 'lucide-react';
+import Link from 'next/link';
 
 export default function ProductDetailClient({ id }: { id: string }) {
-  const { isLoggedIn, accessToken } = useAuth();
   const { products, loading, error } = useProducts();
   const product = products.find((p: any) => String(p.id) === String(id));
-  const token = accessToken;
-  const {
-    favoriteList,
-    addFavorite,
-    removeFavorite,
-  } = useFavorite(token);
-  const [FavoriteLoading, setFavoriteLoading] = useState<boolean>(false);
-
-  // 찜 토글 (React Query)
-  const handleToggleFavorite = async (productId: number) => {
-    if (!isLoggedIn || !token) {
-      alert('로그인 후 이용 가능합니다.')
-      return
-    }
-    setFavoriteLoading(true)
-    try {
-      if (favoriteList.includes(productId)) {
-        await removeFavorite({ productId, token })
-      } else {
-        await addFavorite({ productId, token })
-      }
-    } catch (err: any) {
-      alert(err.message || "찜 처리 오류")
-    } finally {
-      setFavoriteLoading(false)
-    }
-  }
 
   if (loading) {
-    return <main className="min-h-screen flex items-center justify-center"><div>로딩 중...</div></main>
+    return (
+      <main className="min-h-screen flex items-center justify-center background-paper">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">상품 정보를 불러오는 중...</p>
+        </div>
+      </main>
+    )
   }
+  
   if (error || !product) {
-    return <main className="min-h-screen flex items-center justify-center">
-      <div>상품을 찾을 수 없습니다</div>
-    </main>
+    return (
+      <main className="min-h-screen flex items-center justify-center background-paper">
+        <div className="text-center">
+          <p className="text-[var(--foreground)] mb-4">상품을 찾을 수 없습니다</p>
+          <button 
+            onClick={() => window.history.back()}
+            className="px-4 py-2 bg-[var(--sobi-green)] text-white rounded-lg hover:opacity-90 transition-opacity"
+          >
+            뒤로 가기
+          </button>
+        </div>
+      </main>
+    )
   }
 
   // 카테고리 언더바를 슬래쉬로 치환
   const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/');
 
+  // 태그 파싱 함수
+  const parseTags = (tagString: string) => {
+    if (!tagString) return [];
+    return tagString.split(' ').filter(tag => tag.startsWith('#'));
+  };
+
+  const tags = parseTags(product.tag || '');
+
   return (
-    <main
-      className="min-h-screen flex flex-col items-center"
-      style={{
-        color: 'var(--foreground)',
-        transition: 'background-color 1.6s, color 1.6s'
-      }}
-    >
-      <div className="relative w-screen max-w-[540px] h-[45vh] sm:h-[400px] mx-auto overflow-hidden rounded-b-2xl">
+    <main className="min-h-screen background-paper">
+      {/* 상품 이미지 영역 */}
+      <div className="relative w-full h-[45vh] sm:h-[400px] overflow-hidden">
         <Image
           src={product.imageUrl}
           alt={product.name}
@@ -73,53 +66,111 @@ export default function ProductDetailClient({ id }: { id: string }) {
             filter: 'brightness(0.96) saturate(1.08)'
           }}
         />
-      </div>
-      {/* 상세정보 영역 */}
-      <div
-        className="w-full max-w-[540px] -mt-8 px-6 pt-7 pb-75 rounded-2xl shadow-xl relative z-10"
-        style={{
-          background: 'var(--footer-background)',
-          border: '1.5px solid var(--footer-border)',
-          marginBottom: 24,
-          boxShadow: '0 6px 32px 0 rgba(0,0,0,0.09)',
-          backdropFilter: 'blur(10px) saturate(140%)',
-          transition: 'background-color 1.6s, color 1.6s, border-color 1.6s'
-        }}
-      >
-        <div className="flex justify-between items-start mb-2">
-          <h1 className="text-2xl font-bold flex-1" style={{ color: 'var(--foreground)' }}>
-            {product.name}
-          </h1>
-          <button
-            onClick={async () => {
-              if (FavoriteLoading) return
-              await handleToggleFavorite(product.id)
-            }}
-            className={`ml-4 text-lg px-2 py-2 rounded-full hover:scale-110 transition-all z-10 ${FavoriteLoading ? 'opacity-60 pointer-events-none' : ''}`}
-            title={favoriteList.includes(product.id) ? '찜 해제' : '찜'}
-            disabled={FavoriteLoading}
-          >
-            {favoriteList.includes(product.id)
-              ? <FaHeart size={28} color="var(--foreground)" />
-              : <FaRegHeart size={28} color="var(--foreground)" />
-            }
-          </button>
+        
+        {/* 그라데이션 오버레이 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+        
+        {/* 찜 아이콘 - 상품 이미지 위에 오버레이 */}
+        <div className="absolute top-4 right-4 z-20">
+          <FavoriteIcon productId={product.id} readOnly={false} />
         </div>
-        <p className="text-lg font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
-          {product.price.toLocaleString()}원
-        </p>
-        <p className="text-md font-semibold mb-1" style={{ color: 'var(--foreground)' }}>
-          {product.brand}
-        </p>
-        <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-          남은 재고 : {product.stock}
-        </p>
-        <p className="text-sm mb-4" style={{ color: '#34cd55', opacity: 0.8 }}>
-          {replaceCategoryName(product.category)}
-        </p>
-        <p className="text-base leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-          {product.description}
-        </p>
+      </div>
+
+      {/* 상세정보 영역 */}
+      <div className="relative -mt-8 mx-4 rounded-2xl shadow-xl z-10 bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)]">
+        <div className="p-6">
+          {/* 상품명 */}
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+              {product.name}
+            </h1>
+            
+            {/* 태그 영역 */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {tags.map((tag, index) => (
+                  <Link
+                    key={index}
+                    href={`/products/tag?tag=${encodeURIComponent(tag)}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium hover:scale-105 transition-transform cursor-pointer"
+                    style={{
+                      background: 'linear-gradient(135deg, var(--sobi-green) 0%, rgba(66, 184, 131, 0.8) 100%)',
+                      color: 'white',
+                      boxShadow: '0 2px 8px rgba(66, 184, 131, 0.3)'
+                    }}
+                  >
+                    {/* <Tag size={12} className="mr-1" /> */}
+                    {tag.replace('#', '# ')}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 가격 및 브랜드 */}
+          <div className="mb-4">
+            {product.discountRate && product.discountRate > 0 ? (
+              <div className="mb-2">
+                {/* 원가 (취소선) */}
+                <p className="text-lg text-[var(--text-secondary)] line-through mb-1">
+                  {product.price.toLocaleString()}원
+                </p>
+                {/* 할인가 */}
+                <p className="text-2xl font-bold text-[var(--foreground)] mb-1">
+                  {Math.floor(product.price * (1 - product.discountRate / 100)).toLocaleString()}원
+                </p>
+                {/* 할인율 */}
+                <span 
+                  className="inline-block px-2 py-1 rounded-md text-sm font-semibold text-white"
+                  style={{
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+                  }}
+                >
+                  {product.discountRate}%
+                </span>
+              </div>
+            ) : (
+              <p className="text-2xl font-bold text-[var(--foreground)] mb-1">
+                {product.price.toLocaleString()}원
+              </p>
+            )}
+            <p className="text-lg font-semibold text-[var(--foreground)] mb-2">
+              {product.brand}
+            </p>
+          </div>
+
+          {/* 카테고리 및 재고 */}
+          <div className="mb-4">
+            <p className="text-sm text-[var(--text-secondary)] mb-1">
+              남은 재고: <span className="font-semibold text-[var(--foreground)]">{product.stock}</span>
+            </p>
+            <p className="text-sm font-medium" style={{ color: 'var(--sobi-green)' }}>
+              {replaceCategoryName(product.category)}
+            </p>
+          </div>
+
+          {/* 상품 설명 */}
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">상품 설명</h3>
+            <p className="text-base leading-relaxed text-[var(--text-secondary)]">
+              {product.description}
+            </p>
+          </div>
+
+          {/* 구매 버튼 (준비중) */}
+          <div className="mt-6">
+            <button 
+              className="w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 opacity-60 cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, var(--sobi-green) 0%, rgba(66, 184, 131, 0.8) 100%)',
+              }}
+              disabled
+            >
+              준비 중입니다
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   )

@@ -1,4 +1,4 @@
-// 카테고리별 상품 목록 페이지
+// 태그별 상품 목록 페이지
 
 'use client'
 
@@ -28,18 +28,17 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'price_low', label: '가격낮은순' }
 ]
 
-export default function CategoryPage() {
+export default function TagPage() {
   const { products, loading, error } = useProducts()
   const searchParams = useSearchParams()
   const router = useRouter()
   const sortDropdownRef = useRef<HTMLDivElement>(null)
 
+  const tagFromURL = useMemo(() => searchParams.get('tag') || '', [searchParams])
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
-  const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
   const sortFromURL = useMemo(() => (searchParams.get('sort') as SortOption) || 'id', [searchParams])
   
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
-  const [category, setCategory] = useState<string>(categoryFromURL)
   const [sort, setSort] = useState<SortOption>(sortFromURL)
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState<boolean>(false)
   
@@ -76,23 +75,14 @@ export default function CategoryPage() {
   // 쿼리스트링 sync
   useEffect(() => {
     setKeyword(keywordFromURL)
-    setCategory(categoryFromURL)
     setSort(sortFromURL)
-  }, [keywordFromURL, categoryFromURL, sortFromURL])
+  }, [keywordFromURL, sortFromURL])
 
   const onKeywordChange = (val: string) => {
     setKeyword(val)
     const params = new URLSearchParams(searchParams)
     params.set('keyword', val)
     params.set('page', '1') // 검색 시 첫 페이지로 이동
-    router.replace(`?${params.toString()}`)
-  }
-  
-  const onCategoryChange = (val: string) => {
-    setCategory(val)
-    const params = new URLSearchParams(searchParams)
-    params.set('category', val)
-    params.set('page', '1') // 카테고리 변경 시 첫 페이지로 이동
     router.replace(`?${params.toString()}`)
   }
 
@@ -105,13 +95,27 @@ export default function CategoryPage() {
     router.replace(`?${params.toString()}`)
   }
 
+  // 태그 파싱 함수
+  const parseTags = (tagString: string) => {
+    if (!tagString) return [];
+    return tagString.split(' ').filter(tag => tag.startsWith('#'));
+  };
+
   // 필터링
-  const filtered: Product[] = products.filter(
-    (item: Product) =>
-      (category === '' || item.category === category) &&
-      [item.name, item.description, item.category].join(' ').toLowerCase().includes(keyword.toLowerCase()) &&
-      (!excludeOutOfStock || item.stock > 0)
-  )
+  const filtered: Product[] = products.filter((item: Product) => {
+    const matchesKeyword =
+      [item.name, item.description, item.category]
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword.toLowerCase())
+    const matchesStock = !excludeOutOfStock || item.stock > 0
+    
+    // 태그 매칭
+    const itemTags = parseTags(item.tag || '')
+    const matchesTag = tagFromURL ? itemTags.some(tag => tag === tagFromURL) : true
+    
+    return matchesKeyword && matchesStock && matchesTag
+  })
 
   // 정렬 함수
   const sortedProducts = useMemo(() => {
@@ -169,7 +173,7 @@ export default function CategoryPage() {
       }}
     >
       <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
-      <div className="text-lg font-semibold text-[var(--foreground)]">{replaceCategoryName(category)} 상품 목록을 불러오는 중...</div>
+      <div className="text-lg font-semibold text-[var(--foreground)]">태그별 상품 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
   )
@@ -204,14 +208,14 @@ export default function CategoryPage() {
       }}>
       {/* 헤더 */}
       <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>
-        {replaceCategoryName(category)}
+        {tagFromURL.replace('#', '# ')}
       </h1>
-      {/* 전체 상품 목록 페이지와 동일하게, 바로 아래에 SearchBar만! */}
+      {/* SearchBar */}
       <SearchBar
         keyword={keyword}
         setKeyword={onKeywordChange}
-        category={category}
-        setCategory={onCategoryChange}
+        category=""
+        setCategory={() => {}}
         onSearch={() => {}}
         showCategorySelect={false}
         showResultButton={false}
@@ -340,7 +344,7 @@ export default function CategoryPage() {
       <section className="w-full mt-8 max-w-4xl grid grid-cols-3 md:grid-cols-6 gap-2 justify-items-center">
         {pagedProducts.length === 0 && (
           <div className="col-span-3 md:col-span-6 text-center text-lg mt-16 text-[var(--text-secondary)]">
-            해당 카테고리 상품이 없습니다.
+            해당 태그의 상품이 없습니다.
           </div>
         )}
         {pagedProducts.map((item: Product) => (
@@ -441,4 +445,4 @@ export default function CategoryPage() {
       )}
     </main>
   )
-}
+} 

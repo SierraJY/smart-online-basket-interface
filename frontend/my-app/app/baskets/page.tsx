@@ -2,16 +2,17 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useBasketStore } from '@/store/useBasketStore';
+import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useBasketItems } from '@/store/useBasketStore';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useActivateBasket } from '@/utils/hooks/useActivateBasket';
 import { reconnectGlobalSSE } from '@/utils/hooks/useGlobalBasketSSE';
 import { Package, ShoppingBasket, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // 물고기처럼 떠다니는 상품 아이콘 컴포넌트
 const FloatingProductFish = ({ item, index }: { item: any; index: number }) => {
@@ -198,7 +199,7 @@ const FishTankBackground = ({ items }: { items: any[] }) => {
       ))}
       
       {/* 물고기들 */}
-      {items.map((item, index) => (
+      {items.map((item: any, index: number) => (
         <FloatingProductFish key={item.product.id} item={item} index={index} />
       ))}
       
@@ -224,8 +225,8 @@ const FishTankBackground = ({ items }: { items: any[] }) => {
 export default function BasketsPage() {
   const router = useRouter();
   const { accessToken: token } = useAuth();
-  const basketId = useBasketStore(s => s.basketId);
-  const setBasketId = useBasketStore(s => s.setBasketId);
+  const basketId = useBasketId();
+  const setBasketId = useBasketStore(state => state.setBasketId);
 
   // ⬇️ 2. 토큰/basketId 없으면 스캔으로
   useEffect(() => {
@@ -235,7 +236,7 @@ export default function BasketsPage() {
 
   // ⬇️ 3. 활성화 필요시만 start 호출
   const [activateError, setActivateError] = useState<string | null>(null);
-  const activatedBasketId = useBasketStore(s => s.activatedBasketId);
+  const activatedBasketId = useActivatedBasketId();
   const needsActivation = basketId && (activatedBasketId !== basketId);
   const { mutate: activate, isPending } = useActivateBasket(basketId, token);
 
@@ -268,7 +269,27 @@ export default function BasketsPage() {
   }, [token, basketId, needsActivation, activate, setBasketId, router]);
 
   // ⬇️ 5. 전역 SSE는 layout에서 실행되므로 store의 데이터만 사용
-  const basket = useBasketStore(s => s.basketData);
+  const basket = useBasketData();
+  const validItems = useMemo(() => {
+    if (!basket || !basket.items) return [];
+    return basket.items.filter(item => item && item.product && item.product.id);
+  }, [basket]);
+  
+  // 디버깅용 로그
+  useEffect(() => {
+    console.log('[BasketsPage] basket 데이터 변경:', basket);
+  }, [basket]);
+
+  // 초기 데이터 로딩 상태 관리
+  const [isInitialDataLoaded, setIsInitialDataLoaded] = useState(false);
+  
+  // 초기 데이터 로딩 확인
+  useEffect(() => {
+    if (basket && !isInitialDataLoaded) {
+      console.log('[BasketsPage] 초기 데이터 로딩 완료');
+      setIsInitialDataLoaded(true);
+    }
+  }, [basket, isInitialDataLoaded]);
 
   // ⬇️ 7. 수동 재연결 버튼 (테스트용)
   const handleReconnect = () => {
@@ -357,36 +378,59 @@ export default function BasketsPage() {
     );
   }
   
-  if (!basket) {
+  // 장바구니가 비어있는 경우 (items가 없거나 빈 배열인 경우)
+  if (!basket || !basket.items || basket.items.length === 0) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
         style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
       >
         <ShoppingBasket className="w-12 h-12 text-gray-400 mb-4" />
         <h2 className="text-lg font-semibold mb-2">장바구니가 비어있습니다</h2>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>아직 장바구니에 물품이 없습니다.</p>
-        <button 
-          className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
-          style={{
-            border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
-            color: 'var(--foreground)',
-          }}
-          onClick={handleReconnect}
-        >
-          새로고침
-        </button>
+        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
+          {!basket ? 'SSE 연결 대기 중...' : '아직 장바구니에 물품이 없습니다.'}
+        </p>
+        <div className="space-y-2">
+          <button 
+            className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
+            style={{
+              border: '1px solid var(--input-border)',
+              backgroundColor: 'var(--input-background)',
+              color: 'var(--foreground)',
+            }}
+            onClick={handleReconnect}
+          >
+            SSE 재연결
+          </button>
+          <button 
+            className="w-full max-w-xs py-2 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all text-sm"
+            style={{
+              border: '1px solid var(--input-border)',
+              backgroundColor: 'var(--input-background)',
+              color: 'var(--foreground)',
+            }}
+            onClick={() => window.location.reload()}
+          >
+            페이지 새로고침
+          </button>
+        </div>
       </main>
     );
   }
 
   // 실제 장바구니 UI
   return (
-    <main className="min-h-screen px-4 py-8 pb-24 flex flex-col items-center"
+    <main className="min-h-screen py-8 pb-24 flex flex-col items-center"
       style={{ 
-        background: 'var(--input-background)', 
         color: 'var(--foreground)',
-        transition: 'background-color 1.6s, color 1.6s'
+        transition: 'background-color 1.6s, color 1.6s',
+        backgroundImage: `
+          linear-gradient(var(--background-overlay), var(--background-overlay)),
+          url('/paper2.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
       }}
     >
       <div className="w-full max-w-3xl">
@@ -407,8 +451,8 @@ export default function BasketsPage() {
           </div>
         </div>
 
-        {/* 테스트용 재연결 버튼 */}
-        <div className="text-center mb-6">
+        {/* 테스트용 버튼들 */}
+        <div className="text-center mb-6 space-x-2">
           <button 
             onClick={handleReconnect}
             className="inline-flex items-center gap-2 py-2 px-4 text-sm rounded-lg hover:opacity-80 transition-all"
@@ -420,6 +464,17 @@ export default function BasketsPage() {
           >
             <RefreshCw className="w-4 h-4" />
             SSE 재연결
+          </button>
+          <button 
+            onClick={() => toast.success('테스트: 상품이 장바구니에 추가되었습니다')}
+            className="inline-flex items-center gap-2 py-2 px-4 text-sm rounded-lg hover:opacity-80 transition-all"
+            style={{
+              border: '1px solid var(--sobi-green-border)',
+              backgroundColor: 'var(--sobi-green-light)',
+              color: 'var(--sobi-green)',
+            }}
+          >
+            Toast 테스트
           </button>
         </div>
 
@@ -433,14 +488,24 @@ export default function BasketsPage() {
             <DollarSign className="w-6 h-6 mr-3" style={{ color: 'var(--sobi-green)' }} />
             결제 요약
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex justify-between items-center p-3 rounded-lg"
               style={{
                 backgroundColor: 'var(--input-background)',
               }}
             >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>상품 개수</span>
+              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 상품 품목</span>
               <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket.totalCount || 0}개</span>
+            </div>
+            <div className="flex justify-between items-center p-3 rounded-lg"
+              style={{
+                backgroundColor: 'var(--input-background)',
+              }}
+            >
+              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 상품 개수</span>
+              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>
+                {validItems.reduce((sum, item) => sum + item.quantity, 0)}개
+              </span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg"
               style={{
@@ -453,33 +518,8 @@ export default function BasketsPage() {
           </div>
         </div>
 
-        {/* 물고기 애니메이션 수족관 */}
-        <div className="p-6 rounded-lg shadow-sm mb-8"
-          style={{
-            border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
-          }}
-        >
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            🐠 물고기 수족관
-          </h2>
-          <p className="text-sm mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
-            상품들이 물고기처럼 자유롭게 헤엄치고 있어요! 클릭하면 상품 상세를 볼 수 있어요 🐟
-          </p>
-          
-          {(basket.items || []).length === 0 ? (
-            <div className="text-center py-12">
-              <ShoppingBasket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>장바구니에 담긴 상품이 없습니다.</p>
-              <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>상품을 장바구니에 담아보세요!</p>
-            </div>
-          ) : (
-            <FishTankBackground items={basket.items || []} />
-          )}
-        </div>
-
         {/* 상품 목록 (기존 스타일) */}
-        <div className="p-6 rounded-lg shadow-sm"
+        <div className="p-6 rounded-lg shadow-sm mb-8"
           style={{
             border: '1px solid var(--input-border)',
             backgroundColor: 'var(--input-background)',
@@ -497,7 +537,7 @@ export default function BasketsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {(basket.items || []).map((item: any) => (
+              {validItems.map((item: any) => (
                 <div key={item.product.id} className="flex items-center p-4 rounded-lg hover:shadow-sm transition-all"
                   style={{
                     backgroundColor: 'var(--input-background)',
@@ -528,6 +568,31 @@ export default function BasketsPage() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* 물고기 애니메이션 수족관 */}
+        <div className="p-6 rounded-lg shadow-sm mb-8"
+          style={{
+            border: '1px solid var(--input-border)',
+            backgroundColor: 'var(--input-background)',
+          }}
+        >
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            🐠 물고기 수족관
+          </h2>
+          <p className="text-sm mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
+            상품들이 물고기처럼 자유롭게 헤엄치고 있어요! 클릭하면 상품 상세를 볼 수 있어요 🐟
+          </p>
+          
+          {(basket.items || []).length === 0 ? (
+            <div className="text-center py-12">
+              <ShoppingBasket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>장바구니에 담긴 상품이 없습니다.</p>
+              <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>상품을 장바구니에 담아보세요!</p>
+            </div>
+          ) : (
+            <FishTankBackground items={validItems} />
           )}
         </div>
       </div>

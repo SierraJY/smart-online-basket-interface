@@ -12,6 +12,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronRight } from 'lucide-react'
 import ShakeWrapper from '@/components/ShakeWrapper'
+import ProfileButton from '@/components/buttons/ProfileButton'
 
 export default function Home() {
   const router = useRouter()
@@ -153,17 +154,17 @@ export default function Home() {
     
     // 할인 상품 (할인율 9% 이상, 재고 30개 이하)
     const discountBase = shuffleArray(
-      products.filter(p => p.discountRate > 9 && p.stock > 0 && p.stock <= 30)
+      products.filter(p => p.discountRate >= 9 && p.stock > 0 && p.stock <= 30)
     ).slice(0, 15)
     
     // 인기 상품 (판매량 100개 이상)
     const popularBase = shuffleArray(
-      products.filter(p => p.sales > 100 && p.stock > 0)
+      products.filter(p => p.sales >= 100 && p.stock > 0)
     ).slice(0, 15)
     
-    // 건강 관리 제품 (건강 태그 포함, 가격 3만원 이상)
+    // 건강 관리 제품 (건강 태그 포함, 가격 5만원 이상)
     const featuredBase = shuffleArray(
-      products.filter(p => p.tag && p.tag.includes('건강') && p.price > 30000 && p.stock > 0)
+      products.filter(p => p.tag && p.tag.includes('건강') && p.price >= 50000 && p.stock > 0)
     ).slice(0, 15)
     
     return {
@@ -218,7 +219,7 @@ export default function Home() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -235,7 +236,7 @@ export default function Home() {
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -255,7 +256,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen py-8 pb-24 flex flex-col items-center"
+    <main className="min-h-screen py-16 pb-28 flex flex-col items-center"
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
@@ -263,19 +264,20 @@ export default function Home() {
     >
       <div className="w-full max-w-4xl">
         {/* 헤더 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-12 relative">
           <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--sobi-green)' }}>
             SOBI
           </h1>
+          <ProfileButton />
         </div>
 
         {/* 테마별 상품 섹션들 */}
-        <div className="space-y-9">
+        <div className="space-y-6">
           {/* AI 추천 상품 */}
           {themeProducts.aiRecommended && themeProducts.aiRecommended.length > 0 && (
             <section>
               <div className="relative flex justify-center items-center mb-8">
-                <h2 className="text-3xl font-bold">AI 추천 상품</h2>
+                <h2 className="text-3xl font-bold">AI추천</h2>
                 <Link href="/products" className="absolute right-8 inline-flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
                   style={{ color: 'var(--sobi-green)' }}>
                   전체보기
@@ -384,7 +386,7 @@ export default function Home() {
             </section>
           )}
 
-                               {/* 인기 상품 */}
+          {/* 인기 상품 */}
           {themeProducts.popular && themeProducts.popular.length > 0 && (
             <section>
               <div className="text-center mb-4">
@@ -437,7 +439,7 @@ export default function Home() {
             <section>
               <div className="text-center mb-2">
                 <h2 className="text-3xl font-bold" style={{ fontFamily: 'Hangul, sans-serif' }}>
-                  건강 챙기셔야죠
+                  효도 하셔야죠
                 </h2>
               </div>
               <div 

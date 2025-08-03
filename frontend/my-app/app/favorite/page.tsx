@@ -8,6 +8,7 @@ import { FaHeart, FaExclamationTriangle } from "react-icons/fa";
 import { useAuth } from '@/utils/hooks/useAuth'
 import { useFavorite } from "@/utils/hooks/useFavorite";
 import { useProducts, Product } from "@/utils/hooks/useProducts";
+import FavoriteIcon from '@/components/FavoriteIcon';
 
 export default function FavoritePage() {
   // 로그인 상태 및 토큰
@@ -17,7 +18,6 @@ export default function FavoritePage() {
   const {
     favoriteList,   // ex: [1, 5, 8]
     loading,
-    removeFavorite,
   } = useFavorite(token);
 
   // 전체 상품 정보 (상품 id 매칭해서 실제 상품 데이터 보여줌)
@@ -32,7 +32,7 @@ export default function FavoritePage() {
   if (!isLoggedIn || !token) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -54,7 +54,7 @@ export default function FavoritePage() {
   if (loading || productsLoading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -71,7 +71,7 @@ export default function FavoritePage() {
   if (productsError) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -94,7 +94,7 @@ export default function FavoritePage() {
   if (!favoriteProducts || favoriteProducts.length === 0) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper.jpg")',
+        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
@@ -166,15 +166,10 @@ export default function FavoritePage() {
                 )}
               </div>
             </Link>
-            {/* 찜 해제 버튼 */}
-            <button
-              onClick={() => removeFavorite({ productId: item.id, token })}
-              className="ml-2 text-red-600 dark:text-red-400 text-xl hover:scale-110 transition-all"
-              // removeLoading 기능 있으면 적용 (useFavorite에 구현돼있으면)
-              title="찜 해제"
-            >
-              <FaHeart size={27} />
-            </button>
+            {/* 찜 아이콘 */}
+            <div className="ml-2">
+              <FavoriteIcon productId={item.id} />
+            </div>
           </li>
         ))}
       </ul>

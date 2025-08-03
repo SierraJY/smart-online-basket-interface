@@ -3,209 +3,399 @@ import { useBasketStore } from "@/store/useBasketStore";
 import { useAuth } from "@/utils/hooks/useAuth";
 import { authStorage } from "@/utils/storage";
 import { config } from "@/config/env";
+import ToastManager from '@/utils/toastManager';
+import { refreshToken as refreshTokenApi } from '@/utils/api/auth';
+// @ts-ignore
+import { NativeEventSource, EventSourcePolyfill } from 'event-source-polyfill';
 
-// 전역 SSE 연결 관리
-let globalSSERef: AbortController | null = null;
-let globalBasketData: any = null;
-let globalListeners: Set<(data: any) => void> = new Set();
-let globalStore: any = null; // store 참조 저장
+// EventSource polyfill 설정
+const EventSource = NativeEventSource || EventSourcePolyfill;
+
+// 전역 변수들
 let globalEventSource: EventSource | null = null;
-let globalConnectionMonitor: NodeJS.Timeout | null = null; // 연결 모니터링 전역 변수
-let globalReconnectAttempts: number = 0; // 재연결 시도 횟수
-let globalMaxReconnectAttempts: number = 10; // 최대 재연결 시도 횟수
-let globalReconnectDelay: number = 1000; // 재연결 지연 시간 (ms)
+let globalConnectionMonitor: NodeJS.Timeout | null = null;
+let globalBasketData: any = null;
+let globalListeners = new Set<((data: any) => void)>();
+let globalReconnectAttempts = 0;
+let globalMaxReconnectAttempts = 5;
+let globalReconnectDelay = 1000; // 1초
+let isConnecting = false; // 연결 중인지 체크하는 플래그
+let lastDataTime = Date.now(); // 마지막 데이터 수신 시간
 
-// 전역 SSE 연결 함수
-function connectGlobalSSE(basketId: string | null, token: string | null) {
-  console.log("[Global SSE] 연결 시도 - basketId:", basketId, "hasToken:", !!token);
-  
+// 디버깅 모드 설정
+const SSE_DEBUG = process.env.NEXT_PUBLIC_SSE_DEBUG === 'true';
+
+// 디버깅 로그 함수
+const sseLog = (message: string, ...args: any[]) => {
+  if (SSE_DEBUG) {
+    console.log(`[Global SSE] ${message}`, ...args);
+  }
+};
+
+// 토큰 갱신 함수
+async function refreshTokenIfNeeded(): Promise<string | null> {
+  try {
+    const currentToken = authStorage.getAccessToken();
+    const refreshToken = authStorage.getRefreshToken();
+    
+    if (!currentToken || !refreshToken) {
+      console.log('[Global SSE] 토큰이 없습니다');
+      return null;
+    }
+    
+    // 토큰 만료 체크 (안전한 방식)
+    try {
+      const parts = currentToken.split('.');
+      if (parts.length !== 3) {
+        console.log('[Global SSE] 토큰 형식이 올바르지 않습니다');
+        return null;
+      }
+      
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const decoded = JSON.parse(jsonPayload);
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      if (decoded.exp < currentTime) {
+        console.log('[Global SSE] 토큰이 만료되어 갱신을 시도합니다');
+        const data = await refreshTokenApi(refreshToken);
+        authStorage.setAccessToken(data.accessToken);
+        return data.accessToken;
+      }
+      
+      return currentToken;
+    } catch (parseError) {
+      console.error('[Global SSE] 토큰 파싱 실패:', parseError);
+      return null;
+    }
+  } catch (error) {
+    console.error('[Global SSE] 토큰 갱신 실패:', error);
+    return null;
+  }
+}
+
+
+
+async function connectGlobalSSE(basketId: string | null, token: string | null) {
+  // 이미 연결 중이거나 유효한 연결이 있으면 중복 연결 방지
+  if (isConnecting || (globalEventSource && globalEventSource.readyState === EventSource.OPEN)) {
+    console.log('[Global SSE] 이미 연결 중이거나 연결됨 - 중복 연결 방지');
+    return;
+  }
+
+  if (!basketId || !token) {
+    console.log('[Global SSE] 연결 조건 불충족 - basketId:', basketId, 'hasToken:', !!token);
+    return;
+  }
+
+  // 토큰 갱신 시도
+  const freshToken = await refreshTokenIfNeeded();
+  if (!freshToken) {
+    console.log('[Global SSE] 토큰 갱신 실패 - 연결 중단');
+    return;
+  }
+
   // 기존 연결 정리
   if (globalEventSource) {
     globalEventSource.close();
     globalEventSource = null;
   }
-  
-  if (globalSSERef) {
-    globalSSERef.abort();
-    globalSSERef = null;
-  }
 
-  // 기존 connectionMonitor 정리
-  if (globalConnectionMonitor) {
-    clearInterval(globalConnectionMonitor);
-    globalConnectionMonitor = null;
-  }
+  isConnecting = true;
+  console.log('[Global SSE] 연결 시도 - basketId:', basketId, 'hasToken:', !!freshToken);
 
-  if (!basketId || !token) {
-    console.log("[Global SSE] 연결 조건 불충분 - basketId:", basketId, "hasToken:", !!token);
-    globalBasketData = null;
-    globalListeners.forEach(listener => listener(null));
-    return;
-  }
-
-  // 활성화 상태 확인 (store에서 가져오기)
-  const activatedBasketId = globalStore?.getState()?.activatedBasketId || null;
-  const needsActivation = basketId && (activatedBasketId !== basketId);
-  
-  console.log("[Global SSE] 활성화 상태 확인 - basketId:", basketId, "activatedBasketId:", activatedBasketId, "needsActivation:", needsActivation);
-  
-  if (needsActivation) {
-    console.log("[Global SSE] 활성화 필요 - basketId:", basketId, "activatedBasketId:", activatedBasketId);
-    globalBasketData = null;
-    globalListeners.forEach(listener => listener(null));
-    return;
-  }
-
-  globalSSERef = new AbortController();
-
-  async function connectSSE() {
+  function connectSSE() {
     try {
-      console.log("[Global SSE] 연결 시도! basketId:", basketId, "token:", token);
-
-      // 임시로 fetch 방식 사용 (백엔드에서 쿼리 파라미터 처리 구현 후 EventSource로 변경)
-      const response = await fetch(config.API_ENDPOINTS.BASKET_STREAM, {
-        method: "GET",
+      const url = `${config.API_BASE_URL}/api/baskets/my/stream?basketId=${basketId}`;
+      sseLog('EventSource 연결 시도! basketId:', basketId, 'token:', freshToken?.substring(0, 50) + '...');
+      
+      // EventSourcePolyfill 사용 (Authorization 헤더 지원)
+      globalEventSource = new EventSourcePolyfill(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "text/event-stream",
+          'Authorization': `Bearer ${freshToken}`,
+          'Content-Type': 'text/event-stream',
         },
-        signal: globalSSERef?.signal,
+        heartbeatTimeout: 120000, // 60초 heartbeat 타임아웃 (충분히 큰 값)
+        // connectionTimeout: 60000, // 60초 연결 타임아웃
+        // retryInterval: 10000, // 재연결 간격 10초로 단축 (빠른 복구)
+        // maxRetries: 20, // 최대 재연결 시도 횟수 증가
+        // withCredentials: false, // CORS 설정
       });
+      
+      // Authorization 헤더는 URL 파라미터로 전달
+      // const urlWithToken = `${url}&token=${encodeURIComponent(token)}`;
+      // globalEventSource = new EventSource(urlWithToken);
 
-      if (!response.ok) {
-        console.error("[Global SSE] 연결 실패: HTTP", response.status, response.statusText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.body) {
-        console.error("[Global SSE] 연결 실패: response.body 없음");
-        throw new Error("Response body is null");
-      }
-
-      console.log("[Global SSE] 연결 성공! 스트림 읽기 시작...");
-      globalReconnectAttempts = 0; // 연결 성공 시 재연결 시도 횟수 리셋
-
-      const reader = response.body.getReader();
-      let buf = "";
       let lastDataTime = Date.now();
       
-      // 연결 상태 모니터링 (디버깅용) - 전역 변수로 관리
+      // 연결 상태 모니터링 (30초마다 체크 - 더 안정적으로)
       globalConnectionMonitor = setInterval(() => {
         const now = Date.now();
         const timeSinceLastData = now - lastDataTime;
-        const secondsSinceLastData = Math.round(timeSinceLastData / 1000);
-        console.log(`[Global SSE] 연결 상태 - 마지막 데이터 수신 후 ${secondsSinceLastData}초 경과`);
         
-        // 30초간 데이터가 없으면 재연결 시도
-        if (timeSinceLastData > 30000) {
-          console.log("[Global SSE] 30초간 데이터 없음 - 재연결 시도");
+        // 120초간 데이터가 없으면 재연결 시도 (더 관대하게)
+        if (timeSinceLastData > 120000) {
+          console.warn("[Global SSE] 120초간 데이터 없음 - 재연결 시도");
           if (globalConnectionMonitor !== null) {
             clearInterval(globalConnectionMonitor);
             globalConnectionMonitor = null;
           }
-          if (globalSSERef) {
-            globalSSERef.abort();
+          if (globalEventSource) {
+            globalEventSource.close();
+            globalEventSource = null;
           }
+          isConnecting = false;
           // 재연결 시도
           setTimeout(() => {
             if (globalReconnectAttempts < globalMaxReconnectAttempts) {
               globalReconnectAttempts++;
               console.log(`[Global SSE] 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`);
-              connectGlobalSSE(basketId, token);
+              connectGlobalSSE(basketId, freshToken);
             } else {
-              console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
+              console.error("[Global SSE] 최대 재연결 시도 횟수 초과. 수동으로 페이지를 새로고침해주세요.");
             }
           }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
         }
-      }, 10000); // 10초마다 체크
+      }, 30000); // 30초마다 체크
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log("[Global SSE] 연결 종료 (done==true)");
+      // EventSource 이벤트 리스너 설정
+      if (globalEventSource) {
+        globalEventSource.onopen = () => {
+          console.log("[Global SSE] SSE 연결 성공");
+          isConnecting = false;
+          globalReconnectAttempts = 0; // 연결 성공 시 재연결 시도 횟수 리셋
+          lastDataTime = Date.now(); // 연결 성공 시 시간 업데이트
+        };
+
+        // 바구니 데이터 처리 함수
+        const handleBasketData = (data: any) => {
+          console.log("[Global SSE] 데이터 수신됨:", data?.items?.length || 0, "개 상품");
+          lastDataTime = Date.now(); // 데이터 수신 시 시간 업데이트
+          
+          // 데이터 유효성 검증
+          if (!data || !Array.isArray(data.items)) {
+            console.warn("[Global SSE] 유효하지 않은 데이터 구조:", data);
+            return;
+          }
+          
+          // 유효한 아이템만 필터링 (product가 null이 아닌 것만)
+          const validItems = data.items.filter((item: any) => 
+            item && item.epcPattern && item.product && item.product.id
+          );
+          
+          const invalidItems = data.items.filter((item: any) => 
+            !item || !item.epcPattern || !item.product || !item.product.id
+          );
+          
+          if (invalidItems.length > 0) {
+            console.warn("[Global SSE] 유효하지 않은 아이템들:", invalidItems);
+          }
+          
+          // 유효한 데이터로 재구성
+          const validData = {
+            ...data,
+            items: validItems,
+            totalCount: validItems.length, // 백엔드 명세에 맞게 totalCount 사용
+            totalPrice: validItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0)
+          };
+          
+          // 상품 추가 감지 및 toast 알림
+          if (validData && validData.items) {
+            let shouldShowToast = false;
+            let addedProductName = '';
+            
+            if (globalBasketData && globalBasketData.items) {
+              const previousItemCount = globalBasketData.items.length;
+              const currentItemCount = validData.items.length;
+              
+              // 상품 개수가 증가했을 때만 toast 표시
+              if (currentItemCount > previousItemCount) {
+                const addedItems = validData.items.filter((currentItem: any) => 
+                  !globalBasketData.items.some((prevItem: any) => 
+                    prevItem.epcPattern === currentItem.epcPattern
+                  )
+                );
+                
+                if (addedItems.length > 0) {
+                  shouldShowToast = true;
+                  addedProductName = addedItems[0]?.product?.name || '상품';
+                }
+              }
+            }
+            
+            // Toast 표시 (실제 상품 추가 시에만)
+            if (shouldShowToast && addedProductName) {
+              // 상품 이미지 URL 가져오기
+              const productImageUrl = validData.items.find((item: any) => 
+                item.product?.name === addedProductName
+              )?.product?.imageUrl;
+              
+              // ToastManager를 사용하여 toast 표시
+              ToastManager.basketAdded(addedProductName, productImageUrl);
+            }
+          }
+          
+          globalBasketData = validData;
+
+          // 모든 리스너에게 데이터 전달
+          for (const listener of globalListeners) {
+            if (listener) listener(validData);
+          }
+
+                  // store에도 저장
+        try {
+          const store = useBasketStore.getState();
+          if (store.setBasketData) {
+            store.setBasketData(validData);
+            console.log("[Global SSE] Store에 데이터 저장:", validData?.items?.length || 0, "개 상품");
+          } else {
+            console.error("[Global SSE] store에서 setBasketData를 찾을 수 없음");
+          }
+        } catch (error) {
+          console.error("[Global SSE] Store 데이터 저장 실패:", error);
+        }
+
+          // 서비스 워커에 데이터 전송
+          if (typeof window !== 'undefined' && (window as any).sendBasketUpdateToSW) {
+            (window as any).sendBasketUpdateToSW(validData);
+          }
+        };
+
+        // 모든 이벤트를 캐치하는 리스너 추가
+        globalEventSource.addEventListener('basket-initial', (event: MessageEvent) => {
+          console.log("[Global SSE] 초기 데이터 수신:", event.data);
+          try {
+            const data = JSON.parse(event.data);
+            handleBasketData(data);
+          } catch (e) {
+            console.error("[Global SSE] basket-initial 데이터 파싱 실패:", e);
+          }
+        });
+
+        globalEventSource.addEventListener('basket-update', (event: MessageEvent) => {
+          console.log("[Global SSE] 업데이트 데이터 수신:", event.data);
+          try {
+            const data = JSON.parse(event.data);
+            handleBasketData(data);
+          } catch (e) {
+            console.error("[Global SSE] basket-update 데이터 파싱 실패:", e);
+          }
+        });
+
+        globalEventSource.addEventListener('error', (event: MessageEvent) => {
+          // event.data가 undefined일 수 있으므로 안전하게 처리
+          const errorData = event.data || 'Unknown error';
+          
+          // 에러 타입에 따른 처리
+          if (typeof errorData === 'string') {
+            if (errorData.includes('timeout') || errorData.includes('No activity')) {
+              console.log("[Global SSE] 타임아웃 에러 - 재연결 시도");
+            } else if (errorData.includes('401') || errorData.includes('Unauthorized') || errorData.includes('로그인이 필요합니다')) {
+              console.warn("[Global SSE] 인증 에러 - 토큰 갱신 필요");
+              // 토큰 갱신 시도
+              setTimeout(() => {
+                refreshTokenIfNeeded().then(newToken => {
+                  if (newToken) {
+                    console.log("[Global SSE] 토큰 갱신 후 재연결 시도");
+                    connectGlobalSSE(basketId, newToken);
+                  }
+                });
+              }, 1000);
+            } else if (errorData.includes('404') || errorData.includes('Not Found')) {
+              console.warn("[Global SSE] 리소스 없음 - basketId 확인 필요");
+            } else if (errorData === 'Unknown error') {
+              // Unknown error는 일반적으로 일시적인 네트워크 문제이므로 조용히 처리
+              console.log("[Global SSE] 일시적인 연결 문제 - 자동 복구 대기");
+            } else {
+              console.warn("[Global SSE] 일반 에러:", errorData);
+            }
+          }
+        });
+
+        globalEventSource.addEventListener('open', (event: Event) => {
+          console.log("[Global SSE] 연결 성공"); // 간단한 연결 성공 알림
+        });
+
+        globalEventSource.addEventListener('close', (event: Event) => {
+          // console.log("[Global SSE] close 이벤트 수신"); // 로그 정리
+        });
+
+        globalEventSource.onmessage = (event: MessageEvent) => {
+          lastDataTime = Date.now(); // 데이터 수신 시간 업데이트
+          
+          if (event.data.trim() === "") {
+            return;
+          }
+
+          try {
+            const data = JSON.parse(event.data);
+            console.log("[Global SSE] 📨 일반 메시지 수신"); // 일반 메시지 수신 알림
+            handleBasketData(data);
+          } catch (e) {
+            console.error("[Global SSE] JSON 파싱 실패! 원본:", event.data, "에러:", e);
+          }
+        };
+
+        globalEventSource.onerror = (error: Event) => {
+          const errorMessage = error.toString();
+          const isTimeoutError = errorMessage.includes('No activity within');
+          
+          // readyState가 2(CLOSED)인 경우는 정상적인 연결 종료이므로 로깅하지 않음
+          if (globalEventSource?.readyState === 2) {
+            return;
+          }
+          
+          if (isTimeoutError) {
+            console.log("[Global SSE] ⏰ 타임아웃 - 재연결 중...");
+          } else {
+            // 일시적인 네트워크 문제는 조용히 처리
+            console.log("[Global SSE] 일시적인 연결 문제 - 자동 복구 대기");
+          }
+          
+          // 연결 상태 확인 (에러 시에만)
+          // console.log("[Global SSE] 현재 연결 상태:", globalEventSource?.readyState); // 로그 정리
+          
           if (globalConnectionMonitor) {
             clearInterval(globalConnectionMonitor);
             globalConnectionMonitor = null;
           }
-          break;
-        }
-
-        const chunk = new TextDecoder().decode(value);
-        console.log("[Global SSE] 청크 수신:", chunk.length, "bytes");
-        buf += chunk;
-
-        // SSE 파싱
-        let lines = buf.split("\n");
-        console.log("[Global SSE] 버퍼 라인 수:", lines.length, "전체 버퍼:", JSON.stringify(buf));
-        
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
-          console.log("[Global SSE] 라인", i, ":", line);
           
-          if (line.startsWith("data:")) {
-            const jsonString = line.replace(/^data:\s*/, "");
-            console.log("[Global SSE] JSON 문자열:", jsonString);
-            
-            if (jsonString.trim() === "") {
-              console.log("[Global SSE] 빈 데이터 건너뛰기");
-              continue;
-            }
-
-            try {
-              const data = JSON.parse(jsonString);
-              globalBasketData = data;
-              lastDataTime = Date.now(); // 데이터 수신 시간 업데이트
-              console.log("[Global SSE] 새 데이터 수신!", data, "items:", data.items, "count:", data.items?.length);
-
-              // 모든 리스너에게 데이터 전달
-              for (const listener of globalListeners) {
-                if (listener) listener(data);
-              }
-
-              // store에도 저장
-              if (globalStore?.setBasketData) {
-                globalStore.setBasketData(data);
-              }
-
-              // 서비스 워커에 데이터 전송
-              if (typeof window !== 'undefined' && (window as any).sendBasketUpdateToSW) {
-                (window as any).sendBasketUpdateToSW(data);
-              }
-            } catch (e) {
-              console.error("[Global SSE] JSON 파싱 실패! 원본:", jsonString, "에러:", e);
-            }
+          if (globalEventSource) {
+            globalEventSource.close();
+            globalEventSource = null;
           }
-        }
-        
-        // 버퍼 관리: 완전한 라인이 아닌 경우 남겨둠
-        const lastLine = lines[lines.length - 1];
-        console.log("[Global SSE] 마지막 라인:", lastLine, "길이:", lastLine.length);
-        
-        if (lastLine.includes("data:") && !lastLine.endsWith("\n")) {
-          buf = lastLine;
-          console.log("[Global SSE] 버퍼 유지:", buf);
-        } else {
-          buf = "";
-          console.log("[Global SSE] 버퍼 초기화");
-        }
+          
+          isConnecting = false;
+          
+          // 에러 발생 시 재연결 시도
+          if (globalReconnectAttempts < globalMaxReconnectAttempts) {
+            globalReconnectAttempts++;
+            // console.log(`[Global SSE] 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`); // 로그 정리
+            setTimeout(() => {
+              connectGlobalSSE(basketId, freshToken);
+            }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
+          } else {
+            console.error("[Global SSE] 최대 재연결 시도 횟수 초과. 수동으로 페이지를 새로고침해주세요.");
+          }
+        };
       }
 
     } catch (e: any) {
-      if (e.name === "AbortError") {
-        console.log("[Global SSE] 연결 종료(Abort)", e);
+      console.warn("[Global SSE] EventSource 생성 실패, 재연결을 시도합니다:", e.message || e);
+      
+      // 에러 발생 시 재연결 시도
+      if (globalReconnectAttempts < globalMaxReconnectAttempts) {
+        globalReconnectAttempts++;
+        // console.log(`[Global SSE] 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`); // 로그 정리
+        setTimeout(() => {
+          connectGlobalSSE(basketId, freshToken);
+        }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
       } else {
-        console.error("[Global SSE] 연결 에러!", e);
-        
-        // 에러 발생 시 재연결 시도
-        if (globalReconnectAttempts < globalMaxReconnectAttempts) {
-          globalReconnectAttempts++;
-          console.log(`[Global SSE] 에러로 인한 재연결 시도 ${globalReconnectAttempts}/${globalMaxReconnectAttempts}`);
-          setTimeout(() => {
-            connectGlobalSSE(basketId, token);
-          }, globalReconnectDelay * globalReconnectAttempts); // 지수 백오프
-        } else {
-          console.error("[Global SSE] 최대 재연결 시도 횟수 초과");
-        }
+        console.error("[Global SSE] 최대 재연결 시도 횟수 초과. 수동으로 페이지를 새로고침해주세요.");
       }
       
       // 에러 발생 시에도 connectionMonitor 정리
@@ -223,20 +413,49 @@ function connectGlobalSSE(basketId: string | null, token: string | null) {
 export function useGlobalBasketSSE() {
   const { accessToken: token } = useAuth();
   const basketId = useBasketStore(s => s.basketId);
+  const activatedBasketId = useBasketStore(s => s.activatedBasketId);
   const setBasketData = useBasketStore(s => s.setBasketData);
   const basketData = useBasketStore(s => s.basketData);
-  const [basket, setBasket] = useState<any>(globalBasketData || basketData);
-  // useRef에 초기값 null을 명시
+
+  const [basket, setBasket] = useState<any>(null);
   const listenerRef = useRef<((data: any) => void) | null>(null);
-  
-  // 활성화 완료 상태 감지 (페이지 새로고침 시에도 작동)
   const [activationTrigger, setActivationTrigger] = useState(0);
 
+  // Store 상태 로깅 (디버깅용)
   useEffect(() => {
-    // store 참조 저장
-    globalStore = useBasketStore;
+    console.log('[Global SSE] Store 상태 변경:', {
+      basketId,
+      activatedBasketId,
+      hasToken: !!token
+    });
+  }, [basketId, activatedBasketId, token]);
+
+  // SSE 연결 관리
+  useEffect(() => {
+    if (!token || !basketId) {
+      console.log('[Global SSE] 연결 조건 불충족 - token:', !!token, 'basketId:', basketId);
+      return;
+    }
+
+    console.log('[Global SSE] 연결 조건 충족 - SSE 연결 시작 (활성화 상태 무관)');
     
-    // 리스너 등록
+    // 연결 지연 (Store hydration 완료 대기)
+    const connectionTimer = setTimeout(() => {
+      connectGlobalSSE(basketId, token).catch(error => {
+        console.error('[Global SSE] 연결 실패:', error);
+      });
+    }, 500); // 500ms 지연
+    
+    // cleanup
+    return () => {
+      clearTimeout(connectionTimer);
+      console.log('[Global SSE] cleanup - 연결 해제');
+      disconnectGlobalSSE();
+    };
+      }, [token, basketId]);
+
+  // 리스너 등록
+  useEffect(() => {
     listenerRef.current = (data: any) => {
       setBasket(data);
       setBasketData(data); // store에도 저장
@@ -249,16 +468,13 @@ export function useGlobalBasketSSE() {
       setBasketData(globalBasketData);
     }
 
-    // 전역 SSE 연결 시작
-    connectGlobalSSE(basketId, token);
-
     return () => {
       // 리스너 제거
       if (listenerRef.current) {
         globalListeners.delete(listenerRef.current);
       }
     };
-  }, [basketId, token, setBasketData, activationTrigger]);
+  }, [setBasketData]);
 
   // 활성화 완료 후 SSE 재연결을 위한 전역 함수 노출
   useEffect(() => {
@@ -267,8 +483,34 @@ export function useGlobalBasketSSE() {
         console.log('[Global SSE] 재연결 트리거됨');
         setActivationTrigger(prev => prev + 1);
       };
+      
+      // 개선된 재연결 함수
+      (window as any).reconnectSSE = () => {
+        console.log('[Global SSE] 전역 재연결 함수 호출');
+        reconnectGlobalSSE();
+      };
+      
+      // Toast 테스트 함수 추가
+      (window as any).testBasketToast = () => {
+        console.log('[Global SSE] Toast 테스트 실행');
+        ToastManager.basketAdded('테스트 상품', 'https://sitem.ssgcdn.com/00/12/84/item/1000549841200_i1_290.jpg');
+      };
+      
+      // 현재 상태 확인 함수
+      (window as any).checkSSEState = () => {
+        const state = {
+          basketId,
+          activatedBasketId,
+          hasToken: !!token,
+          globalEventSource: !!globalEventSource,
+          readyState: globalEventSource?.readyState,
+          lastDataTime: new Date(lastDataTime).toLocaleTimeString()
+        };
+        console.log('[Global SSE] 현재 상태:', state);
+        return state;
+      };
     }
-  }, []);
+  }, [basketId, activatedBasketId, token]);
 
   return basket;
 }
@@ -279,10 +521,6 @@ export function disconnectGlobalSSE() {
     globalEventSource.close();
     globalEventSource = null;
   }
-  if (globalSSERef) {
-    globalSSERef.abort();
-    globalSSERef = null;
-  }
   if (globalConnectionMonitor !== null) {
     clearInterval(globalConnectionMonitor);
     globalConnectionMonitor = null;
@@ -290,26 +528,68 @@ export function disconnectGlobalSSE() {
   globalBasketData = null;
   globalListeners.clear();
   globalReconnectAttempts = 0; // 재연결 시도 횟수 리셋
+  isConnecting = false;
 }
 
 // 수동 재연결 함수
 export function reconnectGlobalSSE() {
-  console.log('[Global SSE] 수동 재연결 시도');
-  globalReconnectAttempts = 0; // 재연결 시도 횟수 리셋
+  console.log('[Global SSE] 수동 재연결 요청');
   
-  // 현재 store 상태에서 basketId 가져오기
-  const currentState = globalStore?.getState();
-  const basketId = currentState?.basketId;
+  // 기존 연결 정리
+  if (globalEventSource) {
+    globalEventSource.close();
+    globalEventSource = null;
+  }
   
-  // authStorage에서 token 가져오기 (useAuth와 동일한 방식)
-  const token = authStorage.getAccessToken();
+  if (globalConnectionMonitor) {
+    clearInterval(globalConnectionMonitor);
+    globalConnectionMonitor = null;
+  }
+  
+
+  
+  // 재연결 시도 횟수 리셋
+  globalReconnectAttempts = 0;
+  isConnecting = false;
+  
+  // 현재 상태에서 재연결 (더 안전한 방식)
+  let basketId: string | null = null;
+  let token: string | null = null;
+  
+  try {
+    // 1. Store에서 직접 가져오기
+    const store = useBasketStore.getState();
+    basketId = store?.basketId || null;
+    console.log('[Global SSE] Store에서 basketId 가져옴:', basketId);
+    
+    // 2. Store가 없으면 localStorage에서 직접 가져오기
+    if (!basketId) {
+      try {
+        const stored = localStorage.getItem('basket-storage');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          basketId = parsed.state?.basketId || null;
+          console.log('[Global SSE] localStorage에서 basketId 가져옴:', basketId);
+        }
+      } catch (e) {
+        console.error('[Global SSE] localStorage 파싱 실패:', e);
+      }
+    }
+    
+    // 3. 토큰 가져오기
+    token = authStorage.getAccessToken();
+    
+  } catch (error) {
+    console.error('[Global SSE] 상태 가져오기 실패:', error);
+  }
+  
+  console.log('[Global SSE] 재연결 시도 - basketId:', basketId, 'hasToken:', !!token);
   
   if (basketId && token) {
-    connectGlobalSSE(basketId, token);
+    setTimeout(() => {
+      connectGlobalSSE(basketId, token);
+    }, 1000); // 1초 후 재연결
   } else {
-    console.error('[Global SSE] 재연결 실패: basketId 또는 token이 없습니다', {
-      basketId,
-      hasToken: !!token
-    });
+    console.warn('[Global SSE] 재연결 조건 불충족 - basketId:', basketId, 'hasToken:', !!token);
   }
 } 

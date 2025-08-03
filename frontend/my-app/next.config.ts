@@ -2,11 +2,12 @@ import { config } from './config/env';
 // @ts-ignore
 import nextPWA from 'next-pwa';
 
-const withPWA = nextPWA({
+const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  // disable: false,
 });
 
 /** @type {import('next').NextConfig} */
@@ -16,16 +17,17 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     serverActions: {},
-  },
+  },  
+  
+  // async rewrites() {
+  //   return [
+  //     {
+  //       source: "/api/:path*",
+  //       destination: `${config.API_BASE_URL}/api/:path*`, // 백엔드 API 주소
+  //     },
+  //   ]
+  // },
 
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${config.API_BASE_URL}/api/:path*`, // 백엔드 API 주소
-      },
-    ]
-  },
 
   images: {
     unoptimized: true,
@@ -40,8 +42,9 @@ const nextConfig = {
   },
   allowedDevOrigins: [
     "http://localhost:3000", // 기본 로컬호스트 허용
-    "http://172.26.6.236:3000", //  접속용 내부 IP 허용
+    "http://172.26.6.236:3000", // 접속용 내부 IP 허용
+    "http://13.125.215.242:3000", // 퍼블릭 IP 허용 (폰 접속용)
   ],
 };
 
-export default withPWA(nextConfig);
+module.exports = withPWA(nextConfig);

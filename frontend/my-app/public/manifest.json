@@ -4,7 +4,7 @@
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#128211",
-  "background_color": "#ffffff",
+  "background_color": "#128211",
   "description": "QR코드로 스마트 장바구니와 연동하여 실시간으로 상품을 확인하는 PWA",
   "orientation": "portrait",
   "scope": "/",

@@ -29,8 +29,11 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# 빌드된 애플리케이션 복사
+# standalone 모드에서 필요한 파일들 복사
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+
+# standalone 모드의 서버 파일들 복사
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

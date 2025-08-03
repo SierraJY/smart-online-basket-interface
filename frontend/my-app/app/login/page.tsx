@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/utils/hooks/useAuth'
+import ToastManager from '@/utils/toastManager'
 
 export default function LoginPage() {
   const [userId, setUserId] = useState('')
@@ -20,7 +21,11 @@ const handleLogin = async (e: React.FormEvent) => {
   setMessage('')
   try {
     await login({ userId, userPasswd }) // 이게 비동기(setState)니까,
-    // router.push를 0ms 딜레이 후 실행! (state가 완전히 반영되도록)
+    
+    // 로그인 성공 시 환영 메시지 표시
+    ToastManager.loginSuccess(userId)
+    
+    // router.push를 0ms 딜레이 후 실행 (state가 완전히 반영되도록)
     setTimeout(() => {
       router.push('/')
     }, 0)

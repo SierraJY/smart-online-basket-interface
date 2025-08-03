@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import ShakeWrapper from '@/components/ShakeWrapper'
+import FavoriteIcon from '@/components/FavoriteIcon'
 import { useScrollRestore } from '@/store/useScrollRestore'
 import { useAuth } from '@/utils/hooks/useAuth'
 import { replaceCategoryName, extractCategories, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
@@ -83,7 +84,17 @@ export default function ProductsPage() {
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-      style={{ background: 'var(--input-background)', color: 'var(--foreground)' }}
+      style={{ 
+        backgroundImage: `
+          linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
+          url('/paper2.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        color: 'var(--foreground)' 
+      }}
     >
       <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">전체 상품 목록을 불러오는 중...</div>
@@ -92,7 +103,19 @@ export default function ProductsPage() {
   )
 
   if (error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
+      style={{ 
+        backgroundImage: `
+          linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
+          url('/paper2.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        color: 'var(--foreground)' 
+      }}
+    >
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
       <div className="font-bold text-lg text-red-500 mb-2">문제가 발생했어요!</div>
       <div className="text-gray-500 text-base mb-4">{error.message}</div>
@@ -119,7 +142,20 @@ export default function ProductsPage() {
 
 
   return (
-    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" style={{ color: 'var(--foreground)', transition: 'background-color 1.6s, color 1.6s' }}>
+    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" 
+      style={{ 
+        color: 'var(--foreground)', 
+        transition: 'background-color 1.6s, color 1.6s',
+        backgroundImage: `
+          linear-gradient(var(--background-overlay), var(--background-overlay)),
+          url('/paper2.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
       <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>전체 상품 목록</h1>
       <SearchBar
         keyword={keyword}
@@ -201,40 +237,44 @@ export default function ProductsPage() {
                   {items.slice(0, CATEGORY_LIMIT).map((item: Product) => (
                     <div key={item.id} className={cardClass}>
                       <ShakeWrapper item={item}>
-                        <Link href={`/products/${item.id}`} className="hover:scale-105 transition-all duration-200 hover:scale-105 block w-full h-[110px] flex items-center justify-center relative">
-                          <Image
-                            src={item.imageUrl}
-                            alt={item.name}
-                            className="object-cover w-full h-full rounded-2xl"
-                            style={{ 
-                              maxHeight: 110, 
-                              maxWidth: 120, 
-                              backgroundColor: 'var(--input-background)',
-                              minHeight: 110,
-                              minWidth: 120
-                            }}
-                            width={120}
-                            height={110}
-                            priority={false}
-                            loading="lazy"
-                            onLoad={(e) => {
-                              // 이미지 로드 완료 후 레이아웃 안정화
-                              const target = e.target as HTMLImageElement;
-                              target.style.opacity = '1';
-                            }}
-                            onError={(e) => {
-                              // 에러 시에도 레이아웃 유지
-                              const target = e.target as HTMLImageElement;
-                              target.style.opacity = '1';
-                            }}
-                          />
+                        <div className="relative w-full h-[110px] flex items-center justify-center">
+                          <Link href={`/products/${item.id}`} className="hover:scale-105 transition-all duration-200 hover:scale-105 block w-full h-full flex items-center justify-center">
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.name}
+                              className="object-cover w-full h-full rounded-2xl"
+                              style={{ 
+                                maxHeight: 110, 
+                                maxWidth: 120, 
+                                backgroundColor: 'var(--input-background)',
+                                minHeight: 110,
+                                minWidth: 120
+                              }}
+                              width={120}
+                              height={110}
+                              priority={false}
+                              loading="lazy"
+                              onLoad={(e) => {
+                                // 이미지 로드 완료 후 레이아웃 안정화
+                                const target = e.target as HTMLImageElement;
+                                target.style.opacity = '1';
+                              }}
+                              onError={(e) => {
+                                // 에러 시에도 레이아웃 유지
+                                const target = e.target as HTMLImageElement;
+                                target.style.opacity = '1';
+                              }}
+                            />
+                          </Link>
                           {/* 할인 배지 */}
                           {item.discountRate > 0 && (
                             <div className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                               {item.discountRate}%
                             </div>
                           )}
-                        </Link>
+                          {/* 찜 인디케이터 */}
+                          <FavoriteIcon productId={item.id} readOnly={true} />
+                        </div>
                       </ShakeWrapper>
                       <Link href={`/products/${item.id}`}>
                         {/* 가격 부분 */}

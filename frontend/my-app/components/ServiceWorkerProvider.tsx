@@ -11,6 +11,12 @@ export const ServiceWorkerProvider = () => {
 
   useEffect(() => {
     const registerServiceWorker = async () => {
+      // 개발 모드에서는 Service Worker 비활성화
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[SW] 개발 모드 - Service Worker 비활성화');
+        return;
+      }
+      
       if ('serviceWorker' in navigator) {
         try {
           console.log('[SW] 서비스 워커 등록 시작...');
@@ -89,6 +95,12 @@ export const ServiceWorkerProvider = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).sendBasketUpdateToSW = (basketData: any) => {
+        // 개발 모드에서는 Service Worker 기능 비활성화
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[SW] 개발 모드 - Service Worker 기능 비활성화');
+          return;
+        }
+        
         if (swRegistration.current && swRegistration.current.active) {
           try {
             console.log('[SW] 장바구니 업데이트 전송:', basketData);

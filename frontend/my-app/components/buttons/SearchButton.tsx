@@ -47,7 +47,7 @@ export default function SearchButton() {
         {isOpen && (
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            onClick={handleBackdropClick} // 💡 핵심
+            onClick={handleBackdropClick}
           >
             {/* 배경 */}
             <motion.div
@@ -60,7 +60,7 @@ export default function SearchButton() {
             {/* 모달 본문 */}
             <motion.div
               layoutId="searchBox"
-              ref={modalRef} // 🔥 여기에 ref
+              ref={modalRef}
               className="relative z-10"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
