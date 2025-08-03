@@ -139,7 +139,6 @@ public class BasketCacheService {
      * @param basketId 바구니 ID
      * @return 바구니에 담긴 상품 정보 리스트 (수량 포함)
      */
-    @Transactional(readOnly = true)
     public List<BasketItemInfo> getBasketItemsWithProductInfo(Integer basketId) {
         Map<String, Integer> basketItems = getBasketItems(basketId);
 
