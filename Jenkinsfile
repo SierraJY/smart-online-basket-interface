@@ -6,12 +6,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                git credentialsId: 'gitlab-token', url: 'https://lab.ssafy.com/s13-webmobile3-sub1/S13P11B103.git'
-            }
-        }
-
         stage('Build') {
             steps {
                 echo "Building Docker images..."
