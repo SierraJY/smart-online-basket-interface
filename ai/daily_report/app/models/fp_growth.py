@@ -69,17 +69,16 @@ class FPGrowthRecommender:
         return result
 
 
-def get_last_week_range():
-    """지난 주 월요일 ~ 일요일 날짜 반환"""
-    today = datetime.today()
-    last_monday = today - timedelta(days=today.weekday() + 7)
-    last_sunday = last_monday + timedelta(days=6)
-    return last_monday.date(), last_sunday.date()
+def get_last_7_days_range():
+    today = datetime.today().date()
+    end_date = today - timedelta(days=1)
+    start_date = end_date - timedelta(days=6)
+    return start_date, end_date
 
 
 def generate_association_summary():
     # 1. 지난 주 범위 계산
-    start_date, end_date = get_last_week_range()
+    start_date, end_date = get_last_7_days_range()
 
     # 2. DB 접속 및 데이터 쿼리
     engine = create_engine(DB_URL)
