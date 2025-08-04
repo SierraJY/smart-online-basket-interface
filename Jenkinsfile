@@ -8,7 +8,10 @@ pipeline {
     stages {
         stage('Build') {
             when {
-                expression { env.CHANGE_TARGET == 'develop' }
+                anyOf {
+                    expression { env.gitlabTargetBranch == 'develop' }
+                    expression { env.CHANGE_TARGET == 'develop' }
+                }
             }
             steps {
                 echo "Building Docker images for MR targeting 'develop'..."
@@ -18,7 +21,10 @@ pipeline {
 
         stage('Test') {
             when {
-                expression { env.CHANGE_TARGET == 'develop' }
+                anyOf {
+                    expression { env.gitlabTargetBranch == 'develop' }
+                    expression { env.CHANGE_TARGET == 'develop' }
+                }
             }
             steps {
                 echo "Running tests for MR targeting 'develop'..."
@@ -28,7 +34,10 @@ pipeline {
         stage('Deploy') {
             when {
                 allOf {
-                    expression { env.CHANGE_TARGET == 'develop' }
+                    anyOf {
+                        expression { env.gitlabTargetBranch == 'develop' }
+                        expression { env.CHANGE_TARGET == 'develop' }
+                    }
                     branch 'develop'
                 }
             }
