@@ -1,5 +1,7 @@
 services:
   jenkins:
+    environment:
+        - TZ=Asia/Seoul
     build:
       context: ./infra
       dockerfile: Dockerfile
