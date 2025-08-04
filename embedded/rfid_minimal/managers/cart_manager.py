@@ -6,8 +6,10 @@ Handles tracking of products in the cart across multiple polling cycles
 
 import logging
 from typing import Dict, Set, List, Optional, Callable, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from collections import deque
+from typing import Deque
 
 from rfid_minimal.core.models import TagInfo
 
@@ -19,7 +21,7 @@ class CartItem:
     first_seen: datetime
     last_seen: datetime
     detection_count: int
-    rssi_values: List[int]
+    rssi_values: Deque[int] = field(default_factory=lambda: deque(maxlen=10))  # 최근 10개만 저장
     
     @property
     def avg_rssi(self) -> float:
