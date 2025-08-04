@@ -1,5 +1,6 @@
 package com.sobi.sobi_backend.controller;
 
+import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
 import com.sobi.sobi_backend.service.BasketSseService;
 import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
@@ -18,6 +19,9 @@ public class BasketSseController {
 
     @Autowired
     private BasketSseService basketSseService;
+
+    @Autowired
+    private BasketMqttHandler basketMqttHandler; // 추가
 
     @Autowired
     private BasketCacheService basketCacheService;
@@ -66,8 +70,11 @@ public class BasketSseController {
             // SSE 서비스에 등록
             basketSseService.addEmitter(customerId, emitter);
 
-            // 연결 즉시 현재 바구니 상태 전송 (추천 포함)
-            basketSseService.notifyCustomer(customerId, "basket-initial");
+            // 연결 즉시 현재 바구니 상태 전송
+            int totalPrice = basketSseService.notifyCustomer(customerId, "basket-initial");
+
+            // 초기 총 가격도 MQTT로 발행
+            basketMqttHandler.publishTotalPrice(basketId, totalPrice);
 
             System.out.println("바구니 SSE 연결 성공: 고객ID=" + customerId + ", basketId=" + basketId);
             return emitter;

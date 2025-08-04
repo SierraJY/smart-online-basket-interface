@@ -10,27 +10,27 @@ import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
+import org.springframework.integration.mqtt.outbound.MqttPahoMessageHandler;
 import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
 
 /**
  * MQTT 설정 클래스
  *
  * 기능:
  * 1. Eclipse Mosquitto 브로커 연결
- * 2. 바구니 업데이트 토픽 구독
- * 3. 메시지를 Spring Integration Channel로 라우팅
+ * 2. 바구니 업데이트 토픽 구독 (inbound)
+ * 3. 바구니 총 가격 토픽 발행 (outbound)
+ * 4. 메시지를 Spring Integration Channel로 라우팅
  *
  * MQTT 토픽 구조:
- * - Topic: basket/{basketId}/update
- * - 예: basket/1/update
+ * - 수신: basket/{basketId}/update
+ * - 발행: basket/{basketId}/total
  *
  * 페이로드 구조 (JSON):
- * {
- *   "action": "set",
- *   {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}},
- *   "timestamp": 1640995200000
- * }
+ * 수신: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
+ * 발행: {"basketId": 1, "totalPrice": 15000}
  */
 @Configuration
 public class MqttConfig {
@@ -51,6 +51,7 @@ public class MqttConfig {
      * 역할:
      * - MQTT 브로커와의 연결 관리
      * - 연결 옵션 설정 (자동 재연결, 타임아웃 등)
+     * - inbound와 outbound 모두 공통으로 사용
      *
      * @return MqttPahoClientFactory MQTT 클라이언트 팩토리
      */
@@ -83,7 +84,7 @@ public class MqttConfig {
     }
 
     /**
-     * MQTT 메시지를 받을 Spring Integration 채널 생성
+     * MQTT 메시지를 받을 Spring Integration 채널 생성 (inbound용)
      *
      * 역할:
      * - MQTT 메시지를 Spring 애플리케이션 내부로 전달하는 통로
@@ -101,7 +102,25 @@ public class MqttConfig {
     }
 
     /**
-     * MQTT 메시지 수신 어댑터 생성
+     * MQTT 메시지를 보낼 Spring Integration 채널 생성 (outbound용)
+     *
+     * 역할:
+     * - Spring 애플리케이션에서 MQTT 브로커로 메시지 전달하는 통로
+     * - 바구니 총 가격 정보 발행용
+     *
+     * @return MessageChannel MQTT 출력 채널
+     */
+    @Bean
+    public MessageChannel mqttOutputChannel() {
+        DirectChannel channel = new DirectChannel();
+
+        System.out.println("MQTT 출력 채널 생성 완료");
+
+        return channel;
+    }
+
+    /**
+     * MQTT 메시지 수신 어댑터 생성 (inbound)
      *
      * 역할:
      * - MQTT 브로커에서 메시지 수신
@@ -140,5 +159,36 @@ public class MqttConfig {
         System.out.println("MQTT 인바운드 어댑터 설정 완료 - 구독 토픽: " + basketTopicPattern);
 
         return adapter;
+    }
+
+    /**
+     * MQTT 메시지 발행 핸들러 생성 (outbound)
+     *
+     * 역할:
+     * - Spring Integration 채널에서 메시지를 받아 MQTT 브로커로 발행
+     * - 바구니 총 가격 정보를 basket/{basketId}/total 토픽으로 발행
+     *
+     * @return MessageHandler MQTT 메시지 발행 핸들러
+     */
+    @Bean
+    @ServiceActivator(inputChannel = "mqttOutputChannel")
+    public MessageHandler mqttOutbound() {
+        MqttPahoMessageHandler messageHandler = new MqttPahoMessageHandler(
+                clientId + "_outbound",  // 아웃바운드 핸들러용 클라이언트 ID
+                mqttClientFactory()      // 동일한 클라이언트 팩토리 사용
+        );
+
+        // 비동기 발행 설정 (true: 논블로킹, false: 블로킹)
+        messageHandler.setAsync(true);
+
+        // 발행 시 QoS 설정 (기본값: 0)
+        messageHandler.setDefaultQos(1);
+
+        // 메시지 변환기 설정
+        messageHandler.setConverter(new DefaultPahoMessageConverter());
+
+        System.out.println("MQTT 아웃바운드 핸들러 설정 완료");
+
+        return messageHandler;
     }
 }

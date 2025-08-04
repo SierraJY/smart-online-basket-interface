@@ -8,9 +8,13 @@ import com.sobi.sobi_backend.service.BasketService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.support.MessageBuilder;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,15 +26,19 @@ import java.util.Set;
  * 2. Topic에서 바구니 ID 추출
  * 3. JSON 페이로드에서 list 부분만 파싱
  * 4. BasketCacheService를 통해 Redis에 저장
- * 5. 바구니 사용자를 찾아서 해당 고객에게만 실시간 알림
+ * 5. 바구니 사용자를 찾아서 해당 고객에게만 실시간 알림 (총 가격 계산)
+ * 6. **계산된 총 가격을 MQTT로 발행** (중복 계산 방지)
  *
  * MQTT 메시지 구조:
- * - Topic: basket/{basketId}/update
- * - Payload: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
+ * - 수신 Topic: basket/{basketId}/update
+ * - 수신 Payload: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
+ * - 발행 Topic: basket/{basketId}/total
+ * - 발행 Payload: {"basketId": 1, "totalPrice": 15000}
  *
  * 처리 흐름:
  * MQTT 브로커 → MqttConfig → mqttInputChannel → 이 핸들러 → BasketCacheService → Redis
- *                                                              ↘ BasketSseService → 해당 고객 SSE
+ *                                                              ↘ BasketSseService → 해당 고객 SSE (총 가격 계산)
+ *                                                                                ↘ 계산된 총 가격으로 MQTT 발행
  */
 @Component
 public class BasketMqttHandler {
@@ -46,6 +54,9 @@ public class BasketMqttHandler {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+
+    @Autowired
+    private MessageChannel mqttOutputChannel;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -95,9 +106,13 @@ public class BasketMqttHandler {
             // 5. 바구니를 사용하는 고객 찾기
             Integer customerId = findCustomerByBasket(basketId);
             if (customerId != null) {
-                // 해당 고객에게만 실시간 알림
-                basketSseService.notifyCustomer(customerId, "basket-update");
-                System.out.println("바구니 업데이트 알림 완료: basketId=" + basketId + " → 고객ID=" + customerId);
+                // 해당 고객에게만 실시간 알림 + 총 가격 반환받기
+                int totalPrice = basketSseService.notifyCustomer(customerId, "basket-update");
+
+                // 계산된 총 가격으로 MQTT 발행
+                publishTotalPrice(basketId, totalPrice);
+
+                System.out.println("바구니 업데이트 알림 완료: basketId=" + basketId + " → 고객ID=" + customerId + ", 총가격=" + totalPrice);
             } else {
                 System.out.println("바구니를 사용하는 고객을 찾을 수 없음: basketId=" + basketId);
             }
@@ -111,6 +126,51 @@ public class BasketMqttHandler {
 
             // MQTT 메시지 처리 실패해도 시스템은 계속 동작
             // 다음 메시지는 정상 처리될 수 있음
+        }
+    }
+
+    /**
+     * 바구니 총 가격을 MQTT로 발행
+     *
+     * 작동 흐름:
+     * 1. SSE에서 이미 계산된 총 가격을 매개변수로 받음
+     * 2. JSON 메시지 생성
+     * 3. basket/{basketId}/total 토픽으로 발행
+     *
+     * @param basketId 바구니 ID
+     * @param totalPrice 이미 계산된 총 가격
+     */
+    public void publishTotalPrice(Integer basketId, int totalPrice) {
+        try {
+            System.out.println("=== 바구니 총 가격 발행 시작 ===");
+            System.out.println("바구니 ID: " + basketId + ", 총가격: " + totalPrice);
+
+            // 1. 발행할 JSON 메시지 생성
+            Map<String, Object> totalPriceMessage = new HashMap<>();
+            totalPriceMessage.put("basketId", basketId);
+            totalPriceMessage.put("totalPrice", totalPrice);
+
+            String jsonMessage = objectMapper.writeValueAsString(totalPriceMessage);
+
+            // 2. MQTT 토픽 생성: basket/{basketId}/total
+            String totalTopic = "basket/" + basketId + "/total";
+
+            // 3. MQTT 메시지 발행
+            mqttOutputChannel.send(MessageBuilder.withPayload(jsonMessage)
+                    .setHeader("mqtt_topic", totalTopic)
+                    .build());
+
+            System.out.println("총 가격 MQTT 발행 완료:");
+            System.out.println("  토픽: " + totalTopic);
+            System.out.println("  메시지: " + jsonMessage);
+            System.out.println("=== 바구니 총 가격 발행 완료 ===");
+
+        } catch (Exception e) {
+            System.err.println("바구니 총 가격 MQTT 발행 실패: " + e.getMessage());
+            e.printStackTrace();
+
+            // 총 가격 발행 실패해도 다른 로직(Redis 저장, SSE)은 정상 동작하도록 함
+            // 여기서 예외를 다시 throw하지 않음
         }
     }
 
