@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
  * 3. AI 서버에서 추천 상품 받아서 함께 전송
  * 4. 연결 해제 및 타임아웃 관리
  * 5. 고객별 단일 연결 보장
+ * 6. **총 가격 계산 후 반환** (MQTT 발행에서 재사용)
  */
 @Service
 public class BasketSseService {
@@ -90,60 +91,72 @@ public class BasketSseService {
     }
 
     /**
-     * 특정 고객에게 바구니 업데이트 알림
+     * 특정 고객에게 바구니 업데이트 알림 및 총 가격 반환
      *
      * @param customerId 고객 ID
      * @param eventName SSE 이벤트명
+     * @return 계산된 총 가격 (MQTT 발행에서 재사용)
      */
-    public void notifyCustomer(Integer customerId, String eventName) {
+    public int notifyCustomer(Integer customerId, String eventName) {
         try {
             SseEmitter emitter = customerEmitters.get(customerId);
             if (emitter == null) {
                 System.out.println("SSE 알림 대상 없음: 고객ID=" + customerId);
-                return;
             }
 
             // Redis에서 고객의 바구니 ID 조회
             String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
             if (basketIdStr == null) {
                 System.out.println("고객의 사용 중인 바구니 없음: 고객ID=" + customerId);
-                return;
+                return 0;
             }
 
             Integer basketId = Integer.parseInt(basketIdStr);
 
-            // 현재 바구니 상태 조회
+            // 현재 바구니 상태 조회 (상품 정보 포함)
             List<BasketCacheService.BasketItemInfo> basketItems =
                     basketCacheService.getBasketItemsWithProductInfo(basketId);
 
             // AI 추천 상품 조회
             List<Product> recommendedProducts = getRecommendedProducts(customerId, basketItems);
 
-            // 응답 데이터 생성
-            Map<String, Object> responseData = createBasketResponse(basketItems, basketId, recommendedProducts);
+            // 총 가격 계산 (할인 적용된 가격)
+            int totalPrice = basketItems.stream()
+                    .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
+                    .sum();
 
-            System.out.println("[SSE] 알림 전송 시작: 고객ID=" + customerId + ", basketId=" + basketId + ", 추천상품수=" + recommendedProducts.size());
+            // SSE 연결이 있을 때만 전송
+            if (emitter != null) {
+                // 응답 데이터 생성 (계산된 총 가격 전달)
+                Map<String, Object> responseData = createBasketResponse(basketItems, basketId, recommendedProducts, totalPrice);
 
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(eventName)
-                        .data(responseData));
-
-                System.out.println("[SSE] 알림 전송 성공: 고객ID=" + customerId);
-
-            } catch (Exception e) {
-                System.err.println("[SSE] 알림 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
-
-                // 전송 실패한 연결 제거
-                customerEmitters.remove(customerId);
+                System.out.println("[SSE] 알림 전송 시작: 고객ID=" + customerId + ", basketId=" + basketId + ", 총가격=" + totalPrice + ", 추천상품수=" + recommendedProducts.size());
 
                 try {
-                    emitter.completeWithError(e);
-                } catch (Exception ignored) {}
+                    emitter.send(SseEmitter.event()
+                            .name(eventName)
+                            .data(responseData));
+
+                    System.out.println("[SSE] 알림 전송 성공: 고객ID=" + customerId);
+
+                } catch (Exception e) {
+                    System.err.println("[SSE] 알림 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
+
+                    // 전송 실패한 연결 제거
+                    customerEmitters.remove(customerId);
+
+                    try {
+                        emitter.completeWithError(e);
+                    } catch (Exception ignored) {}
+                }
             }
+
+            // 계산된 총 가격 반환 (MQTT 발행에서 재사용)
+            return totalPrice;
 
         } catch (Exception e) {
             System.err.println("SSE 고객 알림 중 오류: " + e.getMessage());
+            return 0;
         }
     }
 
@@ -228,11 +241,7 @@ public class BasketSseService {
      * SSE로 전송할 바구니 응답 데이터 생성
      */
     public Map<String, Object> createBasketResponse(List<BasketCacheService.BasketItemInfo> basketItems,
-                                                    Integer basketId, List<Product> recommendedProducts) {
-        // 총 가격 계산
-        int totalPrice = basketItems.stream()
-                .mapToInt(BasketCacheService.BasketItemInfo::getTotalPrice)
-                .sum();
+                                                    Integer basketId, List<Product> recommendedProducts, int totalPrice) {
         // 총 아이템 개수 계산
         int totalCount = basketItems.stream()
                 .mapToInt(BasketCacheService.BasketItemInfo::getQuantity)
@@ -241,10 +250,9 @@ public class BasketSseService {
         Map<String, Object> response = new HashMap<>();
         response.put("items", basketItems);
         response.put("totalCount", totalCount);
-        response.put("totalPrice", totalPrice);
+        response.put("totalPrice", totalPrice); // 전달받은 총 가격 사용
         response.put("basketId", basketId);
         response.put("recommendations", recommendedProducts);
-        response.put("timestamp", System.currentTimeMillis());
 
         return response;
     }
