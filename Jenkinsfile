@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://lab.ssafy.com/s13-webmobile3-sub1/S13P11B103.git'
+                git credentialsId: 'gitlab-token', url: 'https://lab.ssafy.com/s13-webmobile3-sub1/S13P11B103.git'
             }
         }
 
@@ -22,7 +22,6 @@ pipeline {
         stage('Test') {
             steps {
                 echo "Running tests..."
-                // 필요 시 sh 'pytest' 등으로 테스트 수행
             }
         }
 
