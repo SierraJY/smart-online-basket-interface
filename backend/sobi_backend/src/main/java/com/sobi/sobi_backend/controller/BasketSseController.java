@@ -60,28 +60,17 @@ public class BasketSseController {
                 return makeErrorEmitter("error", "{\"error\":\"바구니 정보가 올바르지 않습니다\"}");
             }
 
-            // SSE Emitter 생성 (상수 사용)
+            // SSE Emitter 생성
             SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
-            // SSE 서비스에 등록 (basketId 파라미터 제거)
+            // SSE 서비스에 등록
             basketSseService.addEmitter(customerId, emitter);
 
-            // 연결 즉시 현재 바구니 상태 전송
-            List<BasketCacheService.BasketItemInfo> currentItems =
-                    basketCacheService.getBasketItemsWithProductInfo(basketId);
-
-            try {
-                emitter.send(SseEmitter.event()
-                        .name("basket-initial")
-                        .data(basketSseService.createBasketResponse(currentItems, basketId)));
-
-                System.out.println("SSE 초기 데이터 전송 완료");
-            } catch (Exception e) {
-                System.err.println("초기 데이터 전송 실패: " + e.getMessage());
-            }
+            // 연결 즉시 현재 바구니 상태 전송 (추천 포함)
+            basketSseService.notifyCustomer(customerId, "basket-initial");
 
             System.out.println("바구니 SSE 연결 성공: 고객ID=" + customerId + ", basketId=" + basketId);
-            return emitter; // 직접 SseEmitter 반환
+            return emitter;
 
         } catch (Exception e) {
             System.err.println("바구니 SSE 연결 실패: " + e.getMessage());
