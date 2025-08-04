@@ -50,7 +50,7 @@ public class BasketMqttHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public BasketMqttHandler() {
-        System.out.println("🔧 BasketMqttHandler 빈 등록 완료");
+        System.out.println("BasketMqttHandler 빈 등록 완료");
     }
 
     /**
@@ -96,7 +96,7 @@ public class BasketMqttHandler {
             Integer customerId = findCustomerByBasket(basketId);
             if (customerId != null) {
                 // 해당 고객에게만 실시간 알림
-                basketSseService.notifyCustomer(customerId);
+                basketSseService.notifyCustomer(customerId, "basket-update");
                 System.out.println("바구니 업데이트 알림 완료: basketId=" + basketId + " → 고객ID=" + customerId);
             } else {
                 System.out.println("바구니를 사용하는 고객을 찾을 수 없음: basketId=" + basketId);
@@ -115,14 +115,14 @@ public class BasketMqttHandler {
     }
 
     /**
-     * Redis에서 바구니를 사용하는 고객 ID 찾기 [역방향 매핑 활용]
+     * Redis에서 바구니를 사용하는 고객 ID 찾기
      *
      * @param basketId 바구니 ID
      * @return 고객 ID, 찾지 못하면 null
      */
     private Integer findCustomerByBasket(Integer basketId) {
         try {
-            // Redis에서 basket_user:{basketId} 키로 직접 조회 (O(1))
+            // Redis에서 basket_user:{basketId} 키로 직접 조회
             String customerIdStr = redisTemplate.opsForValue().get("basket_user:" + basketId);
 
             if (customerIdStr != null) {
