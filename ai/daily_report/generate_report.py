@@ -25,14 +25,16 @@ WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"  # Window
 # === Jinja 환경 설정 및 필터 등록 ===
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
+
 def paragraph_to_bullet_list(text: str) -> str:
     """
     줄글 형식 문단을 문장 단위로 나눠 <ul><li>...</li></ul>로 변환
     """
     text = text.replace("\n", " ").strip()
-    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = re.split(r"(?<=[.!?])\s+", text)
     li_tags = [f"<li>{s.strip()}</li>" for s in sentences if s.strip()]
     return f"<ul>\n{''.join(li_tags)}\n</ul>"
+
 
 env.filters["bullet_list"] = paragraph_to_bullet_list
 template = env.get_template("daily_report.html")
@@ -55,10 +57,22 @@ def generate_report():
     raw_association, image_association = generate_association_summary()
 
     # 2. LLM 요약
-    summary_customer = summarize_with_llm(raw_customer, system_message="고객 세분화 결과를 마케팅팀 보고서 스타일로 요약해줘.")
-    summary_prophet = summarize_with_llm(raw_prophet, system_message="판매 예측 결과를 마케팅 전략 보고서 형식으로 요약해줘.")
-    summary_restock = summarize_with_llm(raw_restock, system_message="재고 및 발주 예측 결과를 요약해줘. 강조점은 관리자에게 전달할 정보야.")
-    summary_association = summarize_with_llm(raw_association, system_message="연관 규칙 분석 결과를 매대 구성 및 묶음 상품 추천 전략 중심으로 요약해줘.")
+    summary_customer = summarize_with_llm(
+        raw_customer,
+        system_message="고객 세분화 결과를 마케팅팀 보고서 스타일로 요약해줘.",
+    )
+    summary_prophet = summarize_with_llm(
+        raw_prophet,
+        system_message="판매 예측 결과를 마케팅 전략 보고서 형식으로 요약해줘.",
+    )
+    summary_restock = summarize_with_llm(
+        raw_restock,
+        system_message="재고 및 발주 예측 결과를 요약해줘. 강조점은 관리자에게 전달할 정보야.",
+    )
+    summary_association = summarize_with_llm(
+        raw_association,
+        system_message="연관 규칙 분석 결과를 매대 구성 및 묶음 상품 추천 전략 중심으로 요약해줘.",
+    )
 
     # 3. 템플릿 context
     context = {
@@ -87,7 +101,9 @@ def generate_report():
     options = {"enable-local-file-access": ""}
 
     try:
-        pdfkit.from_string(html_out, OUTPUT_PDF_PATH, configuration=config, options=options)
+        pdfkit.from_string(
+            html_out, OUTPUT_PDF_PATH, configuration=config, options=options
+        )
         print(f"[SUCCESS] PDF 리포트 생성 완료: {OUTPUT_PDF_PATH}")
     except Exception as e:
         print("[ERROR] PDF 생성 중 예외 발생!")

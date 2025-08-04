@@ -1,16 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sqlalchemy import create_engine
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from collections import Counter
 import os
 from datetime import datetime, timedelta
 
 plt.rcParams["font.family"] = "Malgun Gothic"
-
-DB_URL = "postgresql://user:password@db:5432/mydb"
 
 
 def get_last_7_days_range():
@@ -36,44 +32,51 @@ def get_age_group(age):
 
 
 def load_and_preprocess():
-    engine = create_engine(DB_URL)
+    # CSV 파일에서 데이터 로드
+    df = pd.read_csv("./data/dummy2.csv")
+
+    # 날짜 컬럼 자동 인식
+    if "purchased_at" in df.columns:
+        date_col = "purchased_at"
+    elif "purchase_date" in df.columns:
+        date_col = "purchase_date"
+    else:
+        raise Exception("날짜 컬럼(purchased_at, purchase_date)이 없습니다!")
+
+    # 날짜 변환 및 필터링
     start_date, end_date = get_last_7_days_range()
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df[
+        (df[date_col] >= pd.Timestamp(start_date))
+        & (df[date_col] <= pd.Timestamp(end_date))
+    ]
 
-    query = f"""
-    SELECT r.id, r.user_id, r.product_list, r.purchased_at, u.gender, u.age
-    FROM receipt r
-    INNER JOIN "user" u ON r.user_id = u.id
-    WHERE r.purchased_at BETWEEN '{start_date}' AND '{end_date}'
-    """
-    df = pd.read_sql(query, engine)
+    # amount 계산
+    if "price" in df.columns:
+        df["amount"] = df["price"]
+    else:
+        # product_list 컬럼이 있는 경우, 별도 price_map 필요
+        df["amount"] = 0
 
-    # 가격 정보 로드
-    product_df = pd.read_sql("SELECT id, price FROM product", engine)
-    price_map = dict(zip(product_df["id"], product_df["price"]))
-
-    def calc_amount(product_list):
-        try:
-            ids = eval(product_list)
-            return sum(price_map.get(pid, 0) for pid in ids)
-        except:
-            return 0
-
-    df["amount"] = df["product_list"].apply(calc_amount)
-
-    # 유저별 집계
-    agg = df.groupby("user_id").agg(
-        total_amount=("amount", "sum"),
-        purchase_count=("id", "count"),
-        gender=("gender", "first"),
-        age=("age", "first")
-    ).reset_index()
+    # 유저별 집계 (session_id 여러번이면 구매 횟수=세션수)
+    agg = (
+        df.groupby("user_id")
+        .agg(
+            total_amount=("amount", "sum"),
+            purchase_count=("session_id", "nunique"),
+            gender=("gender", "first"),
+            age=("age", "first"),
+        )
+        .reset_index()
+    )
     agg["avg_amount"] = agg["total_amount"] / agg["purchase_count"]
     agg["age_group"] = agg["age"].apply(get_age_group)
-
     return agg
 
 
-def perform_clustering(df, n_clusters=5, save_dir="./output", filename="kmeans_clusters.png"):
+def perform_clustering(
+    df, n_clusters=5, save_dir="./output", filename="kmeans_clusters.png"
+):
     scaler = StandardScaler()
     X = scaler.fit_transform(df[["total_amount", "avg_amount", "purchase_count"]])
 
@@ -103,7 +106,9 @@ def perform_clustering(df, n_clusters=5, save_dir="./output", filename="kmeans_c
 
     cluster_counts = df["cluster"].value_counts().sort_index()
     plt.figure(figsize=(8, 6))
-    bars = plt.bar(cluster_counts.index.astype(str), cluster_counts.values, color="orange")
+    bars = plt.bar(
+        cluster_counts.index.astype(str), cluster_counts.values, color="orange"
+    )
     plt.title("클러스터별 고객 수")
     plt.xlabel("Cluster ID")
     plt.ylabel("고객 수")
@@ -116,6 +121,6 @@ def perform_clustering(df, n_clusters=5, save_dir="./output", filename="kmeans_c
     return "\n\n".join(results), image_path
 
 
-def generate_spend_cluster_summary():
+def generate_customer_cluster_summary():
     df = load_and_preprocess()
     return perform_clustering(df, n_clusters=5)
