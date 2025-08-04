@@ -1,0 +1,20 @@
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    ports:
+      - "8088:8080"  # 웹 UI 접근용
+      - "50000:50000"  # 에이전트 포트
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    # networks:
+    #   - jenkins-net
+  
+volumes:
+  jenkins_home:
+
+# networks:
+#   jenkins-net:
+#     external: true
+
