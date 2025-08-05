@@ -45,7 +45,8 @@ export default function CategoryPage() {
   
   const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const [itemsPerPage, setItemsPerPage] = useState<number>(12) // 기본값 12
-  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
+  const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
+  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
 
   // 화면 크기에 따른 페이지당 아이템 수 설정
   useEffect(() => {
@@ -78,7 +79,8 @@ export default function CategoryPage() {
     setKeyword(keywordFromURL)
     setCategory(categoryFromURL)
     setSort(sortFromURL)
-  }, [keywordFromURL, categoryFromURL, sortFromURL])
+    setExcludeOutOfStock(excludeOutOfStockFromURL)
+  }, [keywordFromURL, categoryFromURL, sortFromURL, excludeOutOfStockFromURL])
 
   const onKeywordChange = (val: string) => {
     setKeyword(val)
@@ -105,12 +107,24 @@ export default function CategoryPage() {
     router.replace(`?${params.toString()}`)
   }
 
+  const onExcludeOutOfStockChange = (checked: boolean) => {
+    setExcludeOutOfStock(checked)
+    const params = new URLSearchParams(searchParams)
+    if (checked) {
+      params.set('excludeOutOfStock', 'true')
+    } else {
+      params.delete('excludeOutOfStock')
+    }
+    params.set('page', '1') // 필터 변경 시 첫 페이지로 이동
+    router.replace(`?${params.toString()}`)
+  }
+
   // 필터링
   const filtered: Product[] = products.filter(
     (item: Product) =>
       (category === '' || item.category === category) &&
       [item.name, item.description, item.category].join(' ').toLowerCase().includes(keyword.toLowerCase()) &&
-      (!excludeOutOfStock || item.stock > 0)
+      (excludeOutOfStock || item.stock > 0)
   )
 
   // 정렬 함수
@@ -227,7 +241,7 @@ export default function CategoryPage() {
                 type="checkbox"
                 id="excludeOutOfStock"
                 checked={excludeOutOfStock}
-                onChange={e => setExcludeOutOfStock(e.target.checked)}
+                onChange={e => onExcludeOutOfStockChange(e.target.checked)}
                 className="sr-only peer"
               />
               <div className={`w-5 h-5 border-2 rounded transition-all peer-focus:outline-none ${
@@ -247,7 +261,7 @@ export default function CategoryPage() {
               </div>
             </div>
             <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
-              품절 상품 제외
+              품절 상품 포함
             </span>
           </label>
         </div>
@@ -270,12 +284,12 @@ export default function CategoryPage() {
         >
           <button
             onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-            className="flex items-center gap-2 px-5 py-3 text-sm bg-transparent focus:outline-none"
+            className="flex items-center gap-2 px-5 py-1.5 text-sm bg-transparent focus:outline-none"
             style={{
               color: 'var(--foreground)',
               border: 'none',
               fontWeight: 500,
-              borderRadius: 99,
+              borderRadius: 999,
               background: 'transparent',
               zIndex: 20
             }}
@@ -346,16 +360,19 @@ export default function CategoryPage() {
         {pagedProducts.map((item: Product) => (
           <div key={item.id} className={cardClass}>
             <ShakeWrapper item={item}>
-              <div className="w-full h-[100px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
+              <div className="w-full aspect-square flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
                 <Link href={`/products/${item.id}`} className="w-full h-full flex items-center justify-center">
                   <Image
                     src={item.imageUrl}
                     alt={item.name}
-                    width={90}
-                    height={80}
                     className="object-cover w-full h-full"
                     style={{ backgroundColor: 'var(--input-background)' }}
+                    width={120}
+                    height={120}
+                    priority={false}
                     loading="lazy"
+                    sizes="(max-width: 768px) 120px, 120px"
+                    quality={85}
                   />
                 </Link>
                 {/* 할인 배지 */}
@@ -364,13 +381,13 @@ export default function CategoryPage() {
                     {item.discountRate}%
                   </div>
                 )}
-                {/* 찜 인디케이터 */}
+                {/* 찜 인디케이터 - 찜한 상품에만 표시 */}
                 <FavoriteIcon productId={item.id} readOnly={true} />
               </div>
             </ShakeWrapper>
             <Link href={`/products/${item.id}`} className="w-full flex flex-col items-center">
               {item.discountRate > 0 ? (
-                <div className={"flex flex-col items-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
+                <div className={"flex flex-col items-center " + (item.stock === 0 ? "opacity-60 grayscale" : "")}>
                   <span className="text-[13px] text-gray-400 line-through opacity-70">
                     {formatPrice(item.price)}
                   </span>
@@ -379,7 +396,7 @@ export default function CategoryPage() {
                   </span>
                 </div>
               ) : (
-                <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
+                <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale" : "")} style={{ color: 'var(--text-secondary)' }}>
                   {formatPrice(item.price)}
                 </span>
               )}

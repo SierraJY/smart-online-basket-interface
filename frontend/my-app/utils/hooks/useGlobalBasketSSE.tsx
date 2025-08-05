@@ -119,7 +119,7 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
           'Authorization': `Bearer ${freshToken}`,
           'Content-Type': 'text/event-stream',
         },
-        heartbeatTimeout: 120000, // 60초 heartbeat 타임아웃 (충분히 큰 값)
+        // heartbeatTimeout: 120000, // 60초 heartbeat 타임아웃 (충분히 큰 값)
         // connectionTimeout: 60000, // 60초 연결 타임아웃
         // retryInterval: 10000, // 재연결 간격 10초로 단축 (빠른 복구)
         // maxRetries: 20, // 최대 재연결 시도 횟수 증가
@@ -204,38 +204,25 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
           };
           
           // 상품 추가 감지 및 toast 알림
-          if (validData && validData.items) {
-            let shouldShowToast = false;
-            let addedProductName = '';
+          if (validData && validData.items && globalBasketData && globalBasketData.items) {
+            const previousItems = globalBasketData.items;
+            const currentItems = validData.items;
             
-            if (globalBasketData && globalBasketData.items) {
-              const previousItemCount = globalBasketData.items.length;
-              const currentItemCount = validData.items.length;
-              
-              // 상품 개수가 증가했을 때만 toast 표시
-              if (currentItemCount > previousItemCount) {
-                const addedItems = validData.items.filter((currentItem: any) => 
-                  !globalBasketData.items.some((prevItem: any) => 
-                    prevItem.epcPattern === currentItem.epcPattern
-                  )
-                );
-                
-                if (addedItems.length > 0) {
-                  shouldShowToast = true;
-                  addedProductName = addedItems[0]?.product?.name || '상품';
-                }
-              }
-            }
+            // 새로 추가된 상품 찾기
+            const addedItems = currentItems.filter((currentItem: any) => 
+              !previousItems.some((prevItem: any) => 
+                prevItem.epcPattern === currentItem.epcPattern
+              )
+            );
             
-            // Toast 표시 (실제 상품 추가 시에만)
-            if (shouldShowToast && addedProductName) {
-              // 상품 이미지 URL 가져오기
-              const productImageUrl = validData.items.find((item: any) => 
-                item.product?.name === addedProductName
-              )?.product?.imageUrl;
+            // 상품이 추가된 경우에만 toast 표시
+            if (addedItems.length > 0) {
+              const addedItem = addedItems[0];
+              const productName = addedItem?.product?.name || '상품';
+              const productImageUrl = addedItem?.product?.imageUrl;
               
-              // ToastManager를 사용하여 toast 표시
-              ToastManager.basketAdded(addedProductName, productImageUrl);
+              console.log("[Global SSE] 상품 추가 감지:", productName);
+              ToastManager.basketAdded(productName, productImageUrl);
             }
           }
           

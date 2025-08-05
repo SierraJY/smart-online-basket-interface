@@ -1,30 +1,67 @@
-// 구매기록 페이지
+// 구매내역 페이지
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/utils/hooks/useAuth';
-import { useReceipts, Receipt, ReceiptItem } from '@/utils/hooks/useReceipts';
-import { Receipt as ReceiptIcon, ShoppingBag, Calendar, DollarSign, Package } from 'lucide-react';
+import { useReceipts, Receipt } from '@/utils/hooks/useReceipts';
+import { Receipt as ReceiptIcon, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { FaExclamationTriangle as FaExclamationTriangleIcon } from 'react-icons/fa';
+import { useQueryClient } from '@tanstack/react-query';
 
-// 구매기록 카드 컴포넌트
-const ReceiptCard = ({ receipt, index }: { receipt: Receipt; index: number }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  
+// 기간별 필터 타입
+type PeriodFilter = 'all' | '1week' | '1month' | '3months' | '6months' | '1year';
+
+// 기간별 필터 컴포넌트
+const PeriodFilterComponent = ({ 
+  selectedPeriod, 
+  onPeriodChange 
+}: { 
+  selectedPeriod: PeriodFilter; 
+  onPeriodChange: (period: PeriodFilter) => void;
+}) => {
+  const periods = [
+    { value: 'all', label: '전체' },
+    { value: '1week', label: '1주일' },
+    { value: '1month', label: '1개월' },
+    { value: '3months', label: '3개월' },
+    { value: '6months', label: '6개월' },
+    { value: '1year', label: '1년' }
+  ] as const;
+
+  return (
+    <div className="flex justify-center gap-1 mb-2 overflow-x-auto">
+      {periods.map((period) => (
+        <button
+          key={period.value}
+          onClick={() => onPeriodChange(period.value)}
+          className={`px-4 py-2 rounded-full text-md justify-center font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+            selectedPeriod === period.value
+              ? 'bg-green-600 text-white shadow-md'
+              : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          {period.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// 구매내역 카드 컴포넌트 - React.memo로 최적화
+const ReceiptCard = React.memo(function ReceiptCard({ receipt, index }: { receipt: Receipt; index: number }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const year = date.getFullYear().toString().slice(-2); // 2025 -> 25
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // 8 -> 08
+    const day = String(date.getDate()).padStart(2, '0'); // 5 -> 05
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}/${month}/${day} ${hours}:${minutes}`;
   };
 
   return (
@@ -32,124 +69,161 @@ const ReceiptCard = ({ receipt, index }: { receipt: Receipt; index: number }) =>
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="mb-6"
+      className="mb-3"
     >
-      <div 
-        className="p-6 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all"
-        style={{
-          border: '1px solid var(--input-border)',
-          backgroundColor: 'var(--input-background)',
-        }}
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <Link href={`/receipts/${receipt.id}`}>
+        <div 
+          className="p-4 cursor-pointertransition-all"
+        >
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <ReceiptIcon className="w-6 h-6" style={{ color: 'var(--sobi-green)' }} />
             <div>
-              <h3 className="text-lg font-semibold">구매 기록 #{receipt.id}</h3>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {formatDate(receipt.createdAt)}
-              </p>
+              <h3 className="text-lg font-semibold">{formatDate(receipt.purchasedAt).split(' ')[0]} 영수증</h3>
             </div>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold" style={{ color: 'var(--sobi-green)' }}>
-              {receipt.totalAmount.toLocaleString()}원
+              {receipt.totalAmount?.toLocaleString() || '0'}원
             </div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              총 {receipt.totalCount}개 상품
+              총 {receipt.totalCount || 0}개 상품
             </div>
           </div>
         </div>
 
-        {/* 상품 목록 (접힘/펼침) */}
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="border-t pt-4"
-            style={{ borderColor: 'var(--input-border)' }}
-          >
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              구매 상품 목록
-            </h4>
-            <div className="space-y-3">
-              {receipt.items.map((item, itemIndex) => (
-                <div 
-                  key={item.id}
-                  className="flex items-center p-3 rounded-lg"
-                  style={{
-                    backgroundColor: 'var(--footer-background)',
-                    border: '1px solid var(--footer-border)',
-                  }}
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{item.productName}</div>
-                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {item.quantity}개 × {item.productPrice.toLocaleString()}원
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold" style={{ color: 'var(--sobi-green)' }}>
-                      {item.totalPrice.toLocaleString()}원
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
 
-        {/* 펼침/접힘 표시 */}
-        <div className="text-center mt-3">
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {isExpanded ? '접기' : '상품 목록 보기'}
-          </div>
+
         </div>
-      </div>
+      </Link>
     </motion.div>
   );
-};
+});
 
 export default function ReceiptsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoggedIn, accessToken: token } = useAuth();
   const { data, isLoading, error } = useReceipts(token);
+  const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('all');
+  
+  // 페이지네이션 관련 상태
+  const itemsPerPage = 5; // 한 페이지당 5개의 영수증
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
 
-  // 로그인 필요
-  if (!isLoggedIn || !token) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-        style={{ 
-          backgroundImage: `
-            linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-            url('/paper2.jpg')
-          `,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
-          color: 'var(--foreground)' 
-        }}
-      >
-        <FaExclamationTriangleIcon className="text-red-400 text-5xl mb-3 animate-bounce" />
-        <div className="font-bold text-lg text-red-500 mb-2">로그인이 필요합니다!</div>
-        <p className="text-base mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
-          구매기록을 확인하려면 로그인해주세요.
-        </p>
-        <Link
-          href="/login"
-          className="inline-block px-6 py-2 bg-neutral-900 dark:bg-neutral-800 text-white rounded-full shadow hover:bg-neutral-700 transition-all"
-        >
-          로그인 하러가기
-        </Link>
-      </div>
+  // 백엔드 데이터를 프론트엔드 형식으로 변환
+  console.log('=== 데이터 변환 시작 ===');
+  console.log('원본 data:', data);
+  
+  const receipts = (data?.receipts || []).map((receipt: Receipt, index: number) => {
+    console.log(`\n--- Receipt ${index + 1} 변환 ---`);
+    console.log('원본 receipt:', receipt);
+    console.log('purchasedProducts:', receipt.purchasedProducts);
+    
+    // purchasedProducts를 items로 변환하고 총액, 총 개수 계산
+    const items = receipt.purchasedProducts?.map((purchasedProduct, itemIndex) => {
+      console.log(`  상품 ${itemIndex + 1}:`, purchasedProduct);
+      return {
+        productId: purchasedProduct.product.id,
+        productName: purchasedProduct.product.name,
+        productPrice: purchasedProduct.product.price,
+        quantity: purchasedProduct.quantity,
+        totalPrice: purchasedProduct.product.price * purchasedProduct.quantity,
+        imageUrl: purchasedProduct.product.imageUrl
+      };
+    }) || [];
+
+    console.log('변환된 items:', items);
+
+    const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+    console.log('총액:', totalAmount, '총 개수:', totalCount);
+
+    return {
+      ...receipt,
+      items,
+      totalAmount,
+      totalCount
+    };
+  });
+
+  console.log('\n=== 최종 변환 결과 ===');
+  console.log('변환된 receipts:', receipts);
+  console.log('========================');
+
+  // 날짜순 정렬 및 기간별 필터링 - 성능 최적화
+  const filteredAndSortedReceipts = useMemo(() => {
+    // 데이터가 없으면 빈 배열 반환
+    if (!receipts || receipts.length === 0) {
+      return [];
+    }
+
+    // 1. 기간별 필터링 (정렬 전에 필터링하여 성능 향상)
+    let filteredReceipts = receipts;
+    
+    if (selectedPeriod !== 'all') {
+      const now = new Date();
+      const filterDate = new Date();
+
+      switch (selectedPeriod) {
+        case '1week':
+          filterDate.setDate(now.getDate() - 7);
+          break;
+        case '1month':
+          filterDate.setMonth(now.getMonth() - 1);
+          break;
+        case '3months':
+          filterDate.setMonth(now.getMonth() - 3);
+          break;
+        case '6months':
+          filterDate.setMonth(now.getMonth() - 6);
+          break;
+        case '1year':
+          filterDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+
+      filteredReceipts = receipts.filter(receipt => 
+        new Date(receipt.purchasedAt) >= filterDate
+      );
+    }
+
+    // 2. 날짜순 정렬 (최신순 - 가장 최근 것부터)
+    return filteredReceipts.sort((a, b) => 
+      new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime()
     );
-  }
+  }, [receipts, selectedPeriod]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedReceipts.length / itemsPerPage));
+  const pagedReceipts = filteredAndSortedReceipts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // 페이지 이동 함수
+  const gotoPage = (page: number) => {
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set('page', String(page));
+    router.push(`?${params.toString()}`);
+  };
+
+  console.log('필터링된 receipts:', filteredAndSortedReceipts);
+
+  // 통계 계산 최적화
+  const statistics = useMemo(() => {
+    const totalCount = filteredAndSortedReceipts.length;
+    const totalAmount = filteredAndSortedReceipts.reduce((sum, receipt) => sum + (receipt.totalAmount || 0), 0);
+    const totalItems = filteredAndSortedReceipts.reduce((sum, receipt) => sum + (receipt.totalCount || 0), 0);
+    
+    return {
+      totalCount,
+      totalAmount,
+      totalItems
+    };
+  }, [filteredAndSortedReceipts]);
 
   // 로딩
   if (isLoading) {
@@ -168,7 +242,7 @@ export default function ReceiptsPage() {
         }}
       >
         <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
-        <div className="text-lg font-semibold text-[var(--foreground)]">구매기록을 불러오는 중...</div>
+        <div className="text-lg font-semibold text-[var(--foreground)]">구매내역을 불러오는 중...</div>
         <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
       </div>
     );
@@ -193,7 +267,7 @@ export default function ReceiptsPage() {
         <FaExclamationTriangleIcon className="text-red-400 text-5xl mb-3 animate-bounce" />
         <div className="font-bold text-lg text-red-500 mb-2">문제가 발생했어요!</div>
         <div className="text-gray-500 dark:text-gray-300 text-base mb-4">
-          {error.message || '구매기록을 불러오는 중 오류가 발생했습니다.'}
+          {error.message || '구매내역을 불러오는 중 오류가 발생했습니다.'}
         </div>
         <button
           className="mt-2 px-6 py-2 bg-red-500 text-white rounded-full shadow hover:bg-red-700 transition-all"
@@ -205,10 +279,8 @@ export default function ReceiptsPage() {
     );
   }
 
-  const receipts = data?.receipts || [];
-
   return (
-    <main className="min-h-screen py-8 pb-24 flex flex-col items-center"
+    <main className="min-h-screen py-10 pb-32 flex flex-col items-center"
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
@@ -224,78 +296,66 @@ export default function ReceiptsPage() {
     >
       <div className="w-full max-w-4xl px-4">
         {/* 헤더 */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--sobi-green)' }}>
-            구매기록
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold mb-3" style={{ color: 'var(--sobi-green)' }}>
+            구매내역
           </h1>
-          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-base" style={{ color: 'var(--text-secondary)' }}>
             나의 쇼핑 기록을 확인해보세요
           </p>
         </div>
 
+        {/* 기간별 필터 */}
+        <div className="mb-4 p-4 rounded-lg">
+          <PeriodFilterComponent 
+            selectedPeriod={selectedPeriod} 
+            onPeriodChange={setSelectedPeriod} 
+          />
+        </div>
+
         {/* 통계 정보 */}
-        <div className="mb-8 p-6 rounded-lg"
-          style={{
-            backgroundColor: 'var(--input-background)',
-            border: '1px solid var(--input-border)',
-          }}
+        <div className="mb-2 p-4 rounded-lg"
         >
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <h2 className="text-lg font-semibold mb-2 text-center">
             구매 통계
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex justify-between items-center p-3 rounded-lg"
-              style={{
-                backgroundColor: 'var(--footer-background)',
-                border: '1px solid var(--footer-border)',
-              }}
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-1">
+            <div className="flex justify-between items-center p-1"
             >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 결제 횟수</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {receipts.length}회
+              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 결제 횟수</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                {statistics.totalCount}회
               </span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg"
-              style={{
-                backgroundColor: 'var(--footer-background)',
-                border: '1px solid var(--footer-border)',
-              }}
+            <div className="flex justify-between items-center p-1"
             >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 구매 금액</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {receipts.reduce((sum, receipt) => sum + receipt.totalAmount, 0).toLocaleString()}원
+              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 금액</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                {statistics.totalAmount.toLocaleString()}원
               </span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg"
-              style={{
-                backgroundColor: 'var(--footer-background)',
-                border: '1px solid var(--footer-border)',
-              }}
+            <div className="flex justify-between items-center p-1"
             >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 구매 상품</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {receipts.reduce((sum, receipt) => sum + receipt.totalCount, 0)}개
+              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 상품</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                {statistics.totalItems}개
               </span>
             </div>
           </div>
         </div>
 
-        {/* 구매기록 목록 */}
-        <div className="p-6 rounded-lg shadow-sm"
+        {/* 구매내역 목록 */}
+        <div className="p-4 rounded-lg"
           style={{
             border: '1px solid var(--input-border)',
             backgroundColor: 'var(--input-background)',
           }}
         >
-          <h2 className="text-xl font-semibold mb-6 flex items-center">
-            구매기록 목록
-          </h2>
-          
-          {receipts.length === 0 ? (
+          {pagedReceipts.length === 0 ? (
             <div className="text-center py-12">
               <ReceiptIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-                아직 구매기록이 없습니다.
+                아직 구매내역이 없습니다.
               </p>
               <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
                 첫 구매를 해보세요!
@@ -309,12 +369,65 @@ export default function ReceiptsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {receipts.map((receipt, index) => (
+              {pagedReceipts.map((receipt, index) => (
                 <ReceiptCard key={receipt.id} receipt={receipt} index={index} />
               ))}
             </div>
           )}
         </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <nav className="flex items-center gap-1 mt-4 mb-10 justify-center">
+            <button
+              className="px-2 py-1 text-sm font-medium hover:bg-neutral-100"
+              disabled={currentPage === 1}
+              onClick={() => gotoPage(currentPage - 1)}
+              style={{ 
+                opacity: currentPage === 1 ? 0.4 : 1, 
+                pointerEvents: currentPage === 1 ? 'none' : undefined,
+                color: 'var(--sobi-green)'
+              }}>
+              <ChevronLeft strokeWidth={1.5} />
+            </button>
+            {(() => {
+              const pageNumbers = []
+              let start = Math.max(1, currentPage - 2)
+              let end = Math.min(totalPages, currentPage + 2)
+              if (end - start < 4) {
+                if (start === 1) end = Math.min(totalPages, start + 4)
+                else if (end === totalPages) start = Math.max(1, end - 4)
+              }
+              for (let i = start; i <= end; i++) {
+                pageNumbers.push(i)
+              }
+              return pageNumbers.map((pageNum) => (
+                <button
+                  key={pageNum}
+                  className={`px-2.5 py-1 rounded-full font-medium
+                    ${pageNum === currentPage ? 'text-white' : 'text-[var(--foreground)]'}
+                  `}
+                  style={{
+                    backgroundColor: pageNum === currentPage ? 'var(--sobi-green)' : 'transparent',
+                  }}
+                  onClick={() => gotoPage(pageNum)}
+                  aria-current={pageNum === currentPage ? "page" : undefined}
+                >{pageNum}</button>
+              ))
+            })()}
+            <button
+              className="px-2 py-1 text-sm font-medium hover:bg-neutral-100"
+              disabled={currentPage === totalPages}
+              onClick={() => gotoPage(currentPage + 1)}
+              style={{ 
+                opacity: currentPage === totalPages ? 0.4 : 1, 
+                pointerEvents: currentPage === totalPages ? 'none' : undefined,
+                color: 'var(--sobi-green)'
+              }}>
+              <ChevronRight strokeWidth={1.5} />
+            </button>
+          </nav>
+        )}
       </div>
     </main>
   );

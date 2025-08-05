@@ -27,7 +27,7 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { isLoggedIn, logout, mounted } = useAuth()
+  const { isLoggedIn, logout, mounted, userId } = useAuth()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -70,7 +70,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await logout()
-      ToastManager.logoutSuccess()
+      ToastManager.logoutSuccess(userId || undefined)
       router.push('/login')
     } catch (error) {
       console.error('로그아웃 오류:', error)
@@ -92,7 +92,6 @@ export default function ProfilePage() {
 
   // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
   if (!isLoggedIn) {
-    router.push('/login')
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -173,8 +172,8 @@ export default function ProfilePage() {
                 {profileData?.userId}
               </h2>
               <div className="text-sm text-[var(--text-secondary)] space-y-1 mt-1">
-                <p>나이: {profileData?.age}세</p>
-                <p>성별: {profileData?.gender === 1 ? '남성' : '여성'}</p>
+                <p>나이: {profileData?.age === 0 ? '선택안함' : `${profileData?.age}세`}</p>
+                <p>성별: {profileData?.gender === 0 ? '선택안함' : profileData?.gender === 1 ? '남성' : '여성'}</p>
                 <p>회원번호: {profileData?.id}</p>
               </div>
             </div>
@@ -199,28 +198,24 @@ export default function ProfilePage() {
                   <h3 className="font-semibold text-[var(--foreground)]">찜목록</h3>
                   <p className="text-sm text-[var(--text-secondary)]">관심 상품들을 확인해보세요</p>
                 </div>
-                <div className="text-[var(--text-secondary)] group-hover:text-[var(--foreground)] transition-colors">
-                  →
-                </div>
               </div>
             </div>
           </Link>
 
           {/* 구매내역 */}
-          <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-                <ShoppingBag size={24} className="text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-[var(--foreground)]">구매내역</h3>
-                <p className="text-sm text-[var(--text-secondary)]">준비 중</p>
-              </div>
-              <div className="text-[var(--text-secondary)]">
-                <span className="text-xs bg-[var(--footer-border)] px-2 py-1 rounded-full">준비중</span>
+          <Link href={"/receipts"}>
+            <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+              <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-900/30 transition-colors">
+                  <ShoppingBag size={24} className="text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[var(--foreground)]">구매내역</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">구매내역을 확인해보세요</p>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* AI 추천 */}
           <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">

@@ -10,7 +10,7 @@ import { MdRiceBowl, MdLocalDrink } from "react-icons/md";
 import { GiNoodles, GiSaltShaker, GiSlicedBread } from "react-icons/gi";
 
 export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "전체": <Box size={24} />,                       // 전체 = 박스
+  "전체": <Box size={24} color="#121212" />,                       // 전체 = 박스
   "과일": <FaAppleAlt size={22} color="#c0392b" />, // 사과
   "채소": <FaCarrot size={22} color="#27ae60" />,   // 당근
   "쌀_잡곡_견과": <MdRiceBowl size={22} color="#f5e6b7" />, // 쌀/견과

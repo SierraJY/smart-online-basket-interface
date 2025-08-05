@@ -30,13 +30,15 @@ export default function ProductsPage() {
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
   const [category, setCategory] = useState<string>(categoryFromURL)
   const { isLoggedIn, accessToken: token } = useAuth()
-  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
+  const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
+  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
     setKeyword(keywordFromURL)
     setCategory(categoryFromURL)
-  }, [keywordFromURL, categoryFromURL])
+    setExcludeOutOfStock(excludeOutOfStockFromURL)
+  }, [keywordFromURL, categoryFromURL, excludeOutOfStockFromURL])
 
   // 검색창 입력 시 쿼리스트링 변경
   const onKeywordChange = (val: string) => {
@@ -52,6 +54,17 @@ export default function ProductsPage() {
     router.replace(`?${params.toString()}`)
   }
 
+  const onExcludeOutOfStockChange = (checked: boolean) => {
+    setExcludeOutOfStock(checked)
+    const params = new URLSearchParams(searchParams)
+    if (checked) {
+      params.set('excludeOutOfStock', 'true')
+    } else {
+      params.delete('excludeOutOfStock')
+    }
+    router.replace(`?${params.toString()}`)
+  }
+
   // 필터링
   const filtered: Product[] = products.filter((item: Product) => {
     const matchesKeyword =
@@ -60,7 +73,7 @@ export default function ProductsPage() {
         .toLowerCase()
         .includes(keyword.toLowerCase())
     const matchesCategory = category === '전체' || item.category === category
-    const matchesStock = !excludeOutOfStock || item.stock > 0
+    const matchesStock = excludeOutOfStock || item.stock > 0
     return matchesKeyword && matchesCategory && matchesStock
   })
 
@@ -173,7 +186,7 @@ export default function ProductsPage() {
               type="checkbox"
               id="excludeOutOfStock"
               checked={excludeOutOfStock}
-              onChange={e => setExcludeOutOfStock(e.target.checked)}
+              onChange={e => onExcludeOutOfStockChange(e.target.checked)}
               className="sr-only peer"
             />
             <div className={`w-5 h-5 border-2 rounded transition-all peer-focus:outline-none ${
@@ -193,7 +206,7 @@ export default function ProductsPage() {
             </div>
           </div>
           <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
-            품절 상품 제외
+            품절 상품 포함
           </span>
         </label>
       </div>
@@ -251,9 +264,11 @@ export default function ProductsPage() {
                                 minWidth: 120
                               }}
                               width={120}
-                              height={110}
+                              height={120}
                               priority={false}
                               loading="lazy"
+                              sizes="(max-width: 768px) 120px, 120px"
+                              quality={85}
                               onLoad={(e) => {
                                 // 이미지 로드 완료 후 레이아웃 안정화
                                 const target = e.target as HTMLImageElement;
@@ -280,7 +295,7 @@ export default function ProductsPage() {
                         {/* 가격 부분 */}
                         <div className="h-[55px] flex flex-col justify-center">
                            {item.discountRate > 0 ? (
-                             <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")}>
+                             <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale" : "")}>
                                <span className="text-[13px] text-gray-400 line-through opacity-70">
                                  {formatPrice(item.price)}
                                </span>
@@ -289,7 +304,7 @@ export default function ProductsPage() {
                                </span>
                              </div>
                            ) : (
-                             <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale pointer-events-none cursor-not-allowed" : "")} style={{ color: 'var(--text-secondary)' }}>
+                             <span className={"block text-[15px] font-semibold text-center " + (item.stock === 0 ? "opacity-60 grayscale" : "")} style={{ color: 'var(--text-secondary)' }}>
                                {formatPrice(item.price)}
                              </span>
                            )}

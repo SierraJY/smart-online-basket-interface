@@ -6,9 +6,11 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# package.json과 package-lock.json 복사
-COPY package.json package-lock.json* ./
-RUN npm ci
+# package.json 복사
+COPY package.json ./
+# npm 캐시 정리 및 의존성 설치
+RUN npm cache clean --force && \
+    npm install --production=false --legacy-peer-deps
 
 # 빌드 단계
 FROM base AS builder
@@ -44,4 +46,5 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
+# 프로덕션 서버 실행
 CMD ["node", "server.js"] 

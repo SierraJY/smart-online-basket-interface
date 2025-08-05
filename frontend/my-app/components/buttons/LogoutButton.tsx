@@ -8,7 +8,7 @@ import ToastManager from '@/utils/toastManager';
 import { useEffect } from 'react';
 
 export default function LogoutButton() {
-  const { logout, isLoggedIn } = useAuth();
+  const { logout, isLoggedIn, userId } = useAuth();
   const router = useRouter();
 
   // isLoggedIn 상태 변화 감지
@@ -26,7 +26,7 @@ export default function LogoutButton() {
         await logout();
         
         // 성공 메시지 표시
-        ToastManager.logoutSuccess(data.message);
+        ToastManager.logoutSuccess(userId || undefined);
         
         // 로그인 페이지로 리다이렉트
         router.push('/login');

@@ -5,7 +5,6 @@ import { Package, PackageOpen } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
 import LogoutButton from './LogoutButton'
-import CategoryButton from './CategoryButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
 
@@ -68,16 +67,7 @@ export default function MenuButton() {
             >
               <LogoutButton />
             </motion.div>
-            <motion.div
-              key="category"
-              initial={{ opacity: 0, translateY: 32 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              exit={{ opacity: 0, translateY: 32 }}
-              transition={{ delay: 0.05, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
-              className="mb-3"
-            >
-              <CategoryButton />
-            </motion.div>
+
             <motion.div
               key="search"
               initial={{ opacity: 0, translateY: 32 }}
@@ -106,7 +96,7 @@ export default function MenuButton() {
       <button
         onClick={() => setOpen(!open)}
         className={`
-          w-14 h-14 flex items-center justify-center rounded-full
+          w-12 h-12 flex items-center justify-center rounded-full
           z-50 hover:scale-110 transition-all
         `}
         style={{
@@ -117,9 +107,9 @@ export default function MenuButton() {
         aria-label="Menu"
       >
         {open ? (
-          <PackageOpen size={30} color="var(--foreground)" strokeWidth={1.2} />
+          <PackageOpen size={28} color="var(--foreground)" strokeWidth={1} />
         ) : (
-          <Package size={30} color="var(--foreground)" strokeWidth={1.2} />
+          <Package size={28} color="var(--foreground)" strokeWidth={1} />
         )}
       </button>
     </div>

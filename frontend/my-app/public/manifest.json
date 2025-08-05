@@ -14,9 +14,27 @@
   "permissions": ["camera"],
   "icons": [
     {
+      "src": "16.png",
+      "type": "image/png",
+      "sizes": "16x16",
+      "purpose": "any"
+    },
+    {
+      "src": "32.png",
+      "type": "image/png",
+      "sizes": "32x32",
+      "purpose": "any"
+    },
+    {
       "src": "64.png",
       "type": "image/png",
       "sizes": "64x64",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "128.png",
+      "type": "image/png",
+      "sizes": "128x128",
       "purpose": "any maskable"
     },
     {
@@ -30,6 +48,18 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "256.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
     }
   ],
   "shortcuts": [

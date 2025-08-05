@@ -58,32 +58,38 @@ export default function ProductDetailClient({ id }: { id: string }) {
         <Image
           src={product.imageUrl}
           alt={product.name}
-          layout="fill"
-          objectFit="cover"
+          fill
+          className="object-cover"
           style={{
             objectPosition: 'center top',
             transition: 'filter 0.7s',
-            filter: 'brightness(0.96) saturate(1.08)'
+            filter: product.stock === 0 
+              ? 'brightness(0.96) saturate(1.08) grayscale(100%)' 
+              : 'brightness(0.96) saturate(1.08)'
           }}
+          priority
+          sizes="(max-width: 768px) 100vw, 1200px"
+          quality={85}
         />
         
         {/* 그라데이션 오버레이 */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
         
-        {/* 찜 아이콘 - 상품 이미지 위에 오버레이 */}
-        <div className="absolute top-4 right-4 z-20">
-          <FavoriteIcon productId={product.id} readOnly={false} />
-        </div>
+
       </div>
 
       {/* 상세정보 영역 */}
       <div className="relative -mt-8 mx-4 rounded-2xl shadow-xl z-10 bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)]">
         <div className="p-6">
-          {/* 상품명 */}
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+          {/* 상품명 및 찜 버튼 */}
+          <div className="mb-4 flex justify-between items-start">
+            <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2 flex-1">
               {product.name}
             </h1>
+            <div className="ml-4">
+              <FavoriteIcon productId={product.id} readOnly={false} />
+            </div>
+          </div>
             
             {/* 태그 영역 */}
             {tags.length > 0 && (
@@ -105,7 +111,6 @@ export default function ProductDetailClient({ id }: { id: string }) {
                 ))}
               </div>
             )}
-          </div>
 
           {/* 가격 및 브랜드 */}
           <div className="mb-4">

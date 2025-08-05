@@ -10,15 +10,22 @@ import { FaExclamationTriangle } from "react-icons/fa";
 import { getPerformanceMonitor, logPerformanceInDev } from '@/utils/performance'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import ProfileButton from '@/components/buttons/ProfileButton'
+import { CATEGORY_ICONS } from '@/components/categoryIcons'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Home() {
   const router = useRouter()
   const { products, loading, error } = useProducts()
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('전체')
+  
+  // 광고 배너 관련 상태
+  const [currentAdIndex, setCurrentAdIndex] = useState(0)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right')
   
   // 마우스 드래그 스크롤을 위한 상태
   const [isDragging, setIsDragging] = useState(false)
@@ -52,120 +59,196 @@ export default function Home() {
     rootMargin: '0px'
   })
 
-  // 무한 스크롤 처리
-  useEffect(() => {
-    if (aiEndInView && aiRecommendedRef.current) {
-      const container = aiRecommendedRef.current
-      const itemWidth = 200 + 16 // 상품 너비 + gap
-      const itemsPerSet = 15
+  // 무한 스크롤 처리 (극한 성능 최적화 v2)
+  const handleInfiniteScroll = (ref: React.RefObject<HTMLDivElement | null>, inView: boolean) => {
+    if (inView && ref.current) {
+      const container = ref.current
+      const itemWidth = 140 + 8 // 상품 너비 + gap (160 → 140으로 줄임)
+      const itemsPerSet = 8 // 10개 → 8개로 줄임
       const setWidth = itemWidth * itemsPerSet
       
       // 현재 스크롤 위치에서 첫 번째 세트 너비만큼 뒤로 이동
       container.scrollLeft = container.scrollLeft - setWidth
     }
+  }
+
+  useEffect(() => {
+    handleInfiniteScroll(aiRecommendedRef, aiEndInView)
   }, [aiEndInView])
 
   useEffect(() => {
-    if (discountEndInView && discountRef.current) {
-      const container = discountRef.current
-      const itemWidth = 200 + 16 // 상품 너비 + gap
-      const itemsPerSet = 15
-      const setWidth = itemWidth * itemsPerSet
-      
-      // 현재 스크롤 위치에서 첫 번째 세트 너비만큼 뒤로 이동
-      container.scrollLeft = container.scrollLeft - setWidth
-    }
+    handleInfiniteScroll(discountRef, discountEndInView)
   }, [discountEndInView])
 
   useEffect(() => {
-    if (popularEndInView && popularRef.current) {
-      const container = popularRef.current
-      const itemWidth = 200 + 16 // 상품 너비 + gap
-      const itemsPerSet = 15
-      const setWidth = itemWidth * itemsPerSet
-      
-      // 현재 스크롤 위치에서 첫 번째 세트 너비만큼 뒤로 이동
-      container.scrollLeft = container.scrollLeft - setWidth
-    }
+    handleInfiniteScroll(popularRef, popularEndInView)
   }, [popularEndInView])
 
   useEffect(() => {
-    if (featuredEndInView && featuredRef.current) {
-      const container = featuredRef.current
-      const itemWidth = 200 + 16 // 상품 너비 + gap
-      const itemsPerSet = 15
-      const setWidth = itemWidth * itemsPerSet
-      
-      // 현재 스크롤 위치에서 첫 번째 세트 너비만큼 뒤로 이동
-      container.scrollLeft = container.scrollLeft - setWidth
-    }
+    handleInfiniteScroll(featuredRef, featuredEndInView)
   }, [featuredEndInView])
 
-  // 성능 모니터링 시작
+  // 성능 모니터링 시작 (개발 환경에서만)
   useEffect(() => {
-    const monitor = getPerformanceMonitor();
-    if (monitor) {
-      monitor.startMeasure('HomePage-Mount');
-    }
-    
-    return () => {
+    if (process.env.NODE_ENV === 'development') {
       const monitor = getPerformanceMonitor();
       if (monitor) {
-        monitor.endMeasure('HomePage-Mount');
+        monitor.startMeasure('HomePage-Mount');
       }
-      // 개발 환경에서 성능 데이터 로깅
-      logPerformanceInDev();
-    };
+      
+      return () => {
+        const monitor = getPerformanceMonitor();
+        if (monitor) {
+          monitor.endMeasure('HomePage-Mount');
+        }
+        // 개발 환경에서 성능 데이터 로깅
+        logPerformanceInDev();
+      };
+    }
   }, []);
 
-  // products에서 카테고리 추출 (products가 변경될 때만 연산)
-  const categories = useMemo(
-    () =>
-      products && Array.isArray(products)
-        ? ['전체', ...Array.from(new Set(products.map((p) => p.category)))]
-        : ['전체'],
-    [products]
-  )
+  // 카테고리 배열 정의 (15개)
+  const categories = useMemo(() => [
+    '전체', '과일', '채소', '쌀_잡곡_견과', '정육_계란류', 
+    '수산물_건해산', '우유_유제품', '김치_반찬_델리', '생수_음료_주류', '커피_원두_차',
+    '면류_통조림', '양념_오일', '과자_간식', '베이커리_잼', '건강식품'
+  ], [])
 
-  // 테마별 상품 분류
+  // 카테고리 배경색 배열
+  const categoryColors = useMemo(() => [
+    '#effdeb', '#4ECDC4', '#edb482', '#fab1a2', '#82E0AA',
+    '#f6b0cd', '#a5ed82', '#b2eafa', '#BB8FCE', '#DDA0DD',
+    '#96CEB4', '#F7DC6F', '#98D8C8', '#85C1E9', '#87c873'
+  ], [])
+
+  // 광고 배너 데이터 (성능 최적화 - 첫 번째만 즉시 로드)
+  const adBanners = useMemo(() => [
+    { id: 1, image: '/ad/banner1.png', priority: true },
+    { id: 2, image: '/ad/banner2.png', priority: false },
+    { id: 3, image: '/ad/banner3.png', priority: false },
+    { id: 4, image: '/ad/banner4.png', priority: false },
+  ], [])
+
+  // 광고 배너 자동 슬라이드
+  useEffect(() => {
+    if (!isAutoPlaying) return
+
+    const interval = setInterval(() => {
+      setCurrentAdIndex((prev) => (prev + 1) % adBanners.length)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [isAutoPlaying, adBanners.length])
+
+  // 광고 배너 수동 제어 함수들
+  const goToNext = () => {
+    setSlideDirection('right')
+    setCurrentAdIndex((prev) => (prev + 1) % adBanners.length)
+    setIsAutoPlaying(false)
+    // 3초 후 자동 재개
+    setTimeout(() => setIsAutoPlaying(true), 3000)
+  }
+
+  const goToPrev = () => {
+    setSlideDirection('left')
+    setCurrentAdIndex((prev) => (prev - 1 + adBanners.length) % adBanners.length)
+    setIsAutoPlaying(false)
+    // 3초 후 자동 재개
+    setTimeout(() => setIsAutoPlaying(true), 3000)
+  }
+
+  const goToSlide = (index: number) => {
+    setSlideDirection(index > currentAdIndex ? 'right' : 'left')
+    setCurrentAdIndex(index)
+    setIsAutoPlaying(false)
+    // 3초 후 자동 재개
+    setTimeout(() => setIsAutoPlaying(true), 3000)
+  }
+
+  // 모바일 감지
+  const [isMobile, setIsMobile] = useState(false)
+  const mobileBannerRef = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // 모바일 배너 자동 스크롤
+  useEffect(() => {
+    if (!isMobile || !mobileBannerRef.current) return
+
+    const interval = setInterval(() => {
+      if (mobileBannerRef.current) {
+        const container = mobileBannerRef.current
+        const clientWidth = container.clientWidth
+        const currentScroll = container.scrollLeft
+        const totalBanners = adBanners.length
+        
+        // 현재 배너 인덱스 계산
+        const currentIndex = Math.round(currentScroll / clientWidth)
+        
+        // 다음 배너 인덱스 (순환)
+        const nextIndex = (currentIndex + 1) % totalBanners
+        
+        // 다음 배너로 부드럽게 이동
+        container.scrollTo({
+          left: nextIndex * clientWidth,
+          behavior: 'smooth'
+        })
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [isMobile, adBanners.length])
+
+  // 테마별 상품 분류 (극한 성능 최적화 v2)
   const themeProducts = useMemo(() => {
     if (!products || !Array.isArray(products)) return {}
     
-    // 배열을 랜덤하게 섞는 함수
-    const shuffleArray = (array: any[]) => {
-      const shuffled = [...array]
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    // 상품 필터링을 한 번에 처리하여 성능 향상
+    const availableProducts = products.filter(p => p.stock > 0)
+    
+    // 더 빠른 랜덤 선택 함수 (Math.random() 최소화)
+    const getRandomItems = (array: any[], count: number) => {
+      if (array.length <= count) return array
+      const result: any[] = []
+      const indices = new Set<number>()
+      while (indices.size < count) {
+        indices.add(Math.floor(Math.random() * array.length))
       }
-      return shuffled
+      indices.forEach(index => result.push(array[index]))
+      return result
     }
     
-    // 무한 스크롤을 위해 상품 배열을 복제하는 함수
+    // 무한 스크롤을 위해 상품 배열을 복제하는 함수 (메모리 최적화)
     const createInfiniteArray = (array: any[]) => {
-      // 원본 배열을 5번 반복하여 진정한 무한 스크롤 효과 생성
-      return [...array, ...array, ...array, ...array, ...array, ...array, ...array, ...array, ...array, ...array]
+      // 원본 배열을 1번만 반복하여 메모리 사용량 극한 줄임
+      return array.length > 0 ? [...array, ...array] : []
     }
     
-    // AI 추천 상품
-    const aiRecommendedBase = shuffleArray(
-      products.filter(p => p.stock > 0)
-    ).slice(0, 15)
+    // AI 추천 상품 (10개 → 8개로 줄임)
+    const aiRecommendedBase = getRandomItems(availableProducts, 8)
     
-    // 할인 상품 (할인율 9% 이상, 재고 30개 이하)
-    const discountBase = shuffleArray(
-      products.filter(p => p.discountRate >= 9 && p.stock > 0 && p.stock <= 30)
-    ).slice(0, 15)
+    // 할인 상품 (10개 → 8개로 줄임)
+    const discountBase = getRandomItems(
+      availableProducts.filter(p => p.discountRate >= 9 && p.stock <= 30), 8
+    )
     
-    // 인기 상품 (판매량 100개 이상)
-    const popularBase = shuffleArray(
-      products.filter(p => p.sales >= 100 && p.stock > 0)
-    ).slice(0, 15)
+    // 인기 상품 (10개 → 8개로 줄임)
+    const popularBase = getRandomItems(
+      availableProducts.filter(p => p.sales >= 100), 8
+    )
     
-    // 건강 관리 제품 (건강 태그 포함, 가격 5만원 이상)
-    const featuredBase = shuffleArray(
-      products.filter(p => p.tag && p.tag.includes('건강') && p.price >= 50000 && p.stock > 0)
-    ).slice(0, 15)
+    // 건강 관리 제품 (10개 → 8개로 줄임)
+    const featuredBase = getRandomItems(
+      availableProducts.filter(p => p.tag?.includes('건강') && p.price >= 50000), 8
+    )
     
     return {
       // AI 추천 상품 (무한 스크롤)
@@ -262,30 +345,203 @@ export default function Home() {
         transition: 'background-color 1.6s, color 1.6s'
       }}
     >
+      <style jsx>{`
+        .mobile-banner-scroll {
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+          scroll-snap-type: x mandatory;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .mobile-banner-scroll::-webkit-scrollbar {
+          display: none;
+        }
+        .mobile-banner-item {
+          scroll-snap-align: center;
+          min-width: 100%;
+          flex-shrink: 0;
+        }
+        /* 터치 스크롤 동작 개선 */
+        .mobile-banner-scroll {
+          touch-action: pan-x;
+          overscroll-behavior-x: contain;
+        }
+        /* 폰트 로딩 최적화 */
+        @font-face {
+          font-family: 'Yeongwol';
+          font-display: swap;
+          src: url('/_next/static/media/Yeongwol.abeae2e6.ttf') format('truetype');
+        }
+        @font-face {
+          font-family: 'Jejudoldam';
+          font-display: swap;
+          src: url('/_next/static/media/jejudoldam.8c3dd4db.ttf') format('truetype');
+        }
+        @font-face {
+          font-family: 'Hangul';
+          font-display: swap;
+          src: url('/_next/static/media/hangul.e80bed9e.ttf') format('truetype');
+        }
+        @font-face {
+          font-family: 'Ownglyph_daelong';
+          font-display: swap;
+          src: url('/_next/static/media/Ownglyph_daelong-Rg.78b4d39e.ttf') format('truetype');
+        }
+      `}</style>
       <div className="w-full max-w-4xl">
         {/* 헤더 */}
         <div className="text-center mb-12 relative">
           <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--sobi-green)' }}>
-            SOBI
+            test
           </h1>
           <ProfileButton />
         </div>
 
-        {/* 테마별 상품 섹션들 */}
-        <div className="space-y-6">
-          {/* AI 추천 상품 */}
-          {themeProducts.aiRecommended && themeProducts.aiRecommended.length > 0 && (
-            <section>
-              <div className="relative flex justify-center items-center mb-8">
-                <h2 className="text-3xl font-bold">AI추천</h2>
-                <Link href="/products" className="absolute right-8 inline-flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                  style={{ color: 'var(--sobi-green)' }}>
-                  전체보기
-                  <ChevronRight size={16} />
+        {/* 광고 배너 섹션 */}
+        <div className="mb-12">
+          <div className="relative w-full max-w-4xl mx-auto">
+            {/* 데스크톱용 메인 배너 */}
+            {!isMobile && (
+              <div className="relative w-full aspect-[18/9] overflow-hidden rounded-2xl shadow-lg">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentAdIndex}
+                    initial={{ 
+                      opacity: 0, 
+                      x: slideDirection === 'right' ? 100 : -100 
+                    }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ 
+                      opacity: 0, 
+                      x: slideDirection === 'right' ? -100 : 100 
+                    }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className="absolute inset-0"
+                  >
+                    <Image
+                      src={adBanners[currentAdIndex].image}
+                      alt={`광고 배너 ${currentAdIndex + 1}`}
+                      fill
+                      className="object-cover"
+                      priority={adBanners[currentAdIndex].priority}
+                      sizes="(max-width: 768px) 100vw, 1200px"
+                      quality={75}
+                      placeholder="blur"
+                      blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                    />
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* 좌우 네비게이션 버튼 */}
+                <button
+                  onClick={goToPrev}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={goToNext}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                >
+                  <ChevronRight size={20} />
+                </button>
+
+                {/* 페이지네이션 점들 */}
+                <div className="absolute bottom-4 right-4 flex gap-2">
+                  {adBanners.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                        index === currentAdIndex
+                          ? 'bg-white scale-125'
+                          : 'bg-white/50 hover:bg-white/75'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 모바일용 스와이프 배너 */}
+            {isMobile && (
+              <div 
+                ref={mobileBannerRef}
+                className="mobile-banner-scroll flex overflow-x-auto"
+                style={{
+                  scrollSnapType: 'x mandatory',
+                  scrollBehavior: 'smooth',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
+                {adBanners.map((banner, index) => (
+                  <div
+                    key={banner.id}
+                    className="mobile-banner-item w-full aspect-[18/9] relative overflow-hidden shadow-lg"
+                    style={{
+                      scrollSnapAlign: 'center',
+                      minWidth: '100%',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Image
+                      src={banner.image}
+                      alt={`광고 배너 ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 1200px"
+                      quality={75}
+                      priority={banner.priority}
+                      loading={banner.priority ? "eager" : "lazy"}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 카테고리 섹션 */}
+        <div className="mb-12 pt-2 px-5">
+          <div className="grid grid-cols-5 gap-3 max-w-2xl mx-auto">
+            {categories.map((category, index) => {
+              const categoryName = category.replace(/_/g, '/')
+              const backgroundColor = categoryColors[index]
+              
+              return (
+                <Link
+                  key={category}
+                  href={category === '전체' ? '/products' : `/products/category?category=${encodeURIComponent(category)}`}
+                  className="flex flex-col items-center group"
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-110"
+                    style={{ backgroundColor }}
+                  >
+                    <div className="text-white">
+                      {CATEGORY_ICONS[category]}
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-center text-[var(--foreground)] group-hover:text-[var(--sobi-green)] transition-colors">
+                    {categoryName}
+                  </span>
                 </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 테마별 상품 섹션들 */}
+        <div className="space-y-4">
+          {/* AI 추천 상품 */}
+          {themeProducts.aiRecommended && themeProducts.aiRecommended.length > 0 && !loading && (
+            <section>
+              <div className="relative flex justify-center items-center mb-2">
+                <h2 className="text-3xl font-bold">AI추천</h2>
               </div>
               <div 
-                className="flex overflow-x-auto gap-4 scrollbar-none drag-scroll-container"
+                className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-none drag-scroll-container"
+                style={{ maxHeight: 130 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -293,24 +549,29 @@ export default function Home() {
                 ref={aiRecommendedRef}
               >
                 {themeProducts.aiRecommended.map((product, index) => {
-                  // 다양한 기울기 적용 (0도, -3도, 3도, -2도, 2도 순환)
-                  const rotations = [-2, -1, 3.5, -2, 2, -1, 1, -4, 4, -2.5, 2.5, -1.5, 0, -3.5, 3.5]
+                  // AI 추천 전용 기울기
+                  const rotations = [-2, -1, 3.5, -2, 2, -1, 1, -4]
                   const rotation = rotations[index % rotations.length]
                   
                   return (
-                    <div key={`ai-${product.id}-${index}`} className="flex-shrink-0 py-2">
+                    <div key={`ai-${product.id}-${index}`} className="flex-shrink-0 py-1">
                       <ShakeWrapper item={product}>
                         <Link href={`/products/${product.id}`}>
                           <Image
                             src={product.imageUrl}
                             alt={product.name}
-                            width={200}
-                            height={174}
-                            className="w-[200px] h-[174px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
+                            width={140}
+                            height={110}
+                            className="w-[140px] h-[110px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
                             style={{
                               transform: `rotate(${rotation}deg)`,
                               transformOrigin: 'center'
                             }}
+                            sizes="(max-width: 768px) 200px, 200px"
+                            quality={75}
+                            loading="lazy"
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           />
                         </Link>
                       </ShakeWrapper>
@@ -324,15 +585,16 @@ export default function Home() {
           )}
 
                     {/* 할인 상품 */}
-          {themeProducts.discount && themeProducts.discount.length > 0 && (
+          {themeProducts.discount && themeProducts.discount.length > 0 && !loading && (
             <section>
-              <div className="text-center mb-4">
+              <div className="text-center mb-2">
                 <h2 className="text-3xl font-semibold" style={{ fontFamily: 'Yeongwol, sans-serif', color: '#a91f0d' }}>
                   먼저 줍는 사람이 임자!
                 </h2>
               </div>
               <div 
-                className="flex overflow-x-auto gap-4 scrollbar-none drag-scroll-container"
+                className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-none drag-scroll-container"
+                style={{ maxHeight: 130 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -340,25 +602,30 @@ export default function Home() {
                 ref={discountRef}
               >
                 {themeProducts.discount.map((product, index) => {
-                  // 다양한 기울기 적용 (할인 상품은 더 역동적으로)
-                  const rotations = [3, -4, 4, -2, 2.5, -5, 4.5, -2, 3, -3, 3, -3.5, 1.5, -2.5, 1.5]
+                  // 할인 상품 전용 기울기
+                  const rotations = [3, -4, 4, -2, 2.5, -5, 4.5, -2]
                   const rotation = rotations[index % rotations.length]
                   
                   return (
-                    <div key={`discount-${product.id}-${index}`} className="flex-shrink-0 py-2">
+                    <div key={`discount-${product.id}-${index}`} className="flex-shrink-0 py-1">
                       <ShakeWrapper item={product}>
                         <Link href={`/products/${product.id}`}>
                           <div className="relative">
                             <Image
                               src={product.imageUrl}
                               alt={product.name}
-                              width={200}
-                              height={154}
-                              className="w-[200px] h-[154px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
+                              width={140}
+                              height={110}
+                              className="w-[140px] h-[110px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
                               style={{
                                 transform: `rotate(${rotation}deg)`,
                                 transformOrigin: 'center'
                               }}
+                              sizes="(max-width: 768px) 200px, 200px"
+                              quality={75}
+                              loading="lazy"
+                              placeholder="blur"
+                              blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                             />
                             {/* 할인 배지 - 이미지와 같은 방향으로 기울어지되 위치는 고정 */}
                             {product.discountRate > 0 && (
@@ -387,15 +654,16 @@ export default function Home() {
           )}
 
           {/* 인기 상품 */}
-          {themeProducts.popular && themeProducts.popular.length > 0 && (
+          {themeProducts.popular && themeProducts.popular.length > 0 && !loading && (
             <section>
-              <div className="text-center mb-4">
+              <div className="text-center mb-2">
                 <h2 className="text-3xl font-normal" style={{ fontFamily: 'Jejudoldam, sans-serif', color: 'var(--sobi-green)' }}>
                   이게 잘나간대
                 </h2>
               </div>
               <div 
-                className="flex overflow-x-auto gap-4 scrollbar-none drag-scroll-container"
+                className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-none drag-scroll-container"
+                style={{ maxHeight: 130 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -403,24 +671,29 @@ export default function Home() {
                 ref={popularRef}
               >
                 {themeProducts.popular.map((product, index) => {
-                  // 다양한 기울기 적용 (인기 상품은 중간 정도의 기울기)
-                  const rotations = [0, -2, 2, -1, 1, -3, 2, -0.5, 1.5, -2.5, 2.5, -1.5, 0.5, -2, 1.5]
+                  // 다양한 기울기 적용 (8개로 줄임)
+                  const rotations = [3, -4.5, 2, -3, 7, -4, 2, -6.5]
                   const rotation = rotations[index % rotations.length]
                   
                   return (
-                    <div key={`popular-${product.id}-${index}`} className="flex-shrink-0 py-2">
+                    <div key={`popular-${product.id}-${index}`} className="flex-shrink-0 py-1">
                       <ShakeWrapper item={product}>
                         <Link href={`/products/${product.id}`}>
                           <Image
                             src={product.imageUrl}
                             alt={product.name}
-                            width={200}
-                            height={154}
-                            className="w-[200px] h-[154px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
+                            width={140}
+                            height={110}
+                            className="w-[140px] h-[110px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
                             style={{
                               transform: `rotate(${rotation}deg)`,
                               transformOrigin: 'center'
                             }}
+                            sizes="(max-width: 768px) 140px, 140px"
+                            quality={75}
+                            loading="lazy"
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           />
                         </Link>
                       </ShakeWrapper>
@@ -434,8 +707,8 @@ export default function Home() {
           )}
 
 
-                               {/* 추천 상품 */}
-          {themeProducts.featured && themeProducts.featured.length > 0 && (
+          {/* 추천 상품 */}
+          {themeProducts.featured && themeProducts.featured.length > 0 && !loading && (
             <section>
               <div className="text-center mb-2">
                 <h2 className="text-3xl font-bold" style={{ fontFamily: 'Hangul, sans-serif' }}>
@@ -443,7 +716,8 @@ export default function Home() {
                 </h2>
               </div>
               <div 
-                className="flex overflow-x-auto gap-4 scrollbar-none drag-scroll-container"
+                className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-none drag-scroll-container"
+                style={{ maxHeight: 130 }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -451,24 +725,29 @@ export default function Home() {
                 ref={featuredRef}
               >
                 {themeProducts.featured.map((product, index) => {
-                  // 다양한 기울기 적용 (건강 상품은 부드러운 기울기)
-                  const rotations = [0, -1.5, 1.5, -0.8, 0.8, -2.2, 2.2, -0.3, 0.3, -1.8, 1.8, -1.2, 1.2, -2.8, 2.8]
+                  // 다양한 기울기 적용 (8개로 줄임)
+                  const rotations = [0, -2.5, 3.5, -1.8, 0.8, -2.2, 0.7, -0.4]
                   const rotation = rotations[index % rotations.length]
                   
                   return (
-                    <div key={`featured-${product.id}-${index}`} className="flex-shrink-0 py-2">
+                    <div key={`featured-${product.id}-${index}`} className="flex-shrink-0 py-1">
                       <ShakeWrapper item={product}>
                         <Link href={`/products/${product.id}`}>
                           <Image
                             src={product.imageUrl}
                             alt={product.name}
-                            width={200}
-                            height={154}
-                            className="w-[200px] h-[154px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
+                            width={140}
+                            height={110}
+                            className="w-[140px] h-[110px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
                             style={{
                               transform: `rotate(${rotation}deg)`,
                               transformOrigin: 'center'
                             }}
+                            sizes="(max-width: 768px) 140px, 140px"
+                            quality={75}
+                            loading="lazy"
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           />
                         </Link>
                       </ShakeWrapper>

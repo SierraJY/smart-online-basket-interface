@@ -36,7 +36,7 @@ export default function ShakeWrapper({ item, children }: ShakeWrapperProps) {
 
   // ⚡ 카드 스타일(크기, snap, flex 등)은 전부 부모에게 맡김!
   const cardStyle = `
-    ${item.stock === 0 ? 'opacity-60 grayscale pointer-events-none cursor-not-allowed' : ''}
+    ${item.stock === 0 ? 'opacity-60 grayscale' : ''}
     ${shaking ? 'animate-shake-random' : ''}
   `
 

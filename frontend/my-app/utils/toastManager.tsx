@@ -1,5 +1,6 @@
 import React from 'react';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 // Toast 타입 정의
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -41,10 +42,10 @@ const successConfig: ToastConfig = {
 
 // 찜 관련 toast 설정
 const favoriteConfig: ToastConfig = {
-  position: 'bottom-center',
+  position: 'top-center',
   duration: 2000,
   style: {
-    background: '#10b981',
+    background: 'var(--sobi-green)',
     color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
@@ -55,14 +56,30 @@ const favoriteConfig: ToastConfig = {
 // 인증 관련 toast 설정
 const authConfig: ToastConfig = {
   position: 'top-center',
-  duration: 2500,
+  duration: 2000,
   style: {
-    background: '#3b82f6',
+    background: '#ffffff',
+    color: '#333333',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '10px 16px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+  },
+};
+
+// 장바구니 관련 toast 설정
+const basketConfig: ToastConfig = {
+  position: 'top-center',
+  duration: 2000,
+  style: {
+    background: 'var(--sobi-green)',
     color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
-    padding: '12px 16px',
-    minWidth: '280px',
+    padding: '6px 10px',
+    borderRadius: '100px',
+    boxShadow: '0 4px 12px rgba(66, 184, 131, 0.3)',
   },
 };
 
@@ -92,6 +109,32 @@ class ToastManager {
     return toast.success(message, finalConfig);
   }
 
+  // 찜 추가 toast
+  static favoriteAdded(config?: ToastConfig) {
+    const finalConfig = { ...favoriteConfig, ...config };
+    return toast.success('찜 목록에 추가되었습니다', finalConfig);
+  }
+
+  // 찜 제거 toast
+  static favoriteRemoved(config?: ToastConfig) {
+    const finalConfig = { 
+      ...favoriteConfig, 
+      ...config,
+      style: {
+        ...favoriteConfig.style,
+        ...config?.style,
+        animation: 'shake-intense 0.5s ease-in-out'
+      }
+    };
+    return toast('찜 목록에서 제거되었습니다', finalConfig);
+  }
+
+  // 입력 필수 toast
+  static inputRequired(fieldName: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(`${fieldName}을(를) 입력해주세요`, finalConfig);
+  }
+
   // 로그인 성공 toast
   static loginSuccess(userId: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };
@@ -99,22 +142,22 @@ class ToastManager {
   }
 
   // 로그아웃 성공 toast
-  static logoutSuccess(message?: string, config?: ToastConfig) {
+  static logoutSuccess(userId?: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };
-    const defaultMessage = '로그아웃이 완료되었습니다.';
-    return toast.success(message || defaultMessage, finalConfig);
+    const defaultMessage = userId ? `${userId}님 다음에 또 뵈요!` : '로그아웃되었습니다';
+    return toast(defaultMessage, finalConfig);
   }
 
   // 로그아웃 실패 toast
   static logoutError(message?: string, config?: ToastConfig) {
     const finalConfig = { ...defaultConfig, ...config };
-    const defaultMessage = '로그아웃 중 오류가 발생했습니다.';
+    const defaultMessage = '로그아웃 중 오류가 발생했습니다';
     return toast.error(message || defaultMessage, finalConfig);
   }
 
   // 장바구니 상품 추가 toast (이미지 포함)
   static basketAdded(productName: string, productImageUrl?: string, config?: ToastConfig) {
-    const finalConfig = { ...successConfig, ...config };
+    const finalConfig = { ...basketConfig, ...config };
     
     const toastContent = (
       <div style={{ 
@@ -122,45 +165,42 @@ class ToastManager {
         alignItems: 'center', 
         gap: '12px', 
         minHeight: '40px',
-        justifyContent: productImageUrl ? 'flex-start' : 'center',
+        justifyContent: 'flex-start',
         width: '100%'
       }}>
-        {productImageUrl && (
-          <img 
-            src={productImageUrl} 
-            alt={productName}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '8px',
-              objectFit: 'cover',
-              border: '1px solid rgba(255,255,255,0.2)',
-              flexShrink: 0
-            }}
-            onError={(e) => {
-              console.error("[ToastManager] 이미지 로딩 실패:", productImageUrl);
-              e.currentTarget.style.display = 'none';
-            }}
-            onLoad={() => {
-              console.log("[ToastManager] 이미지 로딩 성공:", productImageUrl);
-            }}
-          />
-        )}
+        <Image 
+          src={productImageUrl || '/placeholder-product.png'} 
+          alt={productName}
+          width={36}
+          height={36}
+          style={{
+            borderRadius: '6px',
+            objectFit: 'cover',
+            border: '1px solid rgba(255,255,255,0.2)',
+            flexShrink: 0
+          }}
+          onError={() => {
+            console.error("[ToastManager] 이미지 로딩 실패:", productImageUrl);
+          }}
+          onLoad={() => {
+            console.log("[ToastManager] 이미지 로딩 성공:", productImageUrl);
+          }}
+        />
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
           justifyContent: 'center',
-          flex: productImageUrl ? 1 : 'none',
-          textAlign: productImageUrl ? 'left' : 'center'
+          flex: 1,
+          textAlign: 'left'
         }}>
           <div style={{ fontWeight: '600', fontSize: '14px' }}>
-            상품이 추가되었습니다! 🛒
+            장바구니에 추가되었습니다
           </div>
         </div>
       </div>
     );
     
-    return toast(toastContent, finalConfig);
+    return toast.success(toastContent, finalConfig);
   }
 
   // 테스트용 toast
@@ -174,20 +214,19 @@ class ToastManager {
         justifyContent: 'flex-start',
         width: '100%'
       }}>
-        <img 
+        <Image 
           src="https://sitem.ssgcdn.com/00/12/84/item/1000549841200_i1_290.jpg" 
           alt="테스트 상품"
+          width={40}
+          height={40}
           style={{
-            width: '40px',
-            height: '40px',
             borderRadius: '8px',
             objectFit: 'cover',
             border: '1px solid rgba(255,255,255,0.2)',
             flexShrink: 0
           }}
-          onError={(e) => {
+          onError={() => {
             console.error('[ToastManager] 테스트 이미지 로딩 실패');
-            e.currentTarget.style.display = 'none';
           }}
           onLoad={() => {
             console.log('[ToastManager] 테스트 이미지 로딩 성공');
@@ -201,7 +240,7 @@ class ToastManager {
           textAlign: 'left'
         }}>
           <div style={{ fontWeight: '600', fontSize: '14px' }}>
-            상품이 추가되었습니다!
+            테스트 메시지
           </div>
         </div>
       </div>

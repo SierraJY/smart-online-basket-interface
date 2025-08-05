@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ChevronRight } from 'lucide-react'
+import { X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { CATEGORY_ICONS } from '../categoryIcons'
 import { useProducts } from '@/utils/hooks/useProducts'
 
@@ -40,92 +41,115 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
+  // 외부 클릭 처리
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+      onClose()
+    }
+  }
+
+  // 바깥 클릭 시 닫기
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
   if (loading) return null
   if (error) return <div className="text-center py-10">카테고리 정보를 불러오지 못했습니다.</div>
 
   const replaceCategoryName = (cat: string) => cat.replace(/_/g, '/')
-  // console.log("products", products)
-  // console.log("categories", categories)
 
   return (
-    <div
-      ref={modalRef}
-      className="w-full max-w-xs sm:max-w-md px-3 py-8 rounded-4xl shadow-2xl relative modal-fade-in"
-      style={{
-        background: 'var(--search-modal-bg, rgba(255,255,255,0.96))',
-        border: '1.5px solid var(--search-modal-border, rgba(255,255,255,0.18))',
-        boxShadow: '0 8px 32px 0 rgba(189, 189, 189, 0.33)',
-        backdropFilter: 'blur(10px)',
-        color: 'var(--foreground)',
-        transition: 'background 0.6s, color 0.6s, border 0.6s',
-      }}
-      onClick={e => e.stopPropagation()}
-    >
-      {/* 상단바 */}
-      <div className="flex items-center justify-between mb-6 px-1">
-        <div className="text-xl font-bold tracking-tight">카테고리</div>
-        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 active:scale-95">
-          <X size={26} />
-        </button>
-      </div>
-      {/* 카테고리 리스트 */}
-      <div
-        className="flex flex-col gap-1 overflow-y-auto hide-scrollbar"
-        style={{
-          maxHeight: '420px',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
+    <>
+      <motion.div
+        className="fixed inset-0 flex items-center justify-center z-[70] bg-black/50"
+        onClick={handleBackdropClick}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
       >
-        {categories.map((category) => (
-          <div
-            key={category}
-            className={`
-              flex items-center w-full gap-3 px-2 py-3 rounded-lg
-              min-h-[44px]
-              cursor-default select-none
-            `}
-            tabIndex={-1}
-          >
-            {/* 아이콘 */}
-            <span
-              className="text-2xl flex-shrink-0 w-7 text-center"
-              style={{ color: 'var(--foreground)' }}
-            >
-              {CATEGORY_ICONS[category] || '🍽️'}
-            </span>
-            {/* 카테고리명 */}
-            <span
-              className={`text-[16px] font-semibold flex-1 text-left`}
-              style={{ color: 'var(--foreground)' }}
-            >
-              {replaceCategoryName(category)}
-            </span>
-            {/* 화살표 버튼 */}
+        <motion.div
+          ref={modalRef}
+          className="w-full max-w-xs sm:max-w-sm px-6 py-8 rounded-3xl shadow-2xl relative"
+          style={{
+            background: 'var(--background)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
+            color: 'var(--foreground)',
+            transition: 'background 0.6s, color 0.6s, border 0.6s',
+          }}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ 
+            duration: 0.3,
+            ease: [0.25, 0.46, 0.45, 0.94]
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+            {/* 닫기 버튼 */}
             <button
-              className="p-1 rounded-full transition hover:scale-110 active:scale-95"
-              tabIndex={0}
-              aria-label="이동"
-              style={{ outline: 'none' }}
-              onClick={() => {
-                if (category === '전체') {
-                  router.push('/products')
-                } else {
-                  router.push(`/products/category?category=${encodeURIComponent(category)}`)
-                }
-                onClose()
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={onClose}
+              type="button"
+              aria-label="닫기"
+            >
+              <X size={20} />
+            </button>
+
+            {/* 헤더 */}
+            <div className="text-center mb-6">
+              <p className="text-lg font-semibold text-[var(--foreground)]">카테고리</p>
+            </div>
+                
+            {/* 카테고리 리스트 */}
+            <div
+              className="flex flex-col gap-2 overflow-y-auto hide-scrollbar"
+              style={{
+                maxHeight: '420px',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
               }}
             >
-              <ChevronRight className="text-black" size={22} strokeWidth={2.8} />
-            </button>
-          </div>
-        ))}
-      </div>
-      {/* 스크롤바 숨기기 */}
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-    </div>
-  )
+              {categories.map((category) => (
+                <div
+                  key={category}
+                  className="flex items-center w-full gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (category === '전체') {
+                      router.push('/products')
+                    } else {
+                      router.push(`/products/category?category=${encodeURIComponent(category)}`)
+                    }
+                    onClose()
+                  }}
+                >
+                  {/* 아이콘 */}
+                  <span className="text-2xl flex-shrink-0 w-8 text-center">
+                    {CATEGORY_ICONS[category] || '🍽️'}
+                  </span>
+                  {/* 카테고리명 */}
+                  <span className="text-base font-medium flex-1">
+                    {replaceCategoryName(category)}
+                  </span>
+                </div>
+              ))}
+                     </div>
+       </motion.div>
+     </motion.div>
+     
+     {/* 스크롤바 숨기기 */}
+     <style>{`
+       /* 스크롤바 숨기기 */
+       .hide-scrollbar::-webkit-scrollbar { display: none; }
+       .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+     `}</style>
+   </>
+ )
 }

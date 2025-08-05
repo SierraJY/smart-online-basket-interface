@@ -74,7 +74,7 @@
   /* --input-foreground: #ffffff; */
   --input-border: #444444;
   --text-secondary: #aaaaaa;
-  --footer-background: rgba(40,40,45,0.34);  /* 어두운 유리 */
+  --footer-background: rgba(45, 40, 40, 0.34);  /* 어두운 유리 */
   --footer-border: rgba(160,160,180,0.15);
   --toggle-bg: #444444;     /* dark gray */
   --toggle-knob: #eeeeee;
@@ -104,6 +104,16 @@ html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  /* 상태바 영역까지 배경 이미지 커버 */
+  background-image: 
+    linear-gradient(var(--background-overlay), var(--background-overlay)),
+    url('/paper2.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+  min-height: 100dvh; /* 동적 뷰포트 높이 */
 }
 
 main {
@@ -115,13 +125,6 @@ body {
   color: var(--foreground);
   background-color: transparent;
   font-family: 'Ownglyph_daelong-Rg', Arial, Helvetica, sans-serif;
-  background-image: 
-    linear-gradient(var(--background-overlay), var(--background-overlay)),
-    url('/paper2.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   margin: 0;
   padding: 0;
@@ -207,6 +210,30 @@ textarea {
 
 .animate-shake-random {
   animation: shake-random 0.55s cubic-bezier(.35,.07,.72,1.34);
+}
+
+/* 부드러운 흔들림 애니메이션 */
+@keyframes shake-soft {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+/* 강렬한 흔들림 애니메이션 */
+@keyframes shake-intense {
+  0% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-6px) rotate(-2deg); }
+  20% { transform: translateX(6px) rotate(2deg); }
+  30% { transform: translateX(-5px) rotate(-1deg); }
+  40% { transform: translateX(5px) rotate(1deg); }
+  50% { transform: translateX(-4px) rotate(-0.5deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  70% { transform: translateX(-2px) rotate(-0.2deg); }
+  80% { transform: translateX(2px) rotate(0.2deg); }
+  90% { transform: translateX(-1px) rotate(-0.1deg); }
+  100% { transform: translateX(0) rotate(0deg); }
 }
 
 * {

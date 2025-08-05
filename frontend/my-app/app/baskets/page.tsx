@@ -2,17 +2,19 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useBasketItems } from '@/store/useBasketStore';
+import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useClearBasketId, useClearBasketData } from '@/store/useBasketStore';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useActivateBasket } from '@/utils/hooks/useActivateBasket';
 import { reconnectGlobalSSE } from '@/utils/hooks/useGlobalBasketSSE';
 import { Package, ShoppingBasket, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { apiClient } from '@/utils/api/apiClient';
+import { config } from '@/config/env';
 
 // 물고기처럼 떠다니는 상품 아이콘 컴포넌트
 const FloatingProductFish = ({ item, index }: { item: any; index: number }) => {
@@ -227,12 +229,16 @@ export default function BasketsPage() {
   const { accessToken: token } = useAuth();
   const basketId = useBasketId();
   const setBasketId = useBasketStore(state => state.setBasketId);
+  const clearBasketId = useClearBasketId();
+  const clearBasketData = useClearBasketData();
 
-  // ⬇️ 2. 토큰/basketId 없으면 스캔으로
+  // ⬇️ 2. 토큰/basketId 없으면 스캔으로 (결제 완료 후에는 제외)
+  const [isCheckoutCompleted, setIsCheckoutCompleted] = useState(false);
+  
   useEffect(() => {
     if (!token) return;
-    if (!basketId) router.replace('/scan');
-  }, [token, basketId, router]);
+    if (!basketId && !isCheckoutCompleted) router.replace('/scan');
+  }, [token, basketId, router, isCheckoutCompleted]);
 
   // ⬇️ 3. 활성화 필요시만 start 호출
   const [activateError, setActivateError] = useState<string | null>(null);
@@ -241,10 +247,10 @@ export default function BasketsPage() {
   const { mutate: activate, isPending } = useActivateBasket(basketId, token);
 
   // ⬇️ 4. 활성화 완료 후 SSE 재연결 트리거
-  const triggerSSEReconnect = () => {
+  const triggerSSEReconnect = useCallback(() => {
     console.log('[BasketsPage] SSE 재연결 트리거');
     reconnectGlobalSSE();
-  };
+  }, []);
 
   useEffect(() => {
     if (!token || !basketId) return;
@@ -275,6 +281,12 @@ export default function BasketsPage() {
     return basket.items.filter(item => item && item.product && item.product.id);
   }, [basket]);
   
+  // AI 추천 상품들
+  const recommendations = useMemo(() => {
+    if (!basket || !basket.recommendations) return [];
+    return basket.recommendations.filter(rec => rec && rec.id);
+  }, [basket]);
+  
   // 디버깅용 로그
   useEffect(() => {
     console.log('[BasketsPage] basket 데이터 변경:', basket);
@@ -292,9 +304,62 @@ export default function BasketsPage() {
   }, [basket, isInitialDataLoaded]);
 
   // ⬇️ 7. 수동 재연결 버튼 (테스트용)
-  const handleReconnect = () => {
+  const handleReconnect = useCallback(() => {
     reconnectGlobalSSE();
-  };
+  }, []);
+
+  // 결제 완료 함수
+  const handleCheckout = useCallback(async () => {
+    if (!token) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+
+    if (!basket || !basket.items || basket.items.length === 0) {
+      toast.error('장바구니가 비어있습니다.');
+      return;
+    }
+
+    try {
+      toast.loading('결제 처리 중...', { id: 'checkout' });
+      
+      // 토큰 확인 로그
+      console.log('결제 요청 - 토큰 확인:', token.substring(0, 50) + '...');
+      
+      const response = await apiClient.post(config.API_ENDPOINTS.BASKET_CHECKOUT, {}, true);
+      
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('결제가 완료되었습니다!', { id: 'checkout' });
+        console.log('결제 결과:', result);
+        
+        // 결제 완료 후 장바구니 초기화
+        setIsCheckoutCompleted(true); // 결제 완료 플래그 설정
+        localStorage.removeItem('basketId');
+        localStorage.removeItem('activatedBasketId');
+        localStorage.removeItem('basket-storage'); // Zustand store도 초기화
+        clearBasketId(); // Zustand store의 basketId 초기화
+        clearBasketData(); // Zustand store의 basketData 초기화
+        setBasketId(''); // 추가 안전장치
+        
+        // 홈페이지로 이동
+        router.push('/');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('결제 실패:', errorData);
+        
+        // 데이터베이스 오류인 경우 사용자 친화적인 메시지
+        if (errorData.error && errorData.error.includes('receipt_pkey')) {
+          toast.error('결제 처리 중 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', { id: 'checkout' });
+        } else {
+          toast.error(`결제 실패: ${errorData.error || errorData.message || '알 수 없는 오류'}`, { id: 'checkout' });
+        }
+      }
+    } catch (error) {
+      console.error('결제 요청 오류:', error);
+      toast.error('결제 요청 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', { id: 'checkout' });
+    }
+  }, [token, basket, clearBasketId, clearBasketData, setBasketId, router]);
 
   // ⬇️ 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {
@@ -315,29 +380,6 @@ export default function BasketsPage() {
           onClick={() => router.push('/login')}
         >
           로그인 하러가기
-        </button>
-      </main>
-    );
-  }
-  
-  if (!basketId) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ color: 'var(--foreground)' }}
-      >
-        <Package className="w-12 h-12 text-blue-500 mb-4" />
-        <h2 className="text-lg font-semibold mb-2 text-center">QR 코드를 스캔해주세요</h2>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>장바구니 QR 코드를 먼저 스캔해야 합니다.</p>
-        <button 
-          className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
-          style={{
-            border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
-            color: 'var(--foreground)',
-          }}
-          onClick={() => router.push('/scan')}
-        >
-          QR 스캔 하러가기
         </button>
       </main>
     );
@@ -378,44 +420,7 @@ export default function BasketsPage() {
     );
   }
   
-  // 장바구니가 비어있는 경우 (items가 없거나 빈 배열인 경우)
-  if (!basket || !basket.items || basket.items.length === 0) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
-      >
-        <ShoppingBasket className="w-12 h-12 text-gray-400 mb-4" />
-        <h2 className="text-lg font-semibold mb-2">장바구니가 비어있습니다</h2>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>
-          {!basket ? 'SSE 연결 대기 중...' : '아직 장바구니에 물품이 없습니다.'}
-        </p>
-        <div className="space-y-2">
-          <button 
-            className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
-            style={{
-              border: '1px solid var(--input-border)',
-              backgroundColor: 'var(--input-background)',
-              color: 'var(--foreground)',
-            }}
-            onClick={handleReconnect}
-          >
-            SSE 재연결
-          </button>
-          <button 
-            className="w-full max-w-xs py-2 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all text-sm"
-            style={{
-              border: '1px solid var(--input-border)',
-              backgroundColor: 'var(--input-background)',
-              color: 'var(--foreground)',
-            }}
-            onClick={() => window.location.reload()}
-          >
-            페이지 새로고침
-          </button>
-        </div>
-      </main>
-    );
-  }
+
 
   // 실제 장바구니 UI
   return (
@@ -466,7 +471,7 @@ export default function BasketsPage() {
             SSE 재연결
           </button>
           <button 
-            onClick={() => toast.success('테스트: 상품이 장바구니에 추가되었습니다')}
+                          onClick={() => toast.error('에러 테스트 메시지')}
             className="inline-flex items-center gap-2 py-2 px-4 text-sm rounded-lg hover:opacity-80 transition-all"
             style={{
               border: '1px solid var(--sobi-green-border)',
@@ -488,14 +493,14 @@ export default function BasketsPage() {
             <DollarSign className="w-6 h-6 mr-3" style={{ color: 'var(--sobi-green)' }} />
             결제 요약
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="flex justify-between items-center p-3 rounded-lg"
               style={{
                 backgroundColor: 'var(--input-background)',
               }}
             >
               <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 상품 품목</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket.totalCount || 0}개</span>
+              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket?.totalCount || 0}개</span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg"
               style={{
@@ -513,8 +518,27 @@ export default function BasketsPage() {
               }}
             >
               <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
-              <span className="text-2xl font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket.totalPrice || 0).toLocaleString()}원</span>
+              <span className="text-2xl font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket?.totalPrice || 0).toLocaleString()}원</span>
             </div>
+          </div>
+          
+          {/* 결제 완료 버튼 */}
+          <div className="text-center">
+            <button
+              onClick={handleCheckout}
+              disabled={!basket || !basket.items || basket.items.length === 0}
+              className="inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: 'var(--sobi-green)',
+                color: 'white',
+                border: 'none',
+              }}
+            >
+              결제 완료
+              <span className="text-sm font-normal opacity-90">
+                ({(basket?.totalPrice || 0).toLocaleString()}원)
+              </span>
+            </button>
           </div>
         </div>
 
@@ -529,7 +553,7 @@ export default function BasketsPage() {
             상품 목록
           </h2>
           
-          {(basket.items || []).length === 0 ? (
+          {(basket?.items || []).length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBasket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>장바구니에 담긴 상품이 없습니다.</p>
@@ -571,6 +595,122 @@ export default function BasketsPage() {
           )}
         </div>
 
+        {/* AI 추천 상품 섹션 */}
+        <div className="p-6 rounded-lg shadow-sm mb-8"
+          style={{
+            border: '1px solid var(--input-border)',
+            backgroundColor: 'var(--input-background)',
+          }}
+        >
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            AI 추천 상품
+          </h2>
+          
+          {recommendations.length > 0 ? (
+            <>
+              <p className="text-sm mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
+                AI가 당신의 장바구니를 분석해서 추천하는 상품들입니다! 실시간으로 업데이트됩니다
+              </p>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {recommendations.map((product: any) => (
+                  <Link key={product.id} href={`/products/${product.id}`}>
+                    <div className="group cursor-pointer">
+                      <div className="relative overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-105">
+                        <Image
+                          src={product.imageUrl}
+                          alt={product.name}
+                          width={200}
+                          height={200}
+                          className="w-full h-32 object-cover"
+                        />
+                        
+                        {/* 할인 배지 */}
+                        {product.discountRate > 0 && (
+                          <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                            {product.discountRate}%
+                          </div>
+                        )}
+                        
+                        {/* 브랜드 배지 */}
+                        {product.brand && product.brand !== 'NULL::character varying' && (
+                          <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-full">
+                            {product.brand}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-3">
+                        <h3 className="font-medium text-sm line-clamp-2 group-hover:text-green-600 transition-colors">
+                          {product.name}
+                        </h3>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="flex items-center space-x-1">
+                            {product.discountRate > 0 ? (
+                              <>
+                                <span className="text-xs text-gray-500 line-through">
+                                  {product.price.toLocaleString()}원
+                                </span>
+                                <span className="text-sm font-bold text-red-600">
+                                  {product.discountedPrice.toLocaleString()}원
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-bold">
+                                {product.price.toLocaleString()}원
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            재고: {product.stock}개
+                          </span>
+                        </div>
+                        
+                        {/* 태그 */}
+                        {product.tag && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {product.tag.split(' ').slice(0, 2).map((tag: string, index: number) => (
+                              <span
+                                key={index}
+                                className="text-xs px-2 py-1 rounded-full"
+                                style={{
+                                  backgroundColor: 'var(--sobi-green-light)',
+                                  color: 'var(--sobi-green)',
+                                  border: '1px solid var(--sobi-green-border)',
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full"
+                style={{
+                  backgroundColor: 'var(--sobi-green-light)',
+                  border: '2px solid var(--sobi-green-border)',
+                }}
+              >
+                <span className="text-xl">empty</span>
+              </div>
+              <h3 className="text-lg font-semibold mb-2">AI 추천 상품</h3>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                장바구니에 상품을 담으면 추천 상품이 나옵니다!
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                AI가 당신의 구매 패턴을 분석해서 맞춤 상품을 추천해드려요
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* 물고기 애니메이션 수족관 */}
         <div className="p-6 rounded-lg shadow-sm mb-8"
           style={{
@@ -585,7 +725,7 @@ export default function BasketsPage() {
             상품들이 물고기처럼 자유롭게 헤엄치고 있어요! 클릭하면 상품 상세를 볼 수 있어요 🐟
           </p>
           
-          {(basket.items || []).length === 0 ? (
+          {(basket?.items || []).length === 0 ? (
             <div className="text-center py-12">
               <ShoppingBasket className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>장바구니에 담긴 상품이 없습니다.</p>

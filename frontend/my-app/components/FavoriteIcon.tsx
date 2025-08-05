@@ -15,7 +15,7 @@ export default function FavoriteIcon({ productId, className = '', readOnly = fal
   const { favoriteList, addFavorite, removeFavorite, loading } = useFavorite(token)
   const [isToggling, setIsToggling] = useState(false)
 
-  // 로그인하지 않은 경우 아이콘을 표시하지 않음
+  // 로그인하지 않은 경우 아무것도 표시하지 않음 (찜 기능은 회원전용)
   if (!isLoggedIn || !token) {
     return null
   }
@@ -35,13 +35,13 @@ export default function FavoriteIcon({ productId, className = '', readOnly = fal
     
     setIsToggling(true)
     try {
-      if (isFavorited) {
-        await removeFavorite({ productId, token })
-        ToastManager.favorite('찜 목록에서 제거되었습니다')
-      } else {
-        await addFavorite({ productId, token })
-        ToastManager.favorite('찜 목록에 추가되었습니다')
-      }
+              if (isFavorited) {
+          await removeFavorite({ productId, token })
+          ToastManager.favoriteRemoved()
+        } else {
+          await addFavorite({ productId, token })
+          ToastManager.favoriteAdded()
+        }
     } catch (error) {
       console.error('찜 토글 실패:', error)
       ToastManager.favorite('찜 처리 중 오류가 발생했습니다')
@@ -70,6 +70,8 @@ export default function FavoriteIcon({ productId, className = '', readOnly = fal
         style={{
           filter: isFavorited ? 'none' : 'grayscale(100%) brightness(0.8)'
         }}
+        sizes="24px"
+        quality={85}
       />
     </button>
   )

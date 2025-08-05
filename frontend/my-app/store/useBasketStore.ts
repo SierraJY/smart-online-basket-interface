@@ -32,6 +32,7 @@ interface BasketData {
   totalCount: number; // 백엔드 명세에 맞게 itemCount -> totalCount
   boardMac: string;
   timestamp: number;
+  recommendations: Product[]; // AI 추천 상품들
 }
 
 interface BasketState {
@@ -115,25 +116,45 @@ export const useIsBasketEmpty = () => useBasketStore(state => {
 });
 export const useHasActivatedBasket = () => useBasketStore(state => !!state.activatedBasketId);
 
-// 액션 훅들
-export const useBasketActions = () => useBasketStore(
-  state => ({
-    setBasketId: state.setBasketId,
-    setActivatedBasketId: state.setActivatedBasketId,
-    setBasketData: state.setBasketData,
-    clearBasketId: state.clearBasketId,
-    clearBasketData: state.clearBasketData,
-  })
-);
+// 액션 훅들 - 개별 훅으로 분리하여 최적화
+export const useSetBasketId = () => useBasketStore(state => state.setBasketId);
+export const useSetActivatedBasketId = () => useBasketStore(state => state.setActivatedBasketId);
+export const useSetBasketData = () => useBasketStore(state => state.setBasketData);
+export const useClearBasketId = () => useBasketStore(state => state.clearBasketId);
+export const useClearBasketData = () => useBasketStore(state => state.clearBasketData);
 
-// 복합 selector 훅
-export const useBasketSummary = () => useBasketStore(
-  state => ({
-    basketId: state.basketId,
-    activatedBasketId: state.activatedBasketId,
-    itemCount: state.basketData?.totalCount || 0, // totalCount 사용
-    totalPrice: state.basketData?.totalPrice || 0,
-    isEmpty: !state.basketData || state.basketData.totalCount === 0, // totalCount 사용
-    hasActivated: !!state.activatedBasketId,
-  })
-);
+// 기존 useBasketActions는 개별 훅들을 조합하여 제공
+export const useBasketActions = () => {
+  const setBasketId = useSetBasketId();
+  const setActivatedBasketId = useSetActivatedBasketId();
+  const setBasketData = useSetBasketData();
+  const clearBasketId = useClearBasketId();
+  const clearBasketData = useClearBasketData();
+  
+  return {
+    setBasketId,
+    setActivatedBasketId,
+    setBasketData,
+    clearBasketId,
+    clearBasketData,
+  };
+};
+
+// 복합 selector 훅 - 개별 훅으로 분리하여 최적화
+export const useBasketSummary = () => {
+  const basketId = useBasketId();
+  const activatedBasketId = useActivatedBasketId();
+  const itemCount = useBasketItemCount();
+  const totalPrice = useBasketTotalPrice();
+  const isEmpty = useIsBasketEmpty();
+  const hasActivated = useHasActivatedBasket();
+  
+  return {
+    basketId,
+    activatedBasketId,
+    itemCount,
+    totalPrice,
+    isEmpty,
+    hasActivated,
+  };
+};
