@@ -1,0 +1,1 @@
+This is a dummy static file for Nginx.
