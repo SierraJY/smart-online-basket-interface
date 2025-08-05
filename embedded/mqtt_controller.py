@@ -46,6 +46,7 @@ stop_event = threading.Event()
 rfid_system_running = False
 cart_manager = None
 sensor_manager = None
+last_published_cart_data = None  # Store the last published cart data
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -70,7 +71,7 @@ def run_rfid_system(stop_event):
     try:
         # Create sensor manager
         sensor_manager = MultiSensorManager(
-            polling_count=15,
+            polling_count=30,
             rssi_threshold=-70
         )
         
@@ -95,7 +96,7 @@ def run_rfid_system(stop_event):
             cart_manager.start_cycle()
             
             # Run polling cycle
-            results = sensor_manager.run_polling_cycle(5.0)  # 5 second timeout
+            results = sensor_manager.run_polling_cycle(1.0)  # 5 second timeout
             
             # Send results to CartManager for processing
             cart_manager.process_cycle_results(results, sensor_manager)
@@ -111,10 +112,33 @@ def run_rfid_system(stop_event):
             
             # Get cart summary
             cart_summary = cart_manager.get_cart_summary()
-            logger.info(f"Confirmed items: {len(cart_summary['confirmed_items'])}, Removed items: {len(cart_summary['removed_items'])}")
+            confirmed_items = cart_summary["confirmed_items"]
+            logger.info(f"Confirmed items: {len(confirmed_items)}, Removed items: {len(cart_summary['removed_items'])}")
+            
+            # Format cart data for MQTT publishing
+            cart_data = format_cart_for_mqtt(confirmed_items, BASKET_ID)
+            
+            # Only publish if cart data has changed
+            global last_published_cart_data
+            if cart_data != last_published_cart_data:
+                try:
+                    from mqtt.src.mqtt_publisher import publish_message
+                    logger.info(f"Cart data changed - Publishing to MQTT: {cart_data}")
+                    publish_result = publish_message(message=cart_data)
+                    
+                    if publish_result:
+                        logger.info("MQTT publish successful")
+                        # Update the last published data only if publish was successful
+                        last_published_cart_data = cart_data
+                    else:
+                        logger.error("MQTT publish failed")
+                except Exception as e:
+                    logger.error(f"Error publishing to MQTT: {e}")
+            else:
+                logger.debug("Cart data unchanged - skipping MQTT publish")
             
             # Short delay between cycles
-            time.sleep(1.0)
+            time.sleep(0.5)
             
     except Exception as e:
         logger.error(f"Error in RFID system: {e}", exc_info=True)
@@ -160,7 +184,7 @@ def stop_rfid_system():
     
     # Wait for the thread to finish
     if rfid_thread and rfid_thread.is_alive():
-        rfid_thread.join(timeout=10.0)  # Wait up to 10 seconds
+        rfid_thread.join(timeout=1.0)  # Wait up to 10 seconds
         
     rfid_system_running = False
     logger.info("RFID system stopped")
@@ -207,9 +231,19 @@ def on_message(client, userdata, msg):
     logger = logging.getLogger("rfid_controller")
     
     topic = msg.topic
-    payload = msg.payload.decode().strip().lower()
+    message_str = msg.payload.decode().strip().lower()
+    logger.info(f"Received message: {message_str} on topic: {topic}")
     
-    logger.info(f"Received message: {payload} on topic: {topic}")
+    # Try to parse as JSON
+    try:
+        message_json = json.loads(message_str)
+        if "msg" in message_json:
+            payload = message_json["msg"].lower()
+        else:
+            payload = message_str
+    except json.JSONDecodeError:
+        # If not JSON, use the raw message
+        payload = message_str
     
     # Process commands
     if payload == "start":
