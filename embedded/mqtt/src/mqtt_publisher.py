@@ -7,7 +7,7 @@ def publish_message(topic=None, message=None, qos=0, retain=False):
     Publish a message to the MQTT broker
     
     Args:
-        topic (str): Topic to publish to. If None, uses config.MQTT_TOPIC
+        topic (str): Topic to publish to. If None, uses config.MQTT_TOPIC + "/update"
         message (str): Message to publish
         qos (int): Quality of Service (0, 1, or 2)
         retain (bool): Whether to retain the message on the broker
@@ -16,7 +16,7 @@ def publish_message(topic=None, message=None, qos=0, retain=False):
         bool: True if successful, False otherwise
     """
     if topic is None:
-        topic = config.MQTT_TOPIC
+        topic = config.MQTT_TOPIC + "/update"
         
     if message is None:
         return False
