@@ -23,13 +23,13 @@ Thumbs.db
 .idea/
 
 # Python 가상환경
-venv/
+**/venv/
 
 # 모델 학습용 데이터
-data/
+**/data/
 
 # 모델 결과
-parameters/
+**/parameters/
 
 # npy 파일 모두 무시
 *.npy
