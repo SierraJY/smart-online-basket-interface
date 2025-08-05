@@ -32,8 +32,8 @@ import java.util.Set;
  * MQTT 메시지 구조:
  * - 수신 Topic: basket/{basketId}/update
  * - 수신 Payload: {"id": 1, "list": {"PEAC": 3, "BLUE": 1, "APPL": 2}}
- * - 발행 Topic: basket/{basketId}/total
- * - 발행 Payload: {"basketId": 1, "totalPrice": 15000}
+ * - 발행 Topic: basket/{basketId}/status
+ * - 발행 Payload: {"msg": "total", "payload": {"basketId": 1, "totalPrice": 15000}}
  *
  * 처리 흐름:
  * MQTT 브로커 → MqttConfig → mqttInputChannel → 이 핸들러 → BasketCacheService → Redis
@@ -134,8 +134,8 @@ public class BasketMqttHandler {
      *
      * 작동 흐름:
      * 1. SSE에서 이미 계산된 총 가격을 매개변수로 받음
-     * 2. JSON 메시지 생성
-     * 3. basket/{basketId}/total 토픽으로 발행
+     * 2. 새로운 형식의 JSON 메시지 생성: {"msg": "total", "payload": {...}}
+     * 3. basket/{basketId}/status 토픽으로 발행
      *
      * @param basketId 바구니 ID
      * @param totalPrice 이미 계산된 총 가격
@@ -145,23 +145,28 @@ public class BasketMqttHandler {
             System.out.println("=== 바구니 총 가격 발행 시작 ===");
             System.out.println("바구니 ID: " + basketId + ", 총가격: " + totalPrice);
 
-            // 1. 발행할 JSON 메시지 생성
+            // 1. payload 객체 생성
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("basketId", basketId);
+            payload.put("totalPrice", totalPrice);
+
+            // 2. 전체 메시지 객체 생성 (새로운 형식)
             Map<String, Object> totalPriceMessage = new HashMap<>();
-            totalPriceMessage.put("basketId", basketId);
-            totalPriceMessage.put("totalPrice", totalPrice);
+            totalPriceMessage.put("msg", "total");
+            totalPriceMessage.put("payload", payload);
 
             String jsonMessage = objectMapper.writeValueAsString(totalPriceMessage);
 
-            // 2. MQTT 토픽 생성: basket/{basketId}/total
-            String totalTopic = "basket/" + basketId + "/total";
+            // 3. MQTT 토픽 생성: basket/{basketId}/status (변경됨)
+            String statusTopic = "basket/" + basketId + "/status";
 
-            // 3. MQTT 메시지 발행
+            // 4. MQTT 메시지 발행
             mqttOutputChannel.send(MessageBuilder.withPayload(jsonMessage)
-                    .setHeader("mqtt_topic", totalTopic)
+                    .setHeader("mqtt_topic", statusTopic)
                     .build());
 
             System.out.println("총 가격 MQTT 발행 완료:");
-            System.out.println("  토픽: " + totalTopic);
+            System.out.println("  토픽: " + statusTopic);
             System.out.println("  메시지: " + jsonMessage);
             System.out.println("=== 바구니 총 가격 발행 완료 ===");
 
@@ -171,6 +176,103 @@ public class BasketMqttHandler {
 
             // 총 가격 발행 실패해도 다른 로직(Redis 저장, SSE)은 정상 동작하도록 함
             // 여기서 예외를 다시 throw하지 않음
+        }
+    }
+
+    /**
+     * 바구니 사용 시작 메시지를 MQTT로 발행 (WakeUp)
+     *
+     * 작동 흐름:
+     * 1. 바구니 사용 시작 시 호출
+     * 2. {"msg": "start"} 형식의 JSON 메시지 생성
+     * 3. basket/{basketId}/status 토픽으로 발행
+     * 4. 발행 실패 시 예외를 throw하여 바구니 시작 중단
+     *
+     * @param basketId 바구니 ID
+     * @throws RuntimeException MQTT 발행 실패 시
+     */
+    public void publishStartMessage(Integer basketId) {
+        try {
+            System.out.println("=== 바구니 시작 메시지 발행 시작 ===");
+            System.out.println("바구니 ID: " + basketId);
+
+            // 1. 시작 메시지 객체 생성
+            Map<String, Object> startMessage = new HashMap<>();
+            startMessage.put("msg", "start");
+
+            String jsonMessage = objectMapper.writeValueAsString(startMessage);
+
+            // 2. MQTT 토픽 생성: basket/{basketId}/status
+            String statusTopic = "basket/" + basketId + "/status";
+
+            // 3. MQTT 메시지 발행
+            boolean sent = mqttOutputChannel.send(MessageBuilder.withPayload(jsonMessage)
+                    .setHeader("mqtt_topic", statusTopic)
+                    .build());
+
+            if (!sent) {
+                throw new RuntimeException("MQTT 채널로 메시지 전송 실패");
+            }
+
+            System.out.println("바구니 시작 MQTT 발행 완료:");
+            System.out.println("  토픽: " + statusTopic);
+            System.out.println("  메시지: " + jsonMessage);
+            System.out.println("=== 바구니 시작 메시지 발행 완료 ===");
+
+        } catch (Exception e) {
+            System.err.println("바구니 시작 메시지 MQTT 발행 실패: " + e.getMessage());
+            e.printStackTrace();
+
+            // 시작 메시지 발행 실패 시 예외를 throw하여 바구니 시작 중단
+            throw new RuntimeException("MQTT 시작 메시지 발행 실패 - 바구니를 사용할 수 없습니다: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 바구니 사용 종료 메시지를 MQTT로 발행 (Shutdown)
+     *
+     * 작동 흐름:
+     * 1. 결제 완료 시 호출
+     * 2. {"msg": "end"} 형식의 JSON 메시지 생성
+     * 3. basket/{basketId}/status 토픽으로 발행
+     * 4. 발행 실패 시 로그만 남기고 결제는 정상 완료 (이미 결제되었으므로)
+     *
+     * @param basketId 바구니 ID
+     */
+    public void publishEndMessage(Integer basketId) {
+        try {
+            System.out.println("=== 바구니 종료 메시지 발행 시작 ===");
+            System.out.println("바구니 ID: " + basketId);
+
+            // 1. 종료 메시지 객체 생성
+            Map<String, Object> endMessage = new HashMap<>();
+            endMessage.put("msg", "end");
+
+            String jsonMessage = objectMapper.writeValueAsString(endMessage);
+
+            // 2. MQTT 토픽 생성: basket/{basketId}/status
+            String statusTopic = "basket/" + basketId + "/status";
+
+            // 3. MQTT 메시지 발행
+            boolean sent = mqttOutputChannel.send(MessageBuilder.withPayload(jsonMessage)
+                    .setHeader("mqtt_topic", statusTopic)
+                    .build());
+
+            if (!sent) {
+                System.err.println("⚠️ 경고: MQTT 종료 메시지 전송 실패 - 결제는 완료되었으나 라즈베리파이 종료 신호 전달 실패");
+            } else {
+                System.out.println("바구니 종료 MQTT 발행 완료:");
+                System.out.println("  토픽: " + statusTopic);
+                System.out.println("  메시지: " + jsonMessage);
+                System.out.println("=== 바구니 종료 메시지 발행 완료 ===");
+            }
+
+        } catch (Exception e) {
+            System.err.println("⚠️ 경고: 바구니 종료 메시지 MQTT 발행 실패 - 결제는 완료되었으나 라즈베리파이 종료 신호 전달 실패: " + e.getMessage());
+            e.printStackTrace();
+
+            // 종료 메시지 발행 실패해도 결제 처리는 정상 완료 (이미 결제가 끝났으므로)
+            // 단, 라즈베리파이가 계속 켜져있을 수 있으므로 모니터링 필요
         }
     }
 

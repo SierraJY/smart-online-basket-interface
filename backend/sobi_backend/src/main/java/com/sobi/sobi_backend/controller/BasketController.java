@@ -5,6 +5,7 @@ import com.sobi.sobi_backend.service.BasketService;
 import com.sobi.sobi_backend.service.ReceiptService;
 import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
+import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -34,6 +35,9 @@ public class BasketController {
 
     @Autowired
     private BasketCacheService basketCacheService; // 바구니 캐시 서비스
+
+    @Autowired
+    private BasketMqttHandler basketMqttHandler; // MQTT 메시지 발행 핸들러 추가
 
     // application.properties에서 바구니 캐시 TTL 주입 (BasketCacheService와 동일)
     @Value("${app.basket.cache-ttl-seconds}")
@@ -96,19 +100,42 @@ public class BasketController {
             // 바구니 사용 시작 (상태 변경)
             basketService.startUsingBasket(basketId);
 
-            // Redis에 양방향 매핑 저장 (Properties에서 가져온 TTL 사용)
-            Duration ttl = getBasketTtl();
-            redisTemplate.opsForValue().set("user_basket:" + customerId, basketId.toString(), ttl);
-            redisTemplate.opsForValue().set("basket_user:" + basketId, customerId.toString(), ttl); // 역방향 매핑 추가
+            try {
+                // MQTT 시작 메시지 발행 먼저 시도 (WakeUp)
+                basketMqttHandler.publishStartMessage(basketId);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "바구니 사용을 시작했습니다");
-            response.put("basket", basket);
-            response.put("customerId", customerId);
-            response.put("basketId", basketId);
+                // MQTT 발행 성공 후 Redis 매핑 저장
+                Duration ttl = getBasketTtl();
+                redisTemplate.opsForValue().set("user_basket:" + customerId, basketId.toString(), ttl);
+                redisTemplate.opsForValue().set("basket_user:" + basketId, customerId.toString(), ttl);
 
-            System.out.println("바구니 사용 시작 완료: basketId=" + basketId + ", 고객ID=" + customerId + ", Redis 양방향 매핑 저장 완료 (TTL: " + basketTtlSeconds + "초)");
-            return ResponseEntity.ok(response); // 200 OK
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "바구니 사용을 시작했습니다");
+                response.put("basket", basket);
+                response.put("customerId", customerId);
+                response.put("basketId", basketId);
+
+                System.out.println("바구니 사용 시작 완료: basketId=" + basketId + ", 고객ID=" + customerId + ", MQTT 시작 메시지 발행 완료, Redis 양방향 매핑 저장 완료 (TTL: " + basketTtlSeconds + "초)");
+                return ResponseEntity.ok(response); // 200 OK
+
+            } catch (RuntimeException mqttException) {
+                // MQTT 발행 실패 시 바구니 상태 롤백
+                System.err.println("바구니 시작 중 오류로 롤백 진행: " + mqttException.getMessage());
+
+                try {
+                    basketService.returnBasket(basketId); // 바구니 상태를 사용 가능으로 되돌림
+                    System.out.println("바구니 상태 롤백 완료: basketId=" + basketId);
+                } catch (Exception rollbackException) {
+                    System.err.println("바구니 상태 롤백 실패: " + rollbackException.getMessage());
+                    // 롤백 실패해도 MQTT 오류를 우선적으로 반환
+                }
+
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "바구니 시작 신호 전송에 실패했습니다. 다시 시도해주세요.");
+                error.put("detail", mqttException.getMessage());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error); // 503 Service Unavailable
+            }
+
         } catch (Exception e) {
             System.err.println("바구니 사용 시작 중 오류: " + e.getMessage());
             Map<String, String> error = new HashMap<>();
@@ -281,6 +308,9 @@ public class BasketController {
             redisTemplate.delete("user_basket:" + customerId);
             redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 삭제
 
+            // **MQTT 종료 메시지 발행 (Shutdown)**
+            basketMqttHandler.publishEndMessage(basketId);
+
             Map<String, Object> response = new HashMap<>();
             response.put("message", "결제가 완료되었습니다");
             response.put("receipt", receipt);
@@ -289,7 +319,7 @@ public class BasketController {
             response.put("totalItems", epcPatterns.size());
             response.put("basketId", basketId);
 
-            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 영수증ID=" + receipt.getId() + ", Redis 양방향 매핑 삭제 완료");
+            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 영수증ID=" + receipt.getId() + ", Redis 양방향 매핑 삭제 완료, MQTT 종료 메시지 발행 완료");
             return ResponseEntity.ok(response); // 200 OK
         } catch (IllegalArgumentException e) { // 유효하지 않은 EPC 패턴 등
             System.err.println("바구니 결제 실패: " + e.getMessage());
