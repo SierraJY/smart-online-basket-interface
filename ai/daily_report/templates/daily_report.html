@@ -1,77 +1,157 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>주간 스마트 바스켓 리포트</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 30px;
-            background-color: #f9f9f9;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        p.timestamp {
-            font-size: 0.9rem;
-            color: #777;
-            margin-bottom: 30px;
-        }
-        section {
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 40px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-        }
-        section h2 {
-            color: #222;
-            margin-bottom: 15px;
-        }
-        img {
-            width: 100%;
-            max-width: 700px;
-            height: auto;
-            border: 1px solid #ccc;
-            display: block;
-            margin-top: 10px;
-        }
-        .desc {
-            font-size: 0.9rem;
-            margin-top: 10px;
-            color: #555;
-            line-height: 1.5;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>주간 스마트 바스켓 리포트</title>
+  <style>
+    /* 기본 폰트와 배경 */
+    body {
+      font-family: 'Helvetica Neue', 'Noto Sans KR', sans-serif;
+      background-color: #f9fafc;
+      padding: 30px 15px;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* 최대 너비 및 중앙 정렬 */
+    .container {
+      max-width: 900px;
+      width: 100%;
+      background: #fff;
+      border-radius: 14px;
+      padding: 40px 40px 60px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      box-sizing: border-box;
+    }
+
+    /* 최상위 제목 */
+    h1 {
+      font-size: 2.6rem;
+      color: #1f2a38;
+      margin-bottom: 8px;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* 작성일 텍스트 */
+    p.timestamp {
+      font-size: 1.0rem;
+      color: #8f9bb3;
+      text-align: center;
+      margin-bottom: 40px;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+    }
+
+    /* 각 섹션 */
+    section {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 30px 30px 40px;
+      margin-bottom: 48px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.3s ease;
+    }
+
+    section:hover {
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 소제목 */
+    section h2 {
+      color: #223354;
+      font-size: 1.75rem;
+      margin-bottom: 24px;
+      border-left: 6px solid #3366ff;
+      padding-left: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* 이미지 스타일 */
+    img {
+      width: 100%;
+      max-width: 780px;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid #d3dae8;
+      box-shadow: 0 4px 14px rgba(51, 102, 255, 0.12);
+      display: block;
+      margin: 0 auto 26px auto;
+      object-fit: contain;
+      transition: transform 0.25s ease;
+    }
+
+    img:hover {
+      transform: scale(1.02);
+      box-shadow: 0 8px 24px rgba(51, 102, 255, 0.18);
+    }
+
+    /* 설명 텍스트 */
+    .desc {
+      font-size: 1.15rem;
+      color: #2c3e50;
+      line-height: 1.85;
+      padding: 0 12px;
+      font-weight: 500;
+      letter-spacing: 0.015em;
+      white-space: pre-wrap; /* 개행 유지 */
+    }
+
+    /* 반응형 - 모바일에서 padding, 폰트 크기 조절 */
+    @media (max-width: 600px) {
+      .container {
+        padding: 25px 20px 40px;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+      section h2 {
+        font-size: 1.4rem;
+        margin-bottom: 18px;
+        border-left-width: 4px;
+        padding-left: 10px;
+      }
+      .desc {
+        font-size: 1rem;
+        padding: 0 8px;
+      }
+      img {
+        max-width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
     <h1>📊 주간 스마트 바스켓 분석 리포트 ({{ week_range }})</h1>
     <p class="timestamp">작성일: {{ today }}</p>
 
     <section>
-        <h2>1. 고객 군집 분석 👥</h2>
-        <img src="{{ images.customer }}" alt="고객 군집 시각화" />
-        <div class="desc">{{ summaries.customer }}</div>
+      <h2>1. 고객 군집 분석 👥</h2>
+      <img src="{{ images.customer }}" alt="고객 군집 시각화" />
+      <div class="desc">{{ summaries.customer | replace('\n', '<br>') | safe }}</div>
     </section>
 
     <section>
-        <h2>2. 상품 트렌드 예측 📈</h2>
-        <img src="{{ images.prophet }}" alt="상품 판매 예측" />
-        <div class="desc">{{ summaries.prophet }}</div>
+      <h2>2. 상품 트렌드 예측 📈</h2>
+      <img src="{{ images.prophet }}" alt="상품 판매 예측" />
+      <div class="desc">{{ summaries.prophet | replace('\n', '<br>') | safe }}</div>
     </section>
 
     <section>
-        <h2>3. 발주 및 재고 예측 📦</h2>
-        <img src="{{ images.restock }}" alt="발주량 및 재고 예측" />
-        <div class="desc">{{ summaries.restock }}</div>
+      <h2>3. 발주 및 재고 예측 📦</h2>
+      <img src="{{ images.restock }}" alt="발주량 및 재고 예측" />
+      <div class="desc">{{ summaries.restock | replace('\n', '<br>') | safe }}</div>
     </section>
 
     <section>
-        <h2>4. 연관 구매 분석 🔗</h2>
-        <img src="{{ images.association }}" alt="연관 상품 네트워크" />
-        <div class="desc">{{ summaries.association }}</div>
+      <h2>4. 연관 구매 분석 🔗</h2>
+      <img src="{{ images.association }}" alt="연관 상품 네트워크" />
+      <div class="desc">{{ summaries.association | replace('\n', '<br>') | safe }}</div>
     </section>
+  </div>
 </body>
 </html>

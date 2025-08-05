@@ -1,21 +1,19 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sqlalchemy import create_engine
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from collections import Counter
 import os
 from datetime import datetime, timedelta
 
-DB_URL = "postgresql://user:password@db:5432/mydb"
+plt.rcParams["font.family"] = "Malgun Gothic"
 
 
-def get_last_week_range():
-    today = datetime.today()
-    last_monday = today - timedelta(days=today.weekday() + 7)
-    last_sunday = last_monday + timedelta(days=6)
-    return last_monday.date(), last_sunday.date()
+def get_last_7_days_range():
+    today = datetime.today().date()
+    end_date = today - timedelta(days=1)
+    start_date = end_date - timedelta(days=6)
+    return start_date, end_date
 
 
 def get_age_group(age):
@@ -25,65 +23,73 @@ def get_age_group(age):
         return "20대"
     elif age < 40:
         return "30대"
+    elif age < 50:
+        return "40대"
+    elif age < 60:
+        return "50대"
     else:
-        return "40대 이상"
+        return "60대 이상"
 
 
 def load_and_preprocess():
-    engine = create_engine(DB_URL)
-    start_date, end_date = get_last_week_range()
+    # CSV 파일에서 데이터 로드
+    df = pd.read_csv("./data/dummy2.csv")
 
-    # 구매내역 + 유저정보 JOIN
-    query = f"""
-    SELECT r.user_id, r.product_list, r.purchased_at, u.gender, u.age
-    FROM receipt r
-    INNER JOIN user u ON r.user_id = u.id
-    WHERE r.purchased_at BETWEEN '{start_date}' AND '{end_date}'
-    """
-    df = pd.read_sql(query, engine)
+    # 날짜 컬럼 자동 인식
+    if "purchased_at" in df.columns:
+        date_col = "purchased_at"
+    elif "purchase_date" in df.columns:
+        date_col = "purchase_date"
+    else:
+        raise Exception("날짜 컬럼(purchased_at, purchase_date)이 없습니다!")
 
-    # 상품 가격 정보 로딩
-    product_df = pd.read_sql("SELECT id, price FROM product", engine)
-    price_map = dict(zip(product_df["id"], product_df["price"]))
+    # 날짜 변환 및 필터링
+    start_date, end_date = get_last_7_days_range()
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df[
+        (df[date_col] >= pd.Timestamp(start_date))
+        & (df[date_col] <= pd.Timestamp(end_date))
+    ]
 
-    # 구매 금액 계산
-    def calc_amount(product_list):
-        try:
-            ids = eval(product_list)
-            return sum(price_map.get(pid, 0) for pid in ids)
-        except:
-            return 0
+    # amount 계산
+    if "price" in df.columns:
+        df["amount"] = df["price"]
+    else:
+        # product_list 컬럼이 있는 경우, 별도 price_map 필요
+        df["amount"] = 0
 
-    df['amount'] = df['product_list'].apply(calc_amount)
-
-    # 유저별 집계
-    agg = df.groupby('user_id').agg(
-        total_amount=('amount', 'sum'),
-        purchase_count=('id', 'count'),
-        gender=('gender', 'first'),
-        age=('age', 'first')
-    ).reset_index()
-    agg['avg_amount'] = agg['total_amount'] / agg['purchase_count']
-    agg['age_group'] = agg['age'].apply(get_age_group)
-
+    # 유저별 집계 (session_id 여러번이면 구매 횟수=세션수)
+    agg = (
+        df.groupby("user_id")
+        .agg(
+            total_amount=("amount", "sum"),
+            purchase_count=("session_id", "nunique"),
+            gender=("gender", "first"),
+            age=("age", "first"),
+        )
+        .reset_index()
+    )
+    agg["avg_amount"] = agg["total_amount"] / agg["purchase_count"]
+    agg["age_group"] = agg["age"].apply(get_age_group)
     return agg
 
 
-def perform_clustering(df, n_clusters=4, save_path='static/images/spend_kmeans.png'):
+def perform_clustering(
+    df, n_clusters=5, save_dir="./output", filename="kmeans_clusters.png"
+):
     scaler = StandardScaler()
-    X = scaler.fit_transform(df[['total_amount', 'avg_amount', 'purchase_count']])
+    X = scaler.fit_transform(df[["total_amount", "avg_amount", "purchase_count"]])
 
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    df['cluster'] = kmeans.fit_predict(X)
+    df["cluster"] = kmeans.fit_predict(X)
 
-    # 리포트 생성
     results = []
-    for cluster_id, group in df.groupby('cluster'):
-        mean_total = int(group['total_amount'].mean())
-        mean_avg = int(group['avg_amount'].mean())
-        mean_cnt = round(group['purchase_count'].mean(), 1)
-        gender_ratio = group['gender'].value_counts(normalize=True).to_dict()
-        age_ratio = group['age_group'].value_counts(normalize=True).to_dict()
+    for cluster_id, group in df.groupby("cluster"):
+        mean_total = int(group["total_amount"].mean())
+        mean_avg = int(group["avg_amount"].mean())
+        mean_cnt = round(group["purchase_count"].mean(), 1)
+        gender_ratio = group["gender"].value_counts(normalize=True).to_dict()
+        age_ratio = group["age_group"].value_counts(normalize=True).to_dict()
 
         summary = (
             f" Cluster {cluster_id}:\n"
@@ -95,23 +101,26 @@ def perform_clustering(df, n_clusters=4, save_path='static/images/spend_kmeans.p
         )
         results.append(summary)
 
-    # 시각화
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    os.makedirs(save_dir, exist_ok=True)
+    image_path = os.path.abspath(os.path.join(save_dir, filename))
+
+    cluster_counts = df["cluster"].value_counts().sort_index()
     plt.figure(figsize=(8, 6))
-    cluster_counts = df['cluster'].value_counts().sort_index()
-    plt.bar(cluster_counts.index.astype(str), cluster_counts.values, color='orange')
-    plt.title('클러스터별 고객 수')
-    plt.xlabel('Cluster ID')
-    plt.ylabel('고객 수')
+    bars = plt.bar(
+        cluster_counts.index.astype(str), cluster_counts.values, color="orange"
+    )
+    plt.title("클러스터별 고객 수")
+    plt.xlabel("Cluster ID")
+    plt.ylabel("고객 수")
     for i, v in enumerate(cluster_counts.values):
-        plt.text(i, v + 0.5, str(v), ha='center')
+        plt.text(i, v + 0.5, str(v), ha="center")
     plt.tight_layout()
-    plt.savefig(save_path)
+    plt.savefig(image_path)
     plt.close()
 
-    return '\n\n'.join(results), save_path
+    return "\n\n".join(results), image_path
 
 
-def generate_spend_cluster_summary():
+def generate_customer_cluster_summary():
     df = load_and_preprocess()
-    return perform_clustering(df)
+    return perform_clustering(df, n_clusters=5)
