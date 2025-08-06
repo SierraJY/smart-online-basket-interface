@@ -33,20 +33,22 @@ const PeriodFilterComponent = ({
   ] as const;
 
   return (
-    <div className="flex justify-center gap-1 mb-2 overflow-x-auto">
-      {periods.map((period) => (
-        <button
-          key={period.value}
-          onClick={() => onPeriodChange(period.value)}
-          className={`px-4 py-2 rounded-full text-md justify-center font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-            selectedPeriod === period.value
-              ? 'bg-green-600 text-white shadow-md'
-              : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          {period.label}
-        </button>
-      ))}
+    <div className="flex justify-center gap-1 mb-2">
+      <div className="grid grid-cols-6 gap-2 w-full max-w-md">
+        {periods.map((period) => (
+          <button
+            key={period.value}
+            onClick={() => onPeriodChange(period.value)}
+            className={`px-2 py-2 rounded-full text-md justify-center font-medium transition-all whitespace-nowrap ${
+              selectedPeriod === period.value
+                ? 'bg-green-600 text-white shadow-md'
+                : 'bg-gray-200 text-gray-700'
+            }`}
+          >
+            {period.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
@@ -314,32 +316,57 @@ export default function ReceiptsPage() {
         </div>
 
         {/* 통계 정보 */}
-        <div className="mb-2 p-4 rounded-lg"
+        <div className="mb-2 p-4 relative"
         >
-          <h2 className="text-lg font-semibold mb-2 text-center">
-            구매 통계
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-1">
-            <div className="flex justify-between items-center p-1"
-            >
-              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 결제 횟수</span>
-              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {statistics.totalCount}회
-              </span>
+          <div className="relative">
+            {/* 빨간색 손그림 테두리 */}
+            <div 
+              className="absolute inset-0 border-2 border-[var(--sobi-green)] rounded-sm"
+              style={{
+                borderStyle: 'solid',
+                borderWidth: '2px',
+                background: 'transparent',
+                boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.1)',
+              }}
+            />
+            
+            {/* 제목 영역 - 테두리 위에 겹치도록 */}
+            <div className="relative z-10 bg-white px-4 py-1 rounded-full inline-block mx-auto mb-4 flex justify-center"
+                 style={{ 
+                   marginTop: '-12px',
+                   left: '50%',
+                   transform: 'translateX(-50%) translateY(-50%)'
+                 }}>
+              <h2 className="text-lg font-semibold text-center text-black">
+                구매 통계
+              </h2>
             </div>
-            <div className="flex justify-between items-center p-1"
-            >
-              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 금액</span>
-              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {statistics.totalAmount.toLocaleString()}원
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-1"
-            >
-              <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 상품</span>
-              <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {statistics.totalItems}개
-              </span>
+            
+            {/* 통계 내용 */}
+            <div className="pt-4 pb-2 px-4">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-1">
+                <div className="flex justify-between items-center p-1"
+                >
+                  <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 결제 횟수</span>
+                  <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                    {statistics.totalCount}회
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-1"
+                >
+                  <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 금액</span>
+                  <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                    {statistics.totalAmount.toLocaleString()}원
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-1"
+                >
+                  <span className="text-md" style={{ color: 'var(--text-secondary)' }}>총 구매 상품</span>
+                  <span className="text-lg font-bold" style={{ color: 'var(--sobi-green)' }}>
+                    {statistics.totalItems}개
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

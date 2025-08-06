@@ -360,7 +360,7 @@ export default function CategoryPage() {
         {pagedProducts.map((item: Product) => (
           <div key={item.id} className={cardClass}>
             <ShakeWrapper item={item}>
-              <div className="w-full aspect-square flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
+              <div className="w-full h-[100px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
                 <Link href={`/products/${item.id}`} className="w-full h-full flex items-center justify-center">
                   <Image
                     src={item.imageUrl}

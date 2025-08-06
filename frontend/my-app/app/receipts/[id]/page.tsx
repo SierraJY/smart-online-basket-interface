@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useReceipts, Receipt } from '@/utils/hooks/useReceipts';
-import { Receipt as ReceiptIcon, Package, Calendar, ArrowLeft, Printer } from 'lucide-react';
+import { Receipt as ReceiptIcon, Printer } from 'lucide-react';
+import { IoReceiptOutline } from "react-icons/io5";
 import { FaExclamationTriangle as FaExclamationTriangleIcon } from 'react-icons/fa';
 
 export default function ReceiptDetailPage() {
@@ -135,25 +136,26 @@ export default function ReceiptDetailPage() {
   }
 
   return (
-    <main className="min-h-screen py-8 pb-24 flex flex-col items-center bg-white"
+    <main className="min-h-screen py-8 pb-24 flex flex-col items-center bg-white print:py-0 print:pb-0 print:min-h-auto"
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}
     >
-      <div className="w-full max-w-2xl px-4 pt-5">
+      <div className="w-full max-w-2xl px-4 pt-5 print:px-0 print:pt-0">
         {/* 영수증 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="receipt-container bg-white rounded-lg shadow-lg overflow-hidden"
+          className="receipt-container bg-white rounded-lg shadow-lg overflow-hidden print:shadow-none print:rounded-none print:bg-white print:min-h-auto print:flex print:flex-col print:justify-start print:mb-0"
         >
           {/* 영수증 헤더 */}
           <div className="bg-green-600 text-white p-6 text-center">
-            <ReceiptIcon className="w-12 h-12 mx-auto mb-3" />
-            <h2 className="text-2xl font-bold mb-2">SOBI</h2>
-            <p className="text-green-100">스마트 영수증</p>
+            <IoReceiptOutline  className="w-12 h-12 mx-auto mb-3" />
+            <h2 className="text-2xl font-bold mb-2">
+              <span className="typewriter-text">SOBI 영수증</span>
+            </h2>
           </div>
 
           {/* 구매 정보 */}
@@ -240,13 +242,34 @@ export default function ReceiptDetailPage() {
         </motion.div>
 
         {/* 액션 버튼 */}
-        <div className="mt-6 flex justify-center gap-4">
+        <div className="mt-6 flex justify-center gap-4 print:hidden print-button">
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+            onClick={() => {
+              // 파일명 생성: SOBI_영수증_날짜_영수증번호.pdf
+              const date = new Date(receipt.purchasedAt);
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const fileName = `SOBI_영수증_${year}${month}${day}_#${receipt.id}.pdf`;
+              
+              // 파일명을 클립보드에 복사
+              navigator.clipboard.writeText(fileName).then(() => {
+                // 사용자에게 안내 메시지 표시
+                const message = `PDF 저장 시 파일명을 다음과 같이 지정해주세요:\n\n${fileName}\n\n파일명이 클립보드에 복사되었습니다.`;
+                alert(message);
+                
+                // PDF 인쇄 다이얼로그 열기
+                window.print();
+              }).catch(() => {
+                // 클립보드 복사 실패 시에도 PDF 인쇄는 진행
+                alert(`PDF 저장 시 파일명을 "${fileName}"로 지정해주세요!`);
+                window.print();
+              });
+            }}
+            className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all print:hidden"
           >
             <Printer className="w-4 h-4" />
-            인쇄
+            PDF 저장
           </button>
         </div>
       </div>

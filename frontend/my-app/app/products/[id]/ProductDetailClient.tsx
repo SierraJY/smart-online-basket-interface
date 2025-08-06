@@ -52,7 +52,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const tags = parseTags(product.tag || '');
 
   return (
-    <main className="min-h-screen background-paper">
+    <main className="pb-24 min-h-screen background-paper">
       {/* 상품 이미지 영역 */}
       <div className="relative w-full h-[45vh] sm:h-[400px] overflow-hidden">
         <Image
@@ -79,7 +79,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
       </div>
 
       {/* 상세정보 영역 */}
-      <div className="relative -mt-8 mx-4 rounded-2xl shadow-xl z-10 bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)]">
+      <div className="relative -mt-8 mx-4 rounded-2xl z-10 bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)]">
         <div className="p-6">
           {/* 상품명 및 찜 버튼 */}
           <div className="mb-4 flex justify-between items-start">
@@ -150,30 +150,36 @@ export default function ProductDetailClient({ id }: { id: string }) {
             <p className="text-sm text-[var(--text-secondary)] mb-1">
               남은 재고: <span className="font-semibold text-[var(--foreground)]">{product.stock}</span>
             </p>
-            <p className="text-sm font-medium" style={{ color: 'var(--sobi-green)' }}>
+            <Link 
+              href={`/products/category?category=${encodeURIComponent(product.category)}`}
+              className="inline-block text-sm font-medium hover:scale-105 transition-transform cursor-pointer"
+              style={{ color: 'var(--sobi-green)' }}
+            >
               {replaceCategoryName(product.category)}
-            </p>
+            </Link>
           </div>
 
           {/* 상품 설명 */}
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">상품 설명</h3>
-            <p className="text-base leading-relaxed text-[var(--text-secondary)]">
-              {product.description}
-            </p>
-          </div>
-
-          {/* 구매 버튼 (준비중) */}
-          <div className="mt-6">
-            <button 
-              className="w-full py-3 px-4 rounded-xl font-semibold text-white transition-all duration-200 opacity-60 cursor-not-allowed"
-              style={{
-                background: 'linear-gradient(135deg, var(--sobi-green) 0%, rgba(66, 184, 131, 0.8) 100%)',
-              }}
-              disabled
-            >
-              준비 중입니다
-            </button>
+            {product.description && product.description !== '(NULL)' ? (
+              <p className="text-base leading-relaxed text-[var(--text-secondary)]">
+                {product.description}
+              </p>
+            ) : (
+              <span 
+                className="block w-full py-3 px-4 font-semibold transition-all duration-200 text-center text-2xl"
+              >
+                상세설명 준비 중
+                <span className="inline-block ml-1">
+                  <span className="animate-dots">.</span>
+                  <span className="animate-dots" style={{ animationDelay: '0.2s' }}>.</span>
+                  <span className="animate-dots" style={{ animationDelay: '0.4s' }}>.</span>
+                  <span className="animate-dots" style={{ animationDelay: '0.6s' }}>.</span>
+                  <span className="animate-dots" style={{ animationDelay: '0.8s' }}>.</span>
+                </span>
+              </span>
+            )}
           </div>
         </div>
       </div>
