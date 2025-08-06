@@ -3,15 +3,22 @@ package com.sobi.sobi_backend.service;
 import com.sobi.sobi_backend.entity.Customer;
 import com.sobi.sobi_backend.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class CustomerService {
 
     @Autowired
     private CustomerRepository customerRepository;
+
+
 
     // 회원가입
     public Customer registerCustomer(String userId, String password, Integer gender, Integer age) {
@@ -37,5 +44,82 @@ public class CustomerService {
     // ID로 고객 조회 (프로필 조회용)
     public Optional<Customer> getCustomerById(Integer id) {
         return customerRepository.findById(id);
+    }
+
+    // 비회원 계정 생성 (패스워드는 외부에서 암호화된 것을 받음)
+    public Customer createGuestAccount(String encodedPassword) {
+        try {
+            System.out.println("비회원 계정 생성 시작");
+
+            // 1. SHA-256 기반 guest ID 생성
+            String guestId = generateGuestId();
+
+            // 2. Customer 객체 생성
+            Customer guestCustomer = new Customer();
+            guestCustomer.setUserId(guestId);
+            guestCustomer.setUserPasswd(encodedPassword);  // 이미 암호화된 패스워드 사용
+            guestCustomer.setGender(null);  // 비회원은 성별 정보 없음
+            guestCustomer.setAge(null);     // 비회원은 나이 정보 없음
+
+            // 3. DB 저장
+            Customer savedCustomer = customerRepository.save(guestCustomer);
+
+            System.out.println("비회원 계정 생성 완료: userId=" + guestId + ", customerId=" + savedCustomer.getId());
+            return savedCustomer;
+
+        } catch (Exception e) {
+            System.err.println("비회원 계정 생성 실패: " + e.getMessage());
+            throw new RuntimeException("비회원 계정 생성 중 오류 발생", e);
+        }
+    }
+
+    // SHA-256 기반 guest ID 생성
+    private String generateGuestId() {
+        try {
+            // 현재 시각 + UUID를 조합하여 고유성 보장
+            String input = System.currentTimeMillis() + UUID.randomUUID().toString();
+
+            // SHA-256 해시 생성
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(input.getBytes());
+
+            // 바이트 배열을 16진수 문자열로 변환
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+
+            // 앞 10자리만 사용
+            String hashSubstring = hexString.toString().substring(0, 10);
+
+            // "guest" + 10자리 해시
+            String guestId = "guest" + hashSubstring;
+
+            System.out.println("생성된 guest ID: " + guestId);
+            return guestId;
+
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256은 JDK 표준이므로 이 예외는 발생하지 않아야 함
+            throw new RuntimeException("SHA-256 알고리즘을 찾을 수 없음", e);
+        }
+    }
+
+    // 10자리 난수 비밀번호 생성
+    public String generateRandomPassword() {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder();
+
+        for (int i = 0; i < 10; i++) {
+            int index = random.nextInt(characters.length());
+            password.append(characters.charAt(index));
+        }
+
+        System.out.println("생성된 임시 비밀번호 길이: " + password.length());
+        return password.toString();
     }
 }
