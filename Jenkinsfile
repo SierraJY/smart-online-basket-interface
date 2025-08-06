@@ -7,9 +7,6 @@ pipeline {
 
     stages {
         stage('Build') {
-            when {
-                branch 'develop'
-            }
             steps {
                 echo "Building Docker images..."
                 sh "docker compose -f $COMPOSE_FILE build"
@@ -17,18 +14,12 @@ pipeline {
         }
 
         stage('Test') {
-            when {
-                branch 'develop'
-            }
             steps {
                 echo "Running tests..."
             }
         }
 
         stage('Deploy') {
-            when {
-                branch 'develop'
-            }
             steps {
                 echo "Deploying develop branch..."
                 sh "docker compose -f $COMPOSE_FILE up -d"
