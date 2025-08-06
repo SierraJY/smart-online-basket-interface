@@ -3,7 +3,7 @@ Configuration settings for RFID Minimal System
 """
 
 # Basket identification
-BASKET_ID = "1"  # Default basket ID
+BASKET_ID = 1  # Default basket ID
 
 # MQTT Configuration
 # These settings will be used when publishing to MQTT
