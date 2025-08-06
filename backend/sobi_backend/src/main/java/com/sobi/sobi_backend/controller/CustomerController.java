@@ -90,6 +90,41 @@ public class CustomerController {
         }
     }
 
+    // 비회원 로그인 처리 (POST /api/customers/guest-login)
+    @PostMapping("/guest-login")
+    public ResponseEntity<?> guestLogin() {
+        try {
+            System.out.println("비회원 로그인 요청 받음");
+
+            // 1. 10자리 난수 비밀번호 생성
+            String rawPassword = customerService.generateRandomPassword();
+
+            // 2. 비밀번호 암호화
+            String encodedPassword = passwordEncoder.encode(rawPassword);
+
+            // 3. 비회원 계정 생성 (암호화된 패스워드 전달)
+            Customer guestCustomer = customerService.createGuestAccount(encodedPassword);
+
+            // 4. 액세스 토큰만 생성 (리프레시 토큰 없음)
+            String accessToken = jwtUtil.generateToken(guestCustomer.getUserId(), guestCustomer.getId());
+
+            // 5. 성공 응답 생성
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "비회원 로그인 성공");
+            response.put("accessToken", accessToken);
+            response.put("userId", guestCustomer.getUserId());
+            response.put("customerId", guestCustomer.getId());
+
+            System.out.println("비회원 로그인 완료: userId=" + guestCustomer.getUserId() + ", customerId=" + guestCustomer.getId());
+            return ResponseEntity.ok(response); // 200 OK
+        } catch (Exception e) {
+            System.err.println("비회원 로그인 실패: " + e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "비회원 로그인 처리 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error); // 500 Internal Server Error
+        }
+    }
+
     // 로그아웃 메서드 제거 - SecurityConfig의 CustomLogoutHandler에서 처리
     // POST /api/customers/logout 요청은 이제 Spring Security의 로그아웃 필터에서 자동 처리
 
