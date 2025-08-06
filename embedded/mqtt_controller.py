@@ -47,6 +47,7 @@ rfid_system_running = False
 cart_manager = None
 sensor_manager = None
 last_published_cart_data = None  # Store the last published cart data
+lcd = None
 
 def setup_logging(level: str = "INFO") -> None:
     """Set up logging configuration"""
@@ -65,7 +66,7 @@ def run_rfid_system(stop_event):
     """Run the RFID system in a separate thread"""
     global cart_manager, sensor_manager
     
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     logger.info("Starting RFID system thread")
     
     try:
@@ -150,9 +151,9 @@ def run_rfid_system(stop_event):
 
 def start_rfid_system():
     """Start the RFID system in a separate thread"""
-    global rfid_thread, stop_event, rfid_system_running
+    global rfid_thread, stop_event, rfid_system_running, lcd
     
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     
     if rfid_system_running:
         logger.info("RFID system is already running")
@@ -166,14 +167,39 @@ def start_rfid_system():
     rfid_thread.daemon = True
     rfid_thread.start()
     
+    # Initialize the LCD display
+    if lcd is None:
+        try:
+            from embedded.lcd_indicator import LCDPanel
+            lcd = LCDPanel(i2c_expander='PCF8574', 
+                          address=0x27,
+                          port=1, 
+                          cols=16, 
+                          rows=2, 
+                          dotsize=8,
+                          charmap='A00',
+                          auto_linebreaks=True,
+                          backlight_enabled=True)
+            logger.info("LCD initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize LCD: {e}")
+            lcd = None
+
+    if lcd:
+        try:
+            lcd.backlight_enabled = True
+            lcd.print_total_price(0)
+        except Exception as e:
+            logger.error("LCD 찐빠 발생 @@@@@@@@@@@@@@@@@")
+    
     rfid_system_running = True
     logger.info("RFID system started")
 
 def stop_rfid_system():
     """Stop the running RFID system"""
-    global rfid_thread, stop_event, rfid_system_running
+    global rfid_thread, stop_event, rfid_system_running, lcd
     
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     
     if not rfid_system_running:
         logger.info("RFID system is not running")
@@ -185,40 +211,49 @@ def stop_rfid_system():
     # Wait for the thread to finish
     if rfid_thread and rfid_thread.is_alive():
         rfid_thread.join(timeout=1.0)  # Wait up to 10 seconds
-        
+    
+    # Clean up the LCD display
+    if lcd:
+        try:
+            lcd.backlight_enabled = False
+            lcd.clear()
+            # lcd.close(clear=True)
+            logger.info("LCD display cleared and closed")
+        except Exception as e:
+            logger.error(f"Error clearing LCD display: {e}")
+        finally:
+            lcd = None
+
     rfid_system_running = False
     logger.info("RFID system stopped")
 
-def display_total():
+def display_total(payload: dict):
     """Display the total on LCD screen"""
-    global cart_manager
     
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     
-    if not cart_manager:
-        logger.warning("Cart manager not available, cannot display total")
+    # Check if payload contains totalprice
+    if "totalprice" not in payload:
+        logger.error("Payload does not contain 'totalprice'")
         return
     
-    # Get cart summary
-    cart_summary = cart_manager.get_cart_summary()
-    confirmed_items = cart_summary["confirmed_items"]
+    # Check if basketid is same as configured
+    if "basketid" in payload and payload["basketid"] != BASKET_ID:
+        logger.error(f"Basket ID mismatch: {payload['basketid']} != {BASKET_ID}")
+        return
     
-    # Format cart data
-    cart_data = format_cart_for_mqtt(confirmed_items, BASKET_ID)
+    # Check if lcd is initialized
+    if lcd is None:
+        logger.error("LCD is not initialized")
+        return
     
-    # In a real implementation, you would send this to an LCD display
-    # For now, we'll just log it
-    logger.info(f"TOTAL DISPLAY: {len(confirmed_items)} items in cart")
-    logger.info(f"Cart data: {cart_data}")
-    
-    # TODO: Add actual LCD display code here
-    print(f"\n=== LCD DISPLAY ===")
-    print(f"Total items: {len(confirmed_items)}")
-    print(f"=================\n")
+    logger.info("Displaying total on LCD screen")
+    total_price = payload["totalprice"]
+    lcd.print_total_price(total_price)
 
 def on_connect(client, userdata, flags, rc):
     """Callback when connected to MQTT broker"""
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     logger.info(f"Connected to MQTT broker with result code {rc}")
     
     # Subscribe to control topic
@@ -228,7 +263,7 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     """Callback when message is received"""
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     
     topic = msg.topic
     message_str = msg.payload.decode().strip().lower()
@@ -238,31 +273,32 @@ def on_message(client, userdata, msg):
     try:
         message_json = json.loads(message_str)
         if "msg" in message_json:
-            payload = message_json["msg"].lower()
+            command = message_json["msg"].lower()
         else:
-            payload = message_str
+            command = message_str
     except json.JSONDecodeError:
         # If not JSON, use the raw message
-        payload = message_str
+        command = message_str
     
     # Process commands
-    if payload == "start":
+    if command == "start":
         logger.info("Received START command")
         start_rfid_system()
-    elif payload == "end":
+    elif command == "end":
         logger.info("Received END command")
         stop_rfid_system()
-    elif payload == "total":
+    elif command == "total":
         logger.info("Received TOTAL command")
-        display_total()
+        payload = message_json.get("payload", {})
+        display_total(payload)
     else:
-        logger.warning(f"Unknown command: {payload}")
+        logger.warning(f"Unknown command: {command}")
 
 def main():
     """Main function"""
     # Set up logging
     setup_logging("INFO")
-    logger = logging.getLogger("rfid_controller")
+    logger = logging.getLogger("mqtt_controller")
     
     # Initialize the stop event
     global stop_event
