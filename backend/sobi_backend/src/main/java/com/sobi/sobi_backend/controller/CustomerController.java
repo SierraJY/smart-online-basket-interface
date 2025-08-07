@@ -108,14 +108,16 @@ public class CustomerController {
             // 4. 액세스 토큰만 생성 (리프레시 토큰 없음)
             String accessToken = jwtUtil.generateToken(guestCustomer.getUserId(), guestCustomer.getId());
 
-            // 5. 성공 응답 생성
+            // 5. 성공 응답 생성 (성별, 나이 포함)
             Map<String, Object> response = new HashMap<>();
             response.put("message", "비회원 로그인 성공");
             response.put("accessToken", accessToken);
             response.put("userId", guestCustomer.getUserId());
             response.put("customerId", guestCustomer.getId());
+            response.put("gender", guestCustomer.getGender()); // 0
+            response.put("age", guestCustomer.getAge());       // 0
 
-            System.out.println("비회원 로그인 완료: userId=" + guestCustomer.getUserId() + ", customerId=" + guestCustomer.getId());
+            System.out.println("비회원 로그인 완료: userId=" + guestCustomer.getUserId() + ", customerId=" + guestCustomer.getId() + ", gender=0, age=0");
             return ResponseEntity.ok(response); // 200 OK
         } catch (Exception e) {
             System.err.println("비회원 로그인 실패: " + e.getMessage());
@@ -158,8 +160,9 @@ public class CustomerController {
                 Map<String, Object> response = new HashMap<>();
                 response.put("id", customer.getId());
                 response.put("userId", customer.getUserId());
-                response.put("gender", customer.getGender());
-                response.put("age", customer.getAge());
+                // null인 경우 0으로 변환하여 반환
+                response.put("gender", customer.getGender() != null ? customer.getGender() : 0);
+                response.put("age", customer.getAge() != null ? customer.getAge() : 0);
                 return ResponseEntity.ok(response);
             } else { // 사용자가 존재하지 않으면
                 System.out.println("사용자를 찾을 수 없음: " + principal.getUserId());
@@ -176,8 +179,9 @@ public class CustomerController {
             Map<String, Object> response = new HashMap<>();
             response.put("id", customer.getId());
             response.put("userId", customer.getUserId());
-            response.put("gender", customer.getGender());
-            response.put("age", customer.getAge());
+            // null인 경우 0으로 변환하여 반환
+            response.put("gender", customer.getGender() != null ? customer.getGender() : 0);
+            response.put("age", customer.getAge() != null ? customer.getAge() : 0);
             return ResponseEntity.ok(response);
         }
 

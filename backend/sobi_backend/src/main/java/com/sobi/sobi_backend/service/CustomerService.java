@@ -58,8 +58,8 @@ public class CustomerService {
             Customer guestCustomer = new Customer();
             guestCustomer.setUserId(guestId);
             guestCustomer.setUserPasswd(encodedPassword);  // 이미 암호화된 패스워드 사용
-            guestCustomer.setGender(null);  // 비회원은 성별 정보 없음
-            guestCustomer.setAge(null);     // 비회원은 나이 정보 없음
+            guestCustomer.setGender(0);  // 비회원은 성별 0으로 설정
+            guestCustomer.setAge(0);     // 비회원은 나이 0으로 설정
 
             // 3. DB 저장
             Customer savedCustomer = customerRepository.save(guestCustomer);
