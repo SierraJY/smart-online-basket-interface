@@ -1,0 +1,91 @@
+{
+  "short_name": "SOBI",
+  "name": "SOBI - 스마트 장바구니",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#128211",
+  "background_color": "#128211",
+  "description": "QR코드로 스마트 장바구니와 연동하여 실시간으로 상품을 확인하는 PWA",
+  "orientation": "portrait",
+  "scope": "/",
+  "categories": ["shopping", "utilities"],
+  "lang": "ko",
+  "dir": "ltr",
+  "permissions": ["camera"],
+  "icons": [
+    {
+      "src": "16.png",
+      "type": "image/png",
+      "sizes": "16x16",
+      "purpose": "any"
+    },
+    {
+      "src": "32.png",
+      "type": "image/png",
+      "sizes": "32x32",
+      "purpose": "any"
+    },
+    {
+      "src": "64.png",
+      "type": "image/png",
+      "sizes": "64x64",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "128.png",
+      "type": "image/png",
+      "sizes": "128x128",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "256.png",
+      "type": "image/png",
+      "sizes": "256x256",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "256.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "QR 스캔",
+      "short_name": "스캔",
+      "description": "장바구니 QR 코드 스캔",
+      "url": "/scan",
+      "icons": [
+        {
+          "src": "64.png",
+          "sizes": "64x64"
+        }
+      ]
+    },
+    {
+      "name": "장바구니",
+      "short_name": "장바구니",
+      "description": "스마트 장바구니 확인",
+      "url": "/baskets",
+      "icons": [
+        {
+          "src": "64.png",
+          "sizes": "64x64"
+        }
+      ]
+    }
+  ]
+}
