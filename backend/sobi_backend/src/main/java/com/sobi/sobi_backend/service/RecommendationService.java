@@ -111,8 +111,9 @@ public class RecommendationService {
         Map<String, Object> requestData = new HashMap<>();
 
         requestData.put("user_id", userId);
-        requestData.put("gender", gender != null ? gender.toString() : "0"); // null이면 기본값 0
-        requestData.put("age", age != null ? age : 25); // null이면 기본값 25
+        // null인 경우 0으로 변환하여 전송
+        requestData.put("gender", gender != null ? gender.toString() : "0");
+        requestData.put("age", age != null ? age : 0);
         requestData.put("cart", cartProductIds != null ? cartProductIds : List.of());
         requestData.put("wishlist", wishlistProductIds != null ? wishlistProductIds : List.of());
 
