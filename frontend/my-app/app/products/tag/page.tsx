@@ -164,11 +164,7 @@ export default function TagPage() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}
     >
@@ -181,11 +177,7 @@ export default function TagPage() {
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundColor: 'var(--background)'
       }}
     >
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />

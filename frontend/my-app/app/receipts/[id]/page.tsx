@@ -138,6 +138,7 @@ export default function ReceiptDetailPage() {
   return (
     <main className="min-h-screen py-8 pb-24 flex flex-col items-center bg-white print:py-0 print:pb-0 print:min-h-auto"
       style={{ 
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}
@@ -237,7 +238,7 @@ export default function ReceiptDetailPage() {
           <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
             <p className="mt-1">환불 시 해당 영수증을 지참하시고<br />
             직원에게 환불 신청 바랍니다</p>
-            <p className="text-[11px] text-red-500 mt-3">환불은 영수증 발행 일자 기준 14일 이내 가능합니다</p>
+            <span className="text-[12px] text-red-500">환불은 영수증 발행 일자 기준 14일 이내 가능합니다</span>
           </div>
         </motion.div>
 

@@ -141,6 +141,14 @@ class ToastManager {
     return toast.success(`${userId}님 환영합니다!`, finalConfig);
   }
 
+  // 게스트 로그인 성공 toast
+  static guestLoginSuccess(config?: ToastConfig) {
+    const finalConfig = { ...authConfig, ...config };
+    return toast.success('게스트로 로그인되었습니다!', finalConfig);
+  }
+
+
+
   // 로그아웃 성공 toast
   static logoutSuccess(userId?: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };

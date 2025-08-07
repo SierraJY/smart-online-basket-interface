@@ -55,11 +55,9 @@ export default function SearchModalContent({ onClose }: { onClose: () => void })
     <div
       className="w-full max-w-md p-6 rounded-4xl shadow-lg relative modal-fade-in"
       style={{
-        background: 'var(--search-modal-bg, rgba(255,255,255,0.36))',
-        border: '1.5px solid var(--search-modal-border, rgba(255,255,255,0.18))',
-        boxShadow: '0 8px 32px 0 rgba(189, 189, 189, 0.33)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
+        background: 'var(--background)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
         color: 'var(--foreground)',
         transition: 'background 0.6s, color 0.6s, border 0.6s',
       }}

@@ -41,7 +41,7 @@
 
 :root {
   --input-background: #ffffff;
-  --background: #ffffff;
+  --background: #e1f2e3;
   --foreground: #171717;
   /* --input-foreground: #171717; */
   --input-border: #cccccc;
@@ -55,21 +55,18 @@
   --search-modal-border: rgba(255,255,255,0.18);
   
   /* SOBI 브랜드 컬러 */
-  --sobi-green: #42b883;
+  --sobi-green: #21ce80;
   --sobi-green-light: rgba(18, 130, 17, 0.1);
   --sobi-green-lighter: rgba(18, 130, 17, 0.05);
   --sobi-green-border: rgba(18, 130, 17, 0.2);
   --sobi-green-border-light: rgba(18, 130, 17, 0.1);
   
-  /* 배경 이미지 오버레이 (라이트모드) */
-  --background-overlay: rgba(255, 255, 255, 0.4);
-  --background-overlay-light: rgba(255, 255, 255, 0.2);
-  --background-overlay-heavy: rgba(255, 255, 255, 0.7);
+
 }
 
 .dark {
   --input-background: #222222;
-  --background: #121212;
+  --background: #2e2d2d;
   --foreground: #eeeeee;
   /* --input-foreground: #ffffff; */
   --input-border: #444444;
@@ -83,16 +80,13 @@
   --search-modal-border: rgba(160,160,180,0.13);
   
   /* SOBI 브랜드 컬러 (다크모드) */
-  --sobi-green: #4ade80;  /* 다크모드에서는 더 밝은 그린 */
+  --sobi-green: #1a6d39;  /* 다크모드에서는 더 밝은 그린 */
   --sobi-green-light: rgba(74, 222, 128, 0.15);
   --sobi-green-lighter: rgba(74, 222, 128, 0.08);
   --sobi-green-border: rgba(74, 222, 128, 0.25);
   --sobi-green-border-light: rgba(74, 222, 128, 0.15);
   
-  /* 배경 이미지 오버레이 (다크모드) */
-  --background-overlay: rgba(18, 18, 18, 0.85);
-  --background-overlay-light: rgba(18, 18, 18, 0.75);
-  --background-overlay-heavy: rgba(18, 18, 18, 0.92);
+
 }
 
 .dark body {
@@ -104,14 +98,7 @@ html {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
-  /* 상태바 영역까지 배경 이미지 커버 */
-  background-image: 
-    linear-gradient(var(--background-overlay), var(--background-overlay)),
-    url('/paper2.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
+  background-color: var(--background);
   min-height: 100vh;
   min-height: 100dvh; /* 동적 뷰포트 높이 */
 }
@@ -153,36 +140,7 @@ textarea {
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 
-/* 배경 이미지 유틸리티 클래스 */
-.background-paper {
-  background-image: 
-    linear-gradient(var(--background-overlay), var(--background-overlay)),
-    url('/paper2.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
-}
 
-.background-paper-heavy {
-  background-image: 
-    linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-    url('/paper2.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-.background-paper-light {
-  background-image: 
-    linear-gradient(var(--background-overlay-light), var(--background-overlay-light)),
-    url('/paper2.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-attachment: fixed;
-}
 
 @keyframes shake {
   0% { transform: translateX(0); }
@@ -261,6 +219,8 @@ textarea {
     typewriter 2s steps(12, end) 0.5s forwards,
     blink 1s 1.5s infinite;
   width: 0;
+  box-sizing: border-box;
+  max-width: fit-content;
 }
 
 /* 부드러운 흔들림 애니메이션 */

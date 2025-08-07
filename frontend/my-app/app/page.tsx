@@ -301,14 +301,10 @@ export default function Home() {
   // 커스텀 훅 사용할 때 로딩 시 에러 처리
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
-      style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        color: 'var(--foreground)' 
-      }}
+              style={{ 
+          backgroundColor: 'var(--background)',
+          color: 'var(--foreground)' 
+        }}
     >
       <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">메인 페이지로 이동 중...</div>
@@ -318,13 +314,9 @@ export default function Home() {
   
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
-      style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}
+              style={{ 
+          backgroundColor: 'var(--background)'
+        }}
     >
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
       <div className="font-bold text-lg text-red-500 mb-2">문제가 발생했어요!</div>
@@ -341,6 +333,7 @@ export default function Home() {
   return (
     <main className="min-h-screen py-16 pb-28 flex flex-col items-center"
       style={{ 
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}

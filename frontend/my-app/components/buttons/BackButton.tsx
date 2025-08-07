@@ -33,7 +33,7 @@ export default function BackButton({ className = '', onClick }: BackButtonProps)
       }}
       aria-label="뒤로 가기"
     >
-      <ChevronLeft size={30} color="var(--foreground)" strokeWidth={1.2} />
+      <ChevronLeft size={30} color="var(--foreground)" strokeWidth={1.8} />
     </button>
   )
 } 

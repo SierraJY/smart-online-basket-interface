@@ -115,7 +115,7 @@ export default function Footer() {
                 <PackageSearch size={22} color="var(--foreground)" strokeWidth={1.5} />
               </Link> */}
               <Link href="/baskets" className="hover:scale-110" title="장바구니">
-                <ShoppingBasket size={24} color="#128211" strokeWidth={1.2} />
+                <ShoppingBasket size={24} color="var(--sobi-green)" strokeWidth={1.2} />
               </Link>
               <motion.button
                 onClick={() => setIsCategoryModalOpen(true)}

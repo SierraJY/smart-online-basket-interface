@@ -132,9 +132,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen background-paper">
+    <div className="min-h-screen background-paper"
+    style={{
+      backgroundColor: 'var(--background)',
+    }}
+    >
       {/* 헤더 */}
-      <div className="bg-[var(--footer-background)] backdrop-blur-xs border-b border-[var(--footer-border)] shadow-sm">
+      <div className="bg-[var(--background)] backdrop-blur-xs border-b border-[var(--footer-border)] shadow-sm">
         <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
           <button 
             onClick={() => router.back()}
@@ -189,7 +193,7 @@ export default function ProfilePage() {
         >
           {/* 찜목록 */}
           <Link href="/favorite">
-            <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+            <div className="bg-[var(---background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-900/30 transition-colors">
                   <Heart size={24} className="text-red-500" />
@@ -204,7 +208,7 @@ export default function ProfilePage() {
 
           {/* 구매내역 */}
           <Link href={"/receipts"}>
-            <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+            <div className="bg-[var(--background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
               <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-900/30 transition-colors">
                   <ShoppingBag size={24} className="text-blue-500" />
@@ -218,7 +222,7 @@ export default function ProfilePage() {
           </Link>
 
           {/* AI 추천 */}
-          <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
+          <div className="bg-[var(--background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
                 <Sparkles size={24} className="text-purple-500" />
@@ -237,7 +241,7 @@ export default function ProfilePage() {
           <div className="border-t border-[var(--footer-border)] my-4"></div>
 
           {/* 회원 탈퇴 */}
-          <div className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
+          <div className="bg-[var(--background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                 <Trash2 size={24} className="text-red-500" />

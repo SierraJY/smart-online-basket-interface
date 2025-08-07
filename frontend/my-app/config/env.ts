@@ -8,9 +8,9 @@ export const config = {
     : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://13.125.215.242'),
   
   // 프론트엔드 서버 설정 - 환경에 따라 자동 전환
-  FRONTEND_PORT: process.env.NEXT_PUBLIC_FRONTEND_PORT || '3000',
+  FRONTEND_PORT: process.env.NEXT_PUBLIC_FRONTEND_PORT || '3001',
   FRONTEND_URL: isDevelopment
-    ? (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000')
+    ? (process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3001')
     : (process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://13.125.215.242'),
   
   // 개발 환경 설정
@@ -50,6 +50,7 @@ export const config = {
       // 고객 관련
       CUSTOMERS: `${this.API_BASE_URL}/api/customers`,
       CUSTOMERS_LOGIN: `${this.API_BASE_URL}/api/customers/login`,
+      CUSTOMERS_GUEST_LOGIN: `${this.API_BASE_URL}/api/customers/guest-login`,
       CUSTOMERS_SIGNUP: `${this.API_BASE_URL}/api/customers/signup`,
       CUSTOMERS_PROFILE: `${this.API_BASE_URL}/api/customers/profile`,
       CUSTOMERS_LOGOUT: `${this.API_BASE_URL}/api/customers/logout`,

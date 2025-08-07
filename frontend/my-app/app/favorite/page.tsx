@@ -32,11 +32,7 @@ export default function FavoritePage() {
   if (!isLoggedIn || !token) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}>
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
@@ -54,11 +50,7 @@ export default function FavoritePage() {
   if (loading || productsLoading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}>
       <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
@@ -71,11 +63,7 @@ export default function FavoritePage() {
   if (productsError) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}>
       <FaExclamationTriangle className="text-red-400 text-5xl mb-3 animate-bounce" />
@@ -94,11 +82,7 @@ export default function FavoritePage() {
   if (!favoriteProducts || favoriteProducts.length === 0) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}>
       <FaHeart size={56} className="mb-4 text-gray-300 dark:text-gray-700 animate-pulse" />
@@ -120,6 +104,7 @@ export default function FavoritePage() {
     <main
       className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
       style={{
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
       }}

@@ -232,14 +232,7 @@ export default function ReceiptsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
         style={{ 
-          backgroundImage: `
-            linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-            url('/paper2.jpg')
-          `,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
+          backgroundColor: 'var(--background)',
           color: 'var(--foreground)' 
         }}
       >
@@ -255,14 +248,7 @@ export default function ReceiptsPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
         style={{ 
-          backgroundImage: `
-            linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-            url('/paper2.jpg')
-          `,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
+          backgroundColor: 'var(--background)',
           color: 'var(--foreground)' 
         }}
       >
@@ -286,14 +272,7 @@ export default function ReceiptsPage() {
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
-        backgroundImage: `
-          linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundColor: 'var(--background)'
       }}
     >
       <div className="w-full max-w-4xl px-4">
@@ -319,7 +298,7 @@ export default function ReceiptsPage() {
         <div className="mb-2 p-4 relative"
         >
           <div className="relative">
-            {/* 빨간색 손그림 테두리 */}
+            {/*  테두리 */}
             <div 
               className="absolute inset-0 border-2 border-[var(--sobi-green)] rounded-sm"
               style={{
@@ -333,6 +312,7 @@ export default function ReceiptsPage() {
             {/* 제목 영역 - 테두리 위에 겹치도록 */}
             <div className="relative z-10 bg-white px-4 py-1 rounded-full inline-block mx-auto mb-4 flex justify-center"
                  style={{ 
+                  backgroundColor: 'var(--background)',
                    marginTop: '-12px',
                    left: '50%',
                    transform: 'translateX(-50%) translateY(-50%)'
@@ -375,7 +355,7 @@ export default function ReceiptsPage() {
         <div className="p-4 rounded-lg"
           style={{
             border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
+            backgroundColor: 'var(--background)',
           }}
         >
           {pagedReceipts.length === 0 ? (

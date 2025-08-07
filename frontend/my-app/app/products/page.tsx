@@ -98,14 +98,7 @@ export default function ProductsPage() {
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
       style={{ 
-        backgroundImage: `
-          linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}
     >
@@ -118,14 +111,7 @@ export default function ProductsPage() {
   if (error) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[250px] py-10 text-center"
       style={{ 
-        backgroundImage: `
-          linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}
     >
@@ -159,14 +145,7 @@ export default function ProductsPage() {
       style={{ 
         color: 'var(--foreground)', 
         transition: 'background-color 1.6s, color 1.6s',
-        backgroundImage: `
-          linear-gradient(var(--background-overlay), var(--background-overlay)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundColor: 'var(--background)'
       }}
     >
       <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>전체 상품 목록</h1>

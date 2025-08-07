@@ -125,14 +125,7 @@ export default function TestPage() {
       <main className="min-h-screen flex items-center justify-center"
         style={{ 
           color: 'var(--foreground)',
-          backgroundImage: `
-            linear-gradient(var(--background-overlay), var(--background-overlay)),
-            url('/paper2.jpg')
-          `,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed'
+          backgroundColor: 'var(--background)'
         }}
       >
         <div className="text-center">
@@ -147,14 +140,7 @@ export default function TestPage() {
     <main className="min-h-screen py-8 px-4"
       style={{ 
         color: 'var(--foreground)',
-        backgroundImage: `
-          linear-gradient(var(--background-overlay), var(--background-overlay)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundColor: 'var(--background)'
       }}
     >
       <div className="max-w-4xl mx-auto">

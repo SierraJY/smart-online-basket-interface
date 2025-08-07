@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [userId, setUserId] = useState('')
   const [userPasswd, setUserPasswd] = useState('')
   const [message, setMessage] = useState('')
-  const { login, loginLoading, loginError } = useAuth()
+  const { login, loginLoading, loginError, guestLogin, guestLoginLoading, guestLoginError } = useAuth()
   const router = useRouter()
 
 // page(login).tsx 중 handleLogin 부분만 수정!
@@ -34,25 +34,38 @@ const handleLogin = async (e: React.FormEvent) => {
   }
 }
 
+// 게스트 로그인 처리
+const handleGuestLogin = async () => {
+  setMessage('')
+  try {
+    await guestLogin()
+    
+    // 게스트 로그인 성공 시 메시지 표시
+    ToastManager.guestLoginSuccess()
+    
+    // router.push를 0ms 딜레이 후 실행 (state가 완전히 반영되도록)
+    setTimeout(() => {
+      router.push('/')
+    }, 0)
+  } catch (err: any) {
+    setMessage(err?.message || guestLoginError?.message || '게스트 로그인 실패')
+  }
+}
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center py-16"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}
     >
       <div className="w-full max-w-md px-6">
         {/* 헤더 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-2">
           <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--sobi-green)' }}>
-            SOBI
+            로그인
           </h1>
-          <p className="text-lg font-semibold text-[var(--foreground)]">로그인</p>
         </div>
 
         {/* 로그인 폼 */}
@@ -60,7 +73,6 @@ const handleLogin = async (e: React.FormEvent) => {
           style={{
             background: 'var(--search-modal-bg, rgba(255,255,255,0.85))',
             border: '1.5px solid var(--search-modal-border, rgba(255,255,255,0.18))',
-            boxShadow: '0 8px 32px 0 rgba(189, 189, 189, 0.33)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             borderRadius: '24px',
@@ -106,14 +118,46 @@ const handleLogin = async (e: React.FormEvent) => {
                 </div>
               ) : "로그인"}
             </button>
+
+            {/* 구분선 */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500" style={{ backgroundColor: 'var(--search-modal-bg)' }}>
+                  또는
+                </span>
+              </div>
+            </div>
+
+            {/* 게스트 로그인 버튼 */}
+            <button
+              type="button"
+              onClick={handleGuestLogin}
+              className="w-full rounded-xl py-3 text-base font-bold transition-all shadow-lg active:scale-95 border-2"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: 'var(--sobi-green)',
+                borderColor: 'var(--sobi-green)'
+              }}
+              disabled={guestLoginLoading}
+            >
+              {guestLoginLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  게스트 로그인 중...
+                </div>
+              ) : "게스트로 시작하기"}
+            </button>
           </form>
 
           {/* 에러 메시지 */}
-          {(message || loginError) && (
+          {(message || loginError || guestLoginError) && (
             <div className="mt-4 p-3 rounded-lg text-sm text-center"
               style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#dc2626' }}
             >
-              {message || loginError?.message}
+              {message || loginError?.message || guestLoginError?.message}
             </div>
           )}
 

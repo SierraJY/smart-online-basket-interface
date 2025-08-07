@@ -151,7 +151,7 @@ export default function SearchBar({
         type="submit"
         className="rounded-xl py-3 text-sm font-semibold mt-1"
         style={{
-          backgroundColor: 'var(--foreground)',
+          backgroundColor: 'var(--sobi-green)',
           color: 'var(--background)',
           boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
           transition: 'background 0.4s, color 0.4s',

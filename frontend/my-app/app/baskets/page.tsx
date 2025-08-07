@@ -232,7 +232,7 @@ export default function BasketsPage() {
   const clearBasketId = useClearBasketId();
   const clearBasketData = useClearBasketData();
 
-  // ⬇️ 2. 토큰/basketId 없으면 스캔으로 (결제 완료 후에는 제외)
+  // 2. 토큰/basketId 없으면 스캔으로 (결제 완료 후에는 제외)
   const [isCheckoutCompleted, setIsCheckoutCompleted] = useState(false);
   
   useEffect(() => {
@@ -240,13 +240,13 @@ export default function BasketsPage() {
     if (!basketId && !isCheckoutCompleted) router.replace('/scan');
   }, [token, basketId, router, isCheckoutCompleted]);
 
-  // ⬇️ 3. 활성화 필요시만 start 호출
+  // 3. 활성화 필요시만 start 호출
   const [activateError, setActivateError] = useState<string | null>(null);
   const activatedBasketId = useActivatedBasketId();
   const needsActivation = basketId && (activatedBasketId !== basketId);
   const { mutate: activate, isPending } = useActivateBasket(basketId, token);
 
-  // ⬇️ 4. 활성화 완료 후 SSE 재연결 트리거
+  // 4. 활성화 완료 후 SSE 재연결 트리거
   const triggerSSEReconnect = useCallback(() => {
     console.log('[BasketsPage] SSE 재연결 트리거');
     reconnectGlobalSSE();
@@ -274,7 +274,7 @@ export default function BasketsPage() {
     });
   }, [token, basketId, needsActivation, activate, setBasketId, router]);
 
-  // ⬇️ 5. 전역 SSE는 layout에서 실행되므로 store의 데이터만 사용
+  // 5. 전역 SSE는 layout에서 실행되므로 store의 데이터만 사용
   const basket = useBasketData();
   const validItems = useMemo(() => {
     if (!basket || !basket.items) return [];
@@ -303,7 +303,7 @@ export default function BasketsPage() {
     }
   }, [basket, isInitialDataLoaded]);
 
-  // ⬇️ 7. 수동 재연결 버튼 (테스트용)
+  // 7. 수동 재연결 버튼 (테스트용)
   const handleReconnect = useCallback(() => {
     reconnectGlobalSSE();
   }, []);
@@ -342,8 +342,8 @@ export default function BasketsPage() {
         clearBasketData(); // Zustand store의 basketData 초기화
         setBasketId(''); // 추가 안전장치
         
-        // 홈페이지로 이동
-        router.push('/');
+        // 프로필 페이지로 이동
+        router.push('/profile');
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('결제 실패:', errorData);
@@ -361,11 +361,11 @@ export default function BasketsPage() {
     }
   }, [token, basket, clearBasketId, clearBasketData, setBasketId, router]);
 
-  // ⬇️ 8. UI 분기 (로그인/QR 미스 등)
+  // 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ color: 'var(--foreground)' }}
+        style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
       >
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
@@ -428,14 +428,7 @@ export default function BasketsPage() {
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
-        backgroundImage: `
-          linear-gradient(var(--background-overlay), var(--background-overlay)),
-          url('/paper2.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
+        backgroundColor: 'var(--background)'
       }}
     >
       <div className="w-full max-w-3xl">
@@ -705,7 +698,7 @@ export default function BasketsPage() {
                 장바구니에 상품을 담으면 추천 상품이 나옵니다!
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                AI가 당신의 구매 패턴을 분석해서 맞춤 상품을 추천해드려요
+                AI가 사용자의 구매 패턴을 분석해서 맞춤 상품을 추천해드려요
               </p>
             </div>
           )}

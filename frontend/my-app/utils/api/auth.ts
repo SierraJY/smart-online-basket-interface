@@ -8,6 +8,13 @@ export async function loginApi({ userId, userPasswd }: { userId: string; userPas
   return await res.json();
 }
 
+// 게스트 로그인 API
+export async function guestLoginApi() {
+  const res = await apiClient.post(config.API_ENDPOINTS.CUSTOMERS_GUEST_LOGIN, {}, false);
+  if (!res.ok) throw new Error("게스트 로그인 실패");
+  return await res.json();
+}
+
 // 회원가입 API
 export async function signupApi({ userId, password, gender, age }: { userId: string; password: string; gender: number; age: number }) {
   const res = await apiClient.post(config.API_ENDPOINTS.CUSTOMERS_SIGNUP, { userId, password, gender, age }, false);

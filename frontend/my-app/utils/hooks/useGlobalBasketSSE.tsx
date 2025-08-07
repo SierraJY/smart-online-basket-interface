@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from "react";
 import { useBasketStore } from "@/store/useBasketStore";
 import { useAuth } from "@/utils/hooks/useAuth";
@@ -37,9 +39,22 @@ async function refreshTokenIfNeeded(): Promise<string | null> {
   try {
     const currentToken = authStorage.getAccessToken();
     const refreshToken = authStorage.getRefreshToken();
+    const isGuestUser = authStorage.isGuestUser();
     
-    if (!currentToken || !refreshToken) {
-      console.log('[Global SSE] 토큰이 없습니다');
+    if (!currentToken) {
+      console.log('[Global SSE] accessToken이 없습니다');
+      return null;
+    }
+    
+    // 게스트 사용자는 refreshToken 없이도 사용 가능
+    if (isGuestUser) {
+      console.log('[Global SSE] 게스트 사용자 - refreshToken 없이 진행');
+      return currentToken;
+    }
+    
+    // 일반 사용자는 refreshToken 필요
+    if (!refreshToken) {
+      console.log('[Global SSE] 일반 사용자이지만 refreshToken이 없습니다');
       return null;
     }
     
@@ -61,6 +76,12 @@ async function refreshTokenIfNeeded(): Promise<string | null> {
       const currentTime = Math.floor(Date.now() / 1000);
       
       if (decoded.exp < currentTime) {
+        // 게스트 사용자는 토큰 갱신 불가능
+        if (isGuestUser) {
+          console.log('[Global SSE] 게스트 사용자 토큰 만료 - 재로그인 필요');
+          return null;
+        }
+        
         console.log('[Global SSE] 토큰이 만료되어 갱신을 시도합니다');
         const data = await refreshTokenApi(refreshToken);
         authStorage.setAccessToken(data.accessToken);

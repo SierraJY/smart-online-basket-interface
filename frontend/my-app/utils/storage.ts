@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   ACCESS_TOKEN: 'accessToken',
   REFRESH_TOKEN: 'refreshToken',
   USER_ID: 'userId',
+  GUEST_USER: 'guestUser',
   THEME: 'theme',
   BASKET_ID: 'basketId',
   ACTIVATED_BASKET_ID: 'activatedBasketId',
@@ -69,6 +70,7 @@ export const storage = {
       STORAGE_KEYS.ACCESS_TOKEN,
       STORAGE_KEYS.REFRESH_TOKEN,
       STORAGE_KEYS.USER_ID,
+      STORAGE_KEYS.GUEST_USER,
     ]);
   },
 
@@ -91,15 +93,21 @@ export const authStorage = {
   getAccessToken: () => storage.get(STORAGE_KEYS.ACCESS_TOKEN),
   getRefreshToken: () => storage.get(STORAGE_KEYS.REFRESH_TOKEN),
   getUserId: () => storage.get(STORAGE_KEYS.USER_ID),
+  getGuestUser: () => storage.get(STORAGE_KEYS.GUEST_USER) === 'true',
   
   setAccessToken: (token: string) => storage.set(STORAGE_KEYS.ACCESS_TOKEN, token),
   setRefreshToken: (token: string) => storage.set(STORAGE_KEYS.REFRESH_TOKEN, token),
   setUserId: (id: string) => storage.set(STORAGE_KEYS.USER_ID, id),
+  setGuestUser: (isGuest: boolean) => storage.set(STORAGE_KEYS.GUEST_USER, isGuest.toString()),
   
   clear: () => storage.clearAuth(),
   
   isLoggedIn: (): boolean => {
     return !!authStorage.getAccessToken();
+  },
+  
+  isGuestUser: (): boolean => {
+    return authStorage.getGuestUser();
   },
 };
 

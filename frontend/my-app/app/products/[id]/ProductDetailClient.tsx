@@ -15,7 +15,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center background-paper">
+      <main className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">상품 정보를 불러오는 중...</p>
@@ -26,7 +27,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
   
   if (error || !product) {
     return (
-      <main className="min-h-screen flex items-center justify-center background-paper">
+      <main className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
           <p className="text-[var(--foreground)] mb-4">상품을 찾을 수 없습니다</p>
           <button 
@@ -52,7 +54,8 @@ export default function ProductDetailClient({ id }: { id: string }) {
   const tags = parseTags(product.tag || '');
 
   return (
-    <main className="pb-24 min-h-screen background-paper">
+    <main className="pb-24 min-h-screen"
+      style={{ backgroundColor: 'var(--background)' }}>
       {/* 상품 이미지 영역 */}
       <div className="relative w-full h-[45vh] sm:h-[400px] overflow-hidden">
         <Image

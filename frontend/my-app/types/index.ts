@@ -35,6 +35,13 @@ export interface SignupRequest {
   age: number;
 }
 
+export interface GuestLoginResponse {
+  customerId: number;
+  message: string;
+  accessToken: string;
+  userId: string;
+}
+
 // 상품 관련 타입
 export interface Product {
   id: number;

@@ -10,6 +10,7 @@ import ReactQueryProvider from "@/components/ReactQueryProvider"
 import GlobalBasketSSE from '@/components/GlobalBasketSSE'
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider'
 import { Toaster } from 'react-hot-toast'
+import GuestTimeOut from '@/components/GuestTimeOut'
 
 export { metadata }
 
@@ -69,11 +70,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReactQueryProvider>
           <ServiceWorkerProvider />
           <GlobalBasketSSE />
-          {/* <TransitionWrapper> */}
+          <TransitionWrapper>
+          <GuestTimeOut />
             <Suspense fallback={null}>
               {children}
             </Suspense>
-          {/* </TransitionWrapper> */}
+          </TransitionWrapper>
           {/* 왼쪽 하단 모바일 접속 권장 문구 */}
           <div className="fixed left-4 bottom-4 text-sm text-left text-gray-600 z-40">
             <p className='text-lg hidden md:block' style={{color: 'var(--foreground)'}}>
@@ -81,12 +83,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
           {/* BackButton */}
-          <div className="fixed bottom-6 right-4 z-50">
+          <div className="fixed bottom-7 right-4 z-50">
             <BackButton />
           </div>
           <Footer />
           {/* MenuButton */}
-          <div className="fixed bottom-6 left-4 z-50">
+          <div className="fixed bottom-7 left-4 z-50">
             <MenuButton />
           </div>
           
@@ -98,9 +100,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 background: 'var(--footer-background)',
                 color: 'var(--foreground)',
                 border: '1px solid var(--footer-border)',
-              },
+              }
             }}
           />
+          
+
         </ReactQueryProvider>
       </body>
     </html>

@@ -1,10 +1,12 @@
+'use client'
+
 // useAuth.tsx
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useCallback } from 'react';
 import { useBasketStore } from '@/store/useBasketStore';
 import { config } from '@/config/env';
 import { authStorage } from '@/utils/storage';
-import { loginApi, signupApi, refreshToken as refreshTokenApi } from '@/utils/api/auth';
+import { loginApi, signupApi, guestLoginApi, refreshToken as refreshTokenApi } from '@/utils/api/auth';
 
 // JWT 토큰 디코딩 함수
 function decodeJWT(token: string) {
@@ -66,6 +68,7 @@ export function useAuth() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null); // 회원가입 후 자동 로그인용
+  const [isGuestUser, setIsGuestUser] = useState<boolean>(false); // 게스트 사용자 여부
 
   // 토큰 자동 갱신 함수
   const refreshAccessToken = useCallback(async () => {
@@ -140,22 +143,27 @@ export function useAuth() {
     const storedAccessToken = authStorage.getAccessToken();
     const storedRefreshToken = authStorage.getRefreshToken();
     const storedUserId = authStorage.getUserId();
+    const storedIsGuestUser = authStorage.isGuestUser();
     
     // 저장된 토큰이 있고 만료되지 않았다면 사용
     if (storedAccessToken && !isTokenExpired(storedAccessToken)) {
       setAccessToken(storedAccessToken);
       setRefreshToken(storedRefreshToken);
       setUserId(storedUserId);
+      // 게스트 사용자 상태도 로드
+      setIsGuestUser(storedIsGuestUser);
     } else if (storedRefreshToken && !isTokenExpired(storedRefreshToken)) {
       // Access token이 만료되었지만 refresh token이 유효한 경우 자동 갱신
       setRefreshToken(storedRefreshToken);
       setUserId(storedUserId);
+      setIsGuestUser(storedIsGuestUser);
       refreshAccessToken().catch(console.error);
     } else {
       // 모든 토큰이 만료되었거나 유효하지 않은 경우 로그아웃 상태로 설정
       if (storedAccessToken || storedRefreshToken) {
         authStorage.clear();
       }
+      setIsGuestUser(false);
     }
     
     setMounted(true);
@@ -165,11 +173,19 @@ export function useAuth() {
       const newAccessToken = authStorage.getAccessToken();
       const newRefreshToken = authStorage.getRefreshToken();
       const newUserId = authStorage.getUserId();
+      const newIsGuestUser = authStorage.isGuestUser();
       
       if (newAccessToken && !isTokenExpired(newAccessToken)) {
         setAccessToken(newAccessToken);
         setRefreshToken(newRefreshToken);
         setUserId(newUserId);
+        setIsGuestUser(newIsGuestUser);
+      } else {
+        // 토큰이 없으면 모든 상태 초기화
+        setAccessToken(null);
+        setRefreshToken(null);
+        setUserId(null);
+        setIsGuestUser(false);
       }
     }
     window.addEventListener('storage', sync);
@@ -195,6 +211,23 @@ export function useAuth() {
       setUserId(data.userId);
       
       // 커스텀 이벤트로 다른 곳 강제 갱신
+      window.dispatchEvent(new Event("authChanged"));
+    },
+  });
+
+  // 게스트 로그인 mutation
+  const guestLoginMutation = useMutation({
+    mutationFn: guestLoginApi,
+    onSuccess: (data) => {
+      // 게스트 로그인 성공 시 토큰 저장 (refreshToken 없음)
+      authStorage.setAccessToken(data.accessToken);
+      authStorage.setUserId(data.userId);
+      setAccessToken(data.accessToken);
+      setUserId(data.userId);
+      // 게스트 사용자임을 표시
+      authStorage.setGuestUser(true);
+      setIsGuestUser(true);
+      
       window.dispatchEvent(new Event("authChanged"));
     },
   });
@@ -251,6 +284,7 @@ export function useAuth() {
     setRefreshToken(null);
     setUserId(null);
     setTempPassword(null); // 임시 비밀번호도 삭제
+    setIsGuestUser(false); // 게스트 사용자 상태도 초기화
     
     // 장바구니 관련 데이터 삭제
     const clearBasketId = useBasketStore.getState().clearBasketId;
@@ -261,6 +295,7 @@ export function useAuth() {
     // localStorage에서 basket-storage도 직접 삭제
     localStorage.removeItem("basket-storage");
     
+    // 상태 변경 이벤트 발생
     window.dispatchEvent(new Event("authChanged"));
   };
 
@@ -287,10 +322,15 @@ export function useAuth() {
     refreshToken,
     mounted,
     isRefreshing,
+    isGuestUser,
     loginMutation,
     login: loginMutation.mutateAsync,
     loginLoading: loginMutation.isPending,
     loginError: loginMutation.error,
+    guestLoginMutation,
+    guestLogin: guestLoginMutation.mutateAsync,
+    guestLoginLoading: guestLoginMutation.isPending,
+    guestLoginError: guestLoginMutation.error,
     signupMutation,
     signup, // 새로운 signup 함수 추가
     signupLoading: signupMutation.isPending,

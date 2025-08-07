@@ -46,22 +46,17 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center py-16"
       style={{ 
-        background: 'linear-gradient(var(--background-overlay-heavy), var(--background-overlay-heavy)), url("/paper2.jpg")',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}
     >
       <div className="w-full max-w-md px-6">
         {/* 헤더 */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-2">
           <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--sobi-green)' }}>
-            SOBI
+            회원가입
           </h1>
-          <p className="text-lg font-semibold text-[var(--foreground)]">회원가입</p>
         </div>
 
         {/* 회원가입 폼 */}
@@ -69,7 +64,6 @@ export default function SignupPage() {
           style={{
             background: 'var(--search-modal-bg, rgba(255,255,255,0.85))',
             border: '1.5px solid var(--search-modal-border, rgba(255,255,255,0.18))',
-            boxShadow: '0 8px 32px 0 rgba(189, 189, 189, 0.33)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             borderRadius: '24px',
