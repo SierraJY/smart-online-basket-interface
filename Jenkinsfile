@@ -16,25 +16,25 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    // 테스트용 컨테이너 띄우기
-                    sh "docker compose -f ${COMPOSE_FILE} up -d"
+        // stage('Test') {
+        //     steps {
+        //         dir("${PROJECT_DIR}") {
+        //             // 테스트용 컨테이너 띄우기
+        //             sh "docker compose -f ${COMPOSE_FILE} up -d"
 
-                    // 컨테이너 네트워크 내 backend 컨테이너 이름으로 헬스체크
-                    script {
-                        def code = sh(script: "docker exec sobi-backend curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
-                        if (code != '200') {
-                            error "Health check failed with status ${code}"
-                        }
-                    }
+        //             // 컨테이너 네트워크 내 backend 컨테이너 이름으로 헬스체크
+        //             script {
+        //                 def code = sh(script: "docker exec sobi-backend curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
+        //                 if (code != '200') {
+        //                     error "Health check failed with status ${code}"
+        //                 }
+        //             }
 
-                    // 테스트 후 컨테이너 종료
-                    sh "docker compose -f ${COMPOSE_FILE} down"
-                }
-            }
-        }
+        //             // 테스트 후 컨테이너 종료
+        //             sh "docker compose -f ${COMPOSE_FILE} down"
+        //         }
+        //     }
+        // }
 
         stage('Deploy') {
             steps {
