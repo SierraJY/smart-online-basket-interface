@@ -16,16 +16,36 @@ pipeline {
                     script {
                         def ACTIVE
                         def INACTIVE
-                        if (fileExists(ACTIVE_FILE)) {
-                            ACTIVE = readFile(ACTIVE_FILE).trim()
-                        } else {
+                        
+                        // 실제 실행 중인 컨테이너를 확인해서 활성 색상 감지
+                        def runningContainers = sh(
+                            script: "docker ps --format '{{.Names}}' | grep -E 'sobi-(frontend|backend)-(blue|green)' || true",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "Running containers: ${runningContainers}"
+                        
+                        if (runningContainers.contains('sobi-frontend-blue') || runningContainers.contains('sobi-backend-blue')) {
                             ACTIVE = 'blue'
+                        } else if (runningContainers.contains('sobi-frontend-green') || runningContainers.contains('sobi-backend-green')) {
+                            ACTIVE = 'green'
+                        } else {
+                            // 실행 중인 컨테이너가 없으면 파일에서 읽거나 기본값 사용
+                            if (fileExists(ACTIVE_FILE)) {
+                                ACTIVE = readFile(ACTIVE_FILE).trim()
+                            } else {
+                                ACTIVE = 'blue'
+                            }
                         }
+                        
                         echo "Current active color: ${ACTIVE}"
                         INACTIVE = (ACTIVE == 'blue') ? 'green' : 'blue'
                         echo "Deploying to: ${INACTIVE}"
                         env.ACTIVE = ACTIVE
                         env.INACTIVE = INACTIVE
+                        
+                        // nginx 설정 동기화는 Switch Nginx 단계에서만 수행
+                        echo "Active environment detected: ${ACTIVE}"
                     }
                 }
             }
@@ -70,6 +90,7 @@ pipeline {
                     script {
                         echo "Switching Nginx config to ${env.INACTIVE}"
                         sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.conf"
+                        sh "docker exec sobi-nginx nginx -t"  // 설정 파일 검증
                         sh "docker exec sobi-nginx nginx -s reload"
                     }
                 }
