@@ -13,7 +13,7 @@ x-airflow-common: &airflow-common
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
   networks:
-    - sobi-network
+    - sobi-net
   depends_on:
     - airflow-init
 
@@ -58,10 +58,11 @@ services:
     volumes:
       - ./mlflow/mlruns:/bitnami/mlflow/artifacts
     networks:
-      - sobi-network
+      - sobi-net
     depends_on:
       - db
 
 networks:
-  sobi-network:
+  sobi-net:
     external: true
+
