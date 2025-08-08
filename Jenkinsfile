@@ -22,9 +22,9 @@ pipeline {
                     // 테스트용 컨테이너 띄우기
                     sh "docker compose -f ${COMPOSE_FILE} up -d"
 
-                    // 간단한 API 헬스체크 테스트
+                    // 컨테이너 네트워크 내 backend 컨테이너 이름으로 헬스체크
                     script {
-                        def code = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
+                        def code = sh(script: "docker exec sobi-backend curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
                         if (code != '200') {
                             error "Health check failed with status ${code}"
                         }
