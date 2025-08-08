@@ -2,137 +2,60 @@ pipeline {
     agent any
 
     environment {
-        BLUE_COMPOSE = 'docker-compose.blue.yaml'
-        GREEN_COMPOSE = 'docker-compose.green.yaml'
-        CORE_COMPOSE = 'docker-compose.core.yaml'
-        ACTIVE_FILE = '.active_color'
+        COMPOSE_FILE = 'docker-compose.web.yaml'
+        PROJECT_NAME = 'sobi-web'
         PROJECT_DIR = '.'
     }
 
     stages {
-        stage('Determine Active Color') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    script {
-                        def ACTIVE
-                        def INACTIVE
-                        
-                        // 실제 실행 중인 컨테이너를 확인해서 활성 색상 감지
-                        def runningContainers = sh(
-                            script: "docker ps --format '{{.Names}}' | grep -E 'sobi-(frontend|backend)-(blue|green)' || true",
-                            returnStdout: true
-                        ).trim()
-                        
-                        echo "Running containers: ${runningContainers}"
-                        
-                        if (runningContainers.contains('sobi-frontend-blue') || runningContainers.contains('sobi-backend-blue')) {
-                            ACTIVE = 'blue'
-                        } else if (runningContainers.contains('sobi-frontend-green') || runningContainers.contains('sobi-backend-green')) {
-                            ACTIVE = 'green'
-                        } else {
-                            // 실행 중인 컨테이너가 없으면 파일에서 읽거나 기본값 사용
-                            if (fileExists(ACTIVE_FILE)) {
-                                ACTIVE = readFile(ACTIVE_FILE).trim()
-                            } else {
-                                ACTIVE = 'blue'
-                            }
-                        }
-                        
-                        echo "Current active color: ${ACTIVE}"
-                        INACTIVE = (ACTIVE == 'blue') ? 'green' : 'blue'
-                        echo "Deploying to: ${INACTIVE}"
-                        env.ACTIVE = ACTIVE
-                        env.INACTIVE = INACTIVE
-                        
-                        // nginx 설정 동기화는 Switch Nginx 단계에서만 수행
-                        echo "Active environment detected: ${ACTIVE}"
-                    }
-                }
-            }
-        }
-
         stage('Build') {
             steps {
                 dir("${PROJECT_DIR}") {
-                    script {
-                        def composeFile = (env.INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
-                        echo "Building images using ${composeFile}"
-                        sh "docker compose -f ${composeFile} build"
-                    }
+                    sh "docker compose -f ${COMPOSE_FILE} build"
                 }
             }
         }
 
-        stage('Deploy to Inactive') {
+        stage('Test') {
             steps {
                 dir("${PROJECT_DIR}") {
+                    // 테스트용 컨테이너 띄우기
+                    sh "docker compose -f ${COMPOSE_FILE} up -d"
+
+                    // 간단한 API 헬스체크 테스트
                     script {
-                        def composeFile = (env.INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
-                        def projectName = "sobi-${env.INACTIVE}"
-
-                        echo "Deploying to inactive environment: ${env.INACTIVE}"
-                        sh "docker compose -f ${composeFile} -p ${projectName} up -d"
-
-                        echo "Waiting for backend to be ready..."
-                        def backendService = (env.INACTIVE == 'blue') ? 'backend-blue' : 'backend-green'
-                        retry(6) {
-                            sleep(time: 5, unit: 'SECONDS')
-                            sh "docker compose -f ${composeFile} -p ${projectName} ps ${backendService} | grep 'Up'"
+                        def code = sh(script: "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
+                        if (code != '200') {
+                            error "Health check failed with status ${code}"
                         }
                     }
+
+                    // 테스트 후 컨테이너 종료
+                    sh "docker compose -f ${COMPOSE_FILE} down"
                 }
             }
         }
 
-        stage('Switch Nginx') {
+        stage('Deploy') {
             steps {
                 dir("${PROJECT_DIR}") {
-                    script {
-                        echo "Switching Nginx config to ${env.INACTIVE}"
-                        sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.conf"
-                        sh "docker exec sobi-nginx nginx -t"  // 설정 파일 검증
-                        sh "docker exec sobi-nginx nginx -s reload"
-                    }
-                }
-            }
-        }
+                    // 기존 서비스 내리고
+                    sh "docker compose -f ${COMPOSE_FILE} -p ${PROJECT_NAME} down --remove-orphans"
 
-        stage('Cleanup Old Version') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    script {
-                        def composeFile = (env.ACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
-                        def projectName = "sobi-${env.ACTIVE}"
-
-                        echo "Stopping old environment: ${env.ACTIVE}"
-                        sh "docker compose -f ${composeFile} -p ${projectName} down --remove-orphans"
-                    }
-                }
-            }
-        }
-
-        stage('Update Active Color') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    echo "Updating active color to ${env.INACTIVE}"
-                    writeFile file: ACTIVE_FILE, text: "${env.INACTIVE}"
+                    // 새 버전 서비스 올리기
+                    sh "docker compose -f ${COMPOSE_FILE} -p ${PROJECT_NAME} up -d"
                 }
             }
         }
     }
 
     post {
-    success {
-        echo "✅ Blue-Green Deployment completed successfully!"
+        success {
+            echo "✅ Build, Test, Deploy 완료!"
+        }
+        failure {
+            echo "❌ 실패. 롤백 또는 확인 필요."
+            sh "docker compose -f ${COMPOSE_FILE} -p ${PROJECT_NAME} down --remove-orphans || true"
+        }
     }
-    failure {
-        echo "❌ Deployment failed. Please check logs."
-        sh """
-        echo "🧹 Cleaning up leftover containers..."
-        docker compose -f docker-compose.blue.yaml -p sobi-blue down --remove-orphans || true
-        docker compose -f docker-compose.green.yaml -p sobi-green down --remove-orphans || true
-        """
-    }
-}
-
 }

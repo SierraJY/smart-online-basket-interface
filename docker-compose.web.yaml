@@ -1,29 +1,29 @@
 services:
-  frontend-blue:
+  frontend:
     build:
       context: ./frontend/my-app
       dockerfile: Dockerfile
-    image: sobi/frontend:blue
-    container_name: sobi-frontend-blue
+    image: sobi/frontend
+    container_name: sobi-frontend
     environment:
       - NODE_ENV=production
       - PORT=3000
       - NEXT_PUBLIC_API_BASE_URL=https://13.125.215.242
       - NEXT_PUBLIC_FRONTEND_URL=https://13.125.215.242
     depends_on:
-      - backend-blue
+      - backend
     restart: unless-stopped
     expose:
       - "3000"
     networks:
       - sobi-net
   
-  backend-blue:
+  backend:
     build:
       context: ./backend/sobi_backend
       dockerfile: ../Dockerfile
-    image: sobi/backend:blue
-    container_name: sobi-backend-blue
+    image: sobi/backend
+    container_name: sobi-backend
     ports:
       - "8080:8080"
     environment:
