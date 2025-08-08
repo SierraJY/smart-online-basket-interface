@@ -106,6 +106,11 @@ pipeline {
         }
         failure {
             echo "❌ Deployment failed. Please check logs."
+            sh """
+            echo "🧹 Cleaning up leftover containers..."
+            docker compose -f docker-compose.blue.yaml -p sobi-blue down --remove-orphans || true
+            docker compose -f docker-compose.green.yaml -p sobi-green down --remove-orphans || true
+            """
         }
     }
 }
