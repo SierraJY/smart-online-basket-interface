@@ -6,7 +6,7 @@ pipeline {
         GREEN_COMPOSE = 'docker-compose.green.yaml'
         CORE_COMPOSE = 'docker-compose.core.yaml'
         ACTIVE_FILE = '.active_color'
-        PROJECT_DIR = 'S13P11B103'
+        PROJECT_DIR = '.'
     }
 
     stages {
