@@ -17,6 +17,38 @@ let globalEventSource: EventSource | null = null;
 let globalBasketData: any = null;
 let globalListeners = new Set<((data: any) => void)>();
 let isConnecting = false;
+let connectionCheckInterval: NodeJS.Timeout | null = null;
+
+// 연결 상태 체크 함수
+function startConnectionCheck() {
+  // 기존 체크 인터벌 정리
+  if (connectionCheckInterval) {
+    clearInterval(connectionCheckInterval);
+  }
+  
+  // 15초마다 연결 상태 체크
+  connectionCheckInterval = setInterval(() => {
+    const readyState = globalEventSource?.readyState;
+    const stateText = readyState === 0 ? 'CONNECTING' : 
+                     readyState === 1 ? 'OPEN' : 
+                     readyState === 2 ? 'CLOSED' : 'UNKNOWN';
+    
+    console.log(`[Global SSE] 연결 상태 체크 - 상태: ${stateText}, 연결중: ${isConnecting}, 리스너 수: ${globalListeners.size}`);
+    
+    // 연결이 끊어진 경우 재연결 시도
+    if (readyState === 2 && !isConnecting) {
+      console.log('[Global SSE] 연결이 끊어짐 감지 - 재연결 시도');
+      reconnectGlobalSSE();
+    }
+  }, 15000); // 15초마다 체크
+}
+
+function stopConnectionCheck() {
+  if (connectionCheckInterval) {
+    clearInterval(connectionCheckInterval);
+    connectionCheckInterval = null;
+  }
+}
 
 // SSE 연결 함수
 async function connectGlobalSSE(basketId: string | null, token: string | null) {
@@ -41,7 +73,7 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
   console.log('[Global SSE] 연결 시도 - basketId:', basketId);
 
   try {
-    const url = `${config.API_BASE_URL}/api/baskets/my/stream?basketId=${basketId}`;
+    const url = `${config.API_BASE_URL}/api/baskets/my/stream`;
     
     // EventSourcePolyfill 사용
     globalEventSource = new EventSourcePolyfill(url, {
@@ -61,6 +93,9 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
       globalEventSource.onopen = () => {
         console.log("[Global SSE] SSE 연결 성공");
         isConnecting = false;
+        
+        // 15초마다 연결 상태 체크 시작
+        startConnectionCheck();
       };
 
       // 바구니 데이터 처리 함수
@@ -148,7 +183,17 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
       });
 
       globalEventSource.onerror = (error: Event) => {
-        console.log("[Global SSE] 연결 에러 - 자동 재연결 대기");
+        console.log("[Global SSE] 연결 에러 - 자동 재연결 대기", error);
+        
+        // 에러 타입별 처리
+        if (error instanceof Event) {
+          const target = error.target as EventSource;
+          if (target && target.readyState === EventSource.CLOSED) {
+            console.log("[Global SSE] 연결이 정상적으로 종료됨");
+          } else {
+            console.log("[Global SSE] 네트워크 에러 발생");
+          }
+        }
         
         if (globalEventSource) {
           globalEventSource.close();
@@ -156,6 +201,15 @@ async function connectGlobalSSE(basketId: string | null, token: string | null) {
         }
         
         isConnecting = false;
+        stopConnectionCheck(); // 연결 체크 중지
+        
+        // 3초 후 자동 재연결 시도
+        setTimeout(() => {
+          if (!isConnecting) {
+            console.log("[Global SSE] 자동 재연결 시도");
+            reconnectGlobalSSE();
+          }
+        }, 3000);
       };
     }
 
@@ -241,6 +295,7 @@ export function disconnectGlobalSSE() {
   globalBasketData = null;
   globalListeners.clear();
   isConnecting = false;
+  stopConnectionCheck(); // 연결 체크 중지
 }
 
 // 수동 재연결 함수
