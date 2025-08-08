@@ -1,31 +1,31 @@
 services:
-  frontend-green:
-    build: 
+  frontend:
+    build:
       context: ./frontend/my-app
       dockerfile: Dockerfile
-    image: sobi/frontend:green
-    container_name: sobi-frontend-green
+    image: sobi/frontend:blue
+    container_name: sobi-frontend-blue
     environment:
       - NODE_ENV=production
       - PORT=3000
       - NEXT_PUBLIC_API_BASE_URL=https://13.125.215.242
       - NEXT_PUBLIC_FRONTEND_URL=https://13.125.215.242
     depends_on:
-      - backend-green
+      - backend
     restart: unless-stopped
     expose:
       - "3000"
     networks:
       - sobi-net
   
-  backend-green:
+  backend:
     build:
-      context: ./backend/sobi_backend 
-      dockerfile: ../Dockerfile        
-    image: sobi/backend:green
-    container_name: sobi-backend-green
+      context: ./backend/sobi_backend
+      dockerfile: ../Dockerfile
+    image: sobi/backend:blue
+    container_name: sobi-backend-blue
     ports:
-      - "8081:8080"
+      - "8080:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/sobi
       - SPRING_DATASOURCE_USERNAME=sobiuser
