@@ -90,7 +90,9 @@ pipeline {
                     script {
                         echo "Switching Nginx config to ${env.INACTIVE}"
                         sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.conf"
-                        sh "docker exec sobi-nginx nginx -t"  // 설정 파일 검증
+                        sh "ls -l ./nginx/nginx.conf"
+                        sh "cat ./nginx/nginx.conf | head -20"
+                        sh "docker exec sobi-nginx nginx -t"  // 오류 시 실패로 종료
                         sh "docker exec sobi-nginx nginx -s reload"
                     }
                 }
