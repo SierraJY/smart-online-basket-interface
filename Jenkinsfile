@@ -70,7 +70,7 @@ pipeline {
                     script {
                         echo "Switching Nginx config to ${env.INACTIVE}"
                         sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.conf"
-                        sh "docker compose -f ${CORE_COMPOSE} exec nginx nginx -s reload"
+                        sh "docker exec sobi-nginx nginx -s reload"
                     }
                 }
             }
