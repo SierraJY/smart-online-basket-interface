@@ -4,8 +4,9 @@ pipeline {
     environment {
         BLUE_COMPOSE = 'docker-compose.blue.yaml'
         GREEN_COMPOSE = 'docker-compose.green.yaml'
-        ACTIVE_FILE = '/var/jenkins_home/.active_color'
-        PROJECT_DIR = 'S13P11B103'  // docker-compose 파일들이 있는 경로
+        CORE_COMPOSE = 'docker-compose.core.yaml'
+        ACTIVE_FILE = '.active_color'
+        PROJECT_DIR = 'S13P11B103'
     }
 
     stages {
@@ -13,6 +14,8 @@ pipeline {
             steps {
                 dir("${PROJECT_DIR}") {
                     script {
+                        def ACTIVE
+                        def INACTIVE
                         if (fileExists(ACTIVE_FILE)) {
                             ACTIVE = readFile(ACTIVE_FILE).trim()
                         } else {
@@ -21,6 +24,8 @@ pipeline {
                         echo "Current active color: ${ACTIVE}"
                         INACTIVE = (ACTIVE == 'blue') ? 'green' : 'blue'
                         echo "Deploying to: ${INACTIVE}"
+                        env.ACTIVE = ACTIVE
+                        env.INACTIVE = INACTIVE
                     }
                 }
             }
@@ -30,7 +35,7 @@ pipeline {
             steps {
                 dir("${PROJECT_DIR}") {
                     script {
-                        def composeFile = (INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
+                        def composeFile = (env.INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
                         echo "Building images using ${composeFile}"
                         sh "docker compose -f ${composeFile} build"
                     }
@@ -42,18 +47,17 @@ pipeline {
             steps {
                 dir("${PROJECT_DIR}") {
                     script {
-                        def composeFile = (INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
-                        def projectName = "sobi-${INACTIVE}"
+                        def composeFile = (env.INACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
+                        def projectName = "sobi-${env.INACTIVE}"
 
-                        echo "Deploying to inactive environment: ${INACTIVE}"
+                        echo "Deploying to inactive environment: ${env.INACTIVE}"
                         sh "docker compose -f ${composeFile} -p ${projectName} up -d"
 
                         echo "Waiting for backend to be ready..."
-                        // 최대 30초까지 재시도
-                        def backendPort = (INACTIVE == 'blue') ? '8080' : '8081'
-                        retry(6) { // 6번 * 5초 = 30초
+                        def backendService = (env.INACTIVE == 'blue') ? 'backend-blue' : 'backend-green'
+                        retry(6) {
                             sleep(time: 5, unit: 'SECONDS')
-                            sh "curl -f http://localhost:${backendPort}/actuator/health"
+                            sh "docker compose -f ${composeFile} exec ${backendService} curl -f http://${backendService}:8080/actuator/health"
                         }
                     }
                 }
@@ -64,9 +68,9 @@ pipeline {
             steps {
                 dir("${PROJECT_DIR}") {
                     script {
-                        echo "Switching Nginx config to ${INACTIVE}"
-                        sh "cp ./nginx/nginx.${INACTIVE}.conf ./nginx/nginx.conf"
-                        sh "docker exec sobi-nginx nginx -s reload"
+                        echo "Switching Nginx config to ${env.INACTIVE}"
+                        sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.conf"
+                        sh "docker compose -f ${CORE_COMPOSE} exec nginx nginx -s reload"
                     }
                 }
             }
@@ -76,11 +80,11 @@ pipeline {
             steps {
                 dir("${PROJECT_DIR}") {
                     script {
-                        def composeFile = (ACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
-                        def projectName = "sobi-${ACTIVE}"
+                        def composeFile = (env.ACTIVE == 'blue') ? BLUE_COMPOSE : GREEN_COMPOSE
+                        def projectName = "sobi-${env.ACTIVE}"
 
-                        echo "Stopping old environment: ${ACTIVE}"
-                        sh "docker compose -f ${composeFile} -p ${projectName} down -v --remove-orphans"
+                        echo "Stopping old environment: ${env.ACTIVE}"
+                        sh "docker compose -f ${composeFile} -p ${projectName} down --remove-orphans"
                     }
                 }
             }
@@ -89,8 +93,8 @@ pipeline {
         stage('Update Active Color') {
             steps {
                 dir("${PROJECT_DIR}") {
-                    echo "Updating active color to ${INACTIVE}"
-                    writeFile file: ACTIVE_FILE, text: "${INACTIVE}"
+                    echo "Updating active color to ${env.INACTIVE}"
+                    writeFile file: ACTIVE_FILE, text: "${env.INACTIVE}"
                 }
             }
         }
