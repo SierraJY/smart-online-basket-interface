@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        BLUE_COMPOSE = 'docker-compose.yaml'
+        BLUE_COMPOSE = 'docker-compose.blue.yaml'
         GREEN_COMPOSE = 'docker-compose.green.yaml'
         ACTIVE_FILE = '/var/jenkins_home/.active_color'
     }
