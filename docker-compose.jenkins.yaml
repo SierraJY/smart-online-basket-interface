@@ -10,6 +10,7 @@ services:
       - "8088:8080"
       - "50000:50000"
     volumes:
+      - ./nginx:/app/nginx # 호스트의 nginx 디렉토리를 컨테이너의 /app/nginx에 마운트
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
