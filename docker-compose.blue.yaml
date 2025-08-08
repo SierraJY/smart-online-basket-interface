@@ -1,5 +1,5 @@
 services:
-  frontend:
+  frontend-blue:
     build:
       context: ./frontend/my-app
       dockerfile: Dockerfile
@@ -18,7 +18,7 @@ services:
     networks:
       - sobi-net
   
-  backend:
+  backend-blue:
     build:
       context: ./backend/sobi_backend
       dockerfile: ../Dockerfile
