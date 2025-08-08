@@ -89,7 +89,7 @@ pipeline {
                 dir("${PROJECT_DIR}") {
                     script {
                         echo "Switching Nginx config to ${env.INACTIVE}"
-                        sh "cp ./nginx/nginx.${env.INACTIVE}.conf /app/nginx/nginx.conf"
+                        sh "cp ./nginx/nginx.${env.INACTIVE}.conf ./nginx/nginx.${env.INACTIVE}.conf"
                         sh "docker exec sobi-nginx nginx -t"  // 설정 파일 검증
                         sh "docker exec sobi-nginx nginx -s reload"
                     }
