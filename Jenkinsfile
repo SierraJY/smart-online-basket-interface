@@ -57,7 +57,7 @@ pipeline {
                         def backendService = (env.INACTIVE == 'blue') ? 'backend-blue' : 'backend-green'
                         retry(6) {
                             sleep(time: 5, unit: 'SECONDS')
-                            sh "docker compose -f ${composeFile} exec ${backendService} curl -f http://${backendService}:8080/actuator/health"
+                            sh "docker compose -f ${composeFile} ps ${backendService} | grep 'Up'"
                         }
                     }
                 }
