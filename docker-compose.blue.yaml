@@ -32,9 +32,6 @@ services:
       - SPRING_DATASOURCE_PASSWORD=sobipass
       - SPRING_DATA_REDIS_HOST=redis
       - APP_MQTT_BROKER_URL=tcp://172.26.6.236:1883
-    depends_on:
-      - db
-      - redis
     restart: unless-stopped
     networks:
       - sobi-net
