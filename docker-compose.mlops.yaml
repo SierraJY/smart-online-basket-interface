@@ -2,9 +2,9 @@ x-airflow-common: &airflow-common
   image: apache/airflow:2.7.1-python3.10
   environment:
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@db:5432/airflow
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@sobi-db:5432/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://web-redis:6379/0
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@db:5432/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@sobi-db:5432/airflow
     AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -14,36 +14,38 @@ x-airflow-common: &airflow-common
     - ./airflow/plugins:/opt/airflow/plugins
   networks:
     - sobi-net
-  depends_on:
-    - airflow-init
 
 services:
   airflow-webserver:
     <<: *airflow-common
     command: webserver
+    depends_on:
+      - airflow-init
     ports:
       - "8089:8080"
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    depends_on:
+      - airflow-init
 
   airflow-init:
-    image: apache/airflow:2.8.1
+    image: apache/airflow:2.7.1-python3.10
     restart: no
-    depends_on:
-      - db
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@db/airflow
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@sobi-db:5432/airflow
     command: >
       bash -c "
         airflow db init &&
         airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com
       "
+    networks:
+      - sobi-net
 
   mlflow:
     image: bitnami/mlflow:3.1.4-debian-12-r6
@@ -51,7 +53,7 @@ services:
       - "5000:5000"
     command: >
       mlflow server
-      --backend-store-uri postgresql+psycopg2://airflow:airflow@db:5432/mlflow
+      --backend-store-uri postgresql+psycopg2://airflow:airflow@sobi-db:5432/mlflow
       --default-artifact-root /bitnami/mlflow/artifacts
       --host 0.0.0.0
       --port 5000
@@ -59,10 +61,7 @@ services:
       - ./mlflow/mlruns:/bitnami/mlflow/artifacts
     networks:
       - sobi-net
-    depends_on:
-      - db
 
 networks:
   sobi-net:
     external: true
-
