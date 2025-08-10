@@ -28,7 +28,7 @@ with DAG(
     'weekly_report',
     default_args=default_args,
     description='Weekly report generation pipeline',
-    schedule_interval='0 3 * * 0',  # 매주 일요일 새벽 3시 (한국 시간)
+    schedule_interval='0 4 * * 0',  # 매주 일요일 새벽 4시 (한국 시간)
     start_date=days_ago(1),
     catchup=False,
 ) as dag:
