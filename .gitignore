@@ -38,7 +38,5 @@ Thumbs.db
 
 
 # Airflow
-airflow/logs/*
-airflow/plugins/__pycache__/
-airflow/plugins/*.pyc
+airflow/*
 
