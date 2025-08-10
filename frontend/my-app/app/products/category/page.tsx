@@ -15,6 +15,7 @@ import SearchBar from '@/components/SearchBar'
 import Image from 'next/image';
 import { replaceCategoryName, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CATEGORY_ICONS, CategoryName } from '@/components/categoryIcons'
 
 // 정렬 옵션 타입 정의
 type SortOption = 'id' | 'sales' | 'discount_rate' | 'price_high' | 'price_low'
@@ -32,14 +33,33 @@ export default function CategoryPage() {
   const { products, loading, error } = useProducts()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const sortDropdownRef = useRef<HTMLDivElement>(null)
+      const sortDropdownRef = useRef<HTMLDivElement>(null)
+    const [showTooltip, setShowTooltip] = useState(false)
+    const tooltipRef = useRef<HTMLDivElement>(null)
+
+    // 외부 클릭 시 툴팁 닫기
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+          setShowTooltip(false)
+        }
+      }
+
+      if (showTooltip) {
+        document.addEventListener('mousedown', handleClickOutside)
+      }
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }, [showTooltip])
 
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
   const sortFromURL = useMemo(() => (searchParams.get('sort') as SortOption) || 'id', [searchParams])
   
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
-  const [category, setCategory] = useState<string>(categoryFromURL)
+  const [category, setCategory] = useState<CategoryName>(categoryFromURL as CategoryName)
   const [sort, setSort] = useState<SortOption>(sortFromURL)
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState<boolean>(false)
   
@@ -77,7 +97,7 @@ export default function CategoryPage() {
   // 쿼리스트링 sync
   useEffect(() => {
     setKeyword(keywordFromURL)
-    setCategory(categoryFromURL)
+    setCategory(categoryFromURL as CategoryName)
     setSort(sortFromURL)
     setExcludeOutOfStock(excludeOutOfStockFromURL)
   }, [keywordFromURL, categoryFromURL, sortFromURL, excludeOutOfStockFromURL])
@@ -90,7 +110,7 @@ export default function CategoryPage() {
     router.replace(`?${params.toString()}`)
   }
   
-  const onCategoryChange = (val: string) => {
+  const onCategoryChange = (val: CategoryName) => {
     setCategory(val)
     const params = new URLSearchParams(searchParams)
     params.set('category', val)
@@ -122,7 +142,7 @@ export default function CategoryPage() {
   // 필터링
   const filtered: Product[] = products.filter(
     (item: Product) =>
-      (category === '' || item.category === category) &&
+      (category === '전체' || item.category === category) &&
       [item.name, item.description, item.category].join(' ').toLowerCase().includes(keyword.toLowerCase()) &&
       (excludeOutOfStock || item.stock > 0)
   )
@@ -205,13 +225,55 @@ export default function CategoryPage() {
   return (
     <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
       style={{
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}>
       {/* 헤더 */}
-      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>
-        {replaceCategoryName(category)}
-      </h1>
+      <div className="flex items-center justify-center mb-6 mt-10">
+        <div className="relative" ref={tooltipRef}>
+          <div 
+            className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200 touch-manipulation"
+            onClick={() => setShowTooltip(!showTooltip)}
+          >
+            {CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || CATEGORY_ICONS["전체"]}
+          </div>
+          
+          <AnimatePresence>
+            {showTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 rounded-2xl text-sm font-medium whitespace-nowrap z-10"
+                style={{
+                  background: 'var(--sobi-green)',
+                  border: '1px solid var(--footer-border)',
+                  backdropFilter: 'blur(10px) saturate(140%)',
+                  color: 'var(--foreground)',
+                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)'
+                }}
+              >
+                {/* 말풍선 꼬리 */}
+                <div 
+                  className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0"
+                  style={{
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderTop: `8px solid var(--sobi-green)`,
+                    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+                  }}
+                />
+                
+                <div className="text-center  text-white">
+                  <div className="font-semibold">{replaceCategoryName(category)}</div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
       {/* 전체 상품 목록 페이지와 동일하게, 바로 아래에 SearchBar만! */}
       <SearchBar
         keyword={keyword}
@@ -350,21 +412,51 @@ export default function CategoryPage() {
           </div>
         )}
         {pagedProducts.map((item: Product) => (
-          <div key={item.id} className={cardClass}>
+          <div key={item.id} className={`${cardClass} group hover:scale-105 transition-all duration-300`}>
             <ShakeWrapper item={item}>
-              <div className="w-full h-[100px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
-                <Link href={`/products/${item.id}`} className="w-full h-full flex items-center justify-center">
+              <div 
+                className="w-full h-[100px] md:h-[110px] mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative"
+                style={{
+                  aspectRatio: '1 / 1',
+                  minHeight: '100px',
+                  maxHeight: '110px',
+                  background: 'linear-gradient(135deg, var(--sobi-green-light) 0%, var(--input-background) 100%)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                <Link href={`/products/${item.id}`} className="w-full h-full block relative">
                   <Image
                     src={item.imageUrl}
                     alt={item.name}
-                    className="object-cover w-full h-full"
-                    style={{ backgroundColor: 'var(--input-background)' }}
-                    width={120}
-                    height={120}
+                    className="object-cover group-hover:scale-110"
+                    style={{ 
+                      backgroundColor: 'var(--input-background)',
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                      borderRadius: '12px',
+                      transition: 'all 0.3s ease'
+                    }}
+                    fill
                     priority={false}
                     loading="lazy"
-                    sizes="(max-width: 768px) 120px, 120px"
+                    sizes="(max-width: 768px) 90px, 90px"
                     quality={85}
+                  />
+                  {/* 그라데이션 오버레이 - 페이드아웃 효과 */}
+                  <div 
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{
+                      background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
+                      opacity: 0.8
+                    }}
+                  />
+                  {/* 테두리 그라데이션 효과 */}
+                  <div 
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+                      opacity: 0.6
+                    }}
                   />
                 </Link>
                 {/* 할인 배지 */}

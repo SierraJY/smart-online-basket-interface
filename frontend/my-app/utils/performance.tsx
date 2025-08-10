@@ -2,16 +2,18 @@
 
 import React from 'react';
 
+import { config } from '@/config/env';
+
 // 환경별 설정
-const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_DEVELOPMENT = config.isDevelopment;
+const IS_PRODUCTION = config.isProduction;
 
 interface PerformanceMetric {
   name: string;
   startTime: number;
   endTime?: number;
   duration?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface PerformanceData {
@@ -49,7 +51,7 @@ class PerformanceMonitor {
   /**
    * 성능 측정 시작
    */
-  startMeasure(name: string, metadata?: Record<string, any>): void {
+  startMeasure(name: string, metadata?: Record<string, unknown>): void {
     if (!this.isEnabled) return;
     
     this.metrics.set(name, {
@@ -76,9 +78,9 @@ class PerformanceMonitor {
     metric.endTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
     metric.duration = metric.endTime - metric.startTime;
 
-    // 개발 환경에서만 상세 로깅
+    // 개발 환경에서만 상세 로깅 (초 단위로 변경)
     if (IS_DEVELOPMENT) {
-      console.log(`[Performance] ${name}: ${metric.duration.toFixed(2)}ms`, metric.metadata);
+      console.log(`[Performance] ${name}: ${(metric.duration / 1000).toFixed(3)}s`, metric.metadata);
     }
     
     return metric.duration;
@@ -93,9 +95,9 @@ class PerformanceMonitor {
     const currentTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const pageLoadTime = currentTime - this.pageLoadStartTime;
     
-    // 개발 환경에서만 로깅
+    // 개발 환경에서만 로깅 (초 단위로 변경)
     if (IS_DEVELOPMENT) {
-      console.log(`[Performance] 페이지 로드 시간: ${pageLoadTime.toFixed(2)}ms`);
+      console.log(`[Performance] 페이지 로드 시간: ${(pageLoadTime / 1000).toFixed(3)}s`);
     }
     
     return pageLoadTime;
@@ -109,7 +111,8 @@ class PerformanceMonitor {
       return null;
     }
     
-    const memory = (performance as any).memory;
+    const memory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
+    if (!memory) return null;
     const usageMB = memory.usedJSHeapSize / 1024 / 1024;
     
     // 개발 환경에서만 로깅
@@ -190,7 +193,7 @@ class PerformanceMonitor {
     
     const data = this.getPerformanceData();
     console.group('[Performance Report]');
-    console.log('페이지 로드 시간:', `${data.pageLoadTime.toFixed(2)}ms`);
+    console.log('페이지 로드 시간:', `${(data.pageLoadTime / 1000).toFixed(3)}s`);
     if (data.memoryUsage) {
       console.log('메모리 사용량:', `${data.memoryUsage.toFixed(2)}MB`);
     }
@@ -209,7 +212,7 @@ class PerformanceMonitor {
     
     // 프로덕션에서는 간단한 로깅 또는 분석 서비스로 전송
     if (coreMetrics.pageLoadTime > 3000) { // 3초 이상 로딩 시
-      console.warn('[Performance] 느린 페이지 로딩 감지:', coreMetrics.pageLoadTime);
+      console.warn('[Performance] 느린 페이지 로딩 감지:', `${(coreMetrics.pageLoadTime / 1000).toFixed(3)}s`);
     }
     
     if (coreMetrics.criticalErrors > 0) {
@@ -243,10 +246,10 @@ class PerformanceMonitor {
         if (entry.entryType === 'navigation') {
           const navEntry = entry as PerformanceNavigationTiming;
           console.log('[Performance] 네비게이션 타이밍:', {
-            domContentLoaded: navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart,
-            loadComplete: navEntry.loadEventEnd - navEntry.loadEventStart,
-            domInteractive: navEntry.domInteractive,
-            domComplete: navEntry.domComplete
+            domContentLoaded: `${((navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart) / 1000).toFixed(3)}s`,
+            loadComplete: `${((navEntry.loadEventEnd - navEntry.loadEventStart) / 1000).toFixed(3)}s`,
+            domInteractive: `${(navEntry.domInteractive / 1000).toFixed(3)}s`,
+            domComplete: `${(navEntry.domComplete / 1000).toFixed(3)}s`
           });
         }
       });
@@ -260,7 +263,7 @@ class PerformanceMonitor {
           const resourceEntry = entry as PerformanceResourceTiming;
           // 느린 리소스만 로깅 (1초 이상)
           if (resourceEntry.duration > 1000) {
-            console.log(`[Performance] 느린 리소스: ${resourceEntry.name} - ${resourceEntry.duration.toFixed(2)}ms`);
+            console.log(`[Performance] 느린 리소스: ${resourceEntry.name} - ${(resourceEntry.duration / 1000).toFixed(3)}s`);
           }
         }
       });
@@ -288,7 +291,7 @@ class PerformanceMonitor {
           
           // 3초 이상 로딩 시에만 로깅
           if (loadTime > 3000) {
-            console.warn('[Performance] 느린 페이지 로딩:', loadTime);
+            console.warn('[Performance] 느린 페이지 로딩:', `${(loadTime / 1000).toFixed(3)}s`);
           }
         }
       });
@@ -296,7 +299,7 @@ class PerformanceMonitor {
 
     try {
       navigationObserver.observe({ entryTypes: ['navigation'] });
-    } catch (error) {
+    } catch {
       // 프로덕션에서는 에러 로깅 생략
     }
   }
@@ -332,10 +335,10 @@ export { performanceMonitor, getPerformanceMonitor };
  * 성능 측정 데코레이터 (함수용)
  */
 export function measurePerformance(name: string) {
-  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, _propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
 
-    descriptor.value = function (...args: any[]) {
+    descriptor.value = function (...args: unknown[]) {
       const monitor = getPerformanceMonitor();
       if (monitor) {
         monitor.startMeasure(name);

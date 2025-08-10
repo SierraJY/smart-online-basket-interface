@@ -4,25 +4,16 @@ import { useState, useEffect, useRef } from "react"
 import { Package, PackageOpen } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { usePathname } from "next/navigation"
-import LogoutButton from './LogoutButton'
+import ProfileButton from './ProfileButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
 
 export default function MenuButton() {
   const [open, setOpen] = useState(false)
-  const [isDark, setIsDark] = useState(false) // 테마는 읽기
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
 
-  // 다크모드 상태 동기화 (읽기만, setTheme 없음)
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'))
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'))
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
+
 
   // ESC로 닫기
   useEffect(() => {
@@ -65,7 +56,7 @@ export default function MenuButton() {
               transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
-              <LogoutButton />
+              <ProfileButton inline />
             </motion.div>
 
             <motion.div
@@ -96,11 +87,11 @@ export default function MenuButton() {
       <button
         onClick={() => setOpen(!open)}
         className={`
-          w-12 h-12 flex items-center justify-center rounded-full
+          w-10 h-10 flex items-center justify-center rounded-full
           z-50 hover:scale-110 transition-all
         `}
         style={{
-          backgroundColor: 'var(--footer-background)',
+          backgroundColor: 'var(--background)',
           border: '1px solid var(--footer-border)',
           backdropFilter: 'blur(10px) saturate(140%)'
         }}

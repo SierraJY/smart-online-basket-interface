@@ -2,15 +2,33 @@
 
 'use client'
 
+import { useEffect } from 'react';
+
 import Link from "next/link";
 import Image from "next/image";
-import { FaHeart, FaExclamationTriangle } from "react-icons/fa";
+import { FaExclamationTriangle } from "react-icons/fa";
 import { useAuth } from '@/utils/hooks/useAuth'
 import { useFavorite } from "@/utils/hooks/useFavorite";
 import { useProducts, Product } from "@/utils/hooks/useProducts";
 import FavoriteIcon from '@/components/FavoriteIcon';
 
 export default function FavoritePage() {
+  // CSS 애니메이션 정의
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slowPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // 로그인 상태 및 토큰
   const { isLoggedIn, accessToken: token } = useAuth()
 
@@ -85,14 +103,14 @@ export default function FavoritePage() {
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)' 
       }}>
-      <FaHeart size={56} className="mb-4 text-gray-300 dark:text-gray-700 animate-pulse" />
+      <Image src="/icon/favorite.png" alt="찜하기 아이콘" width={56} height={56} className="mb-4" style={{ animation: 'slowPulse 3s ease-in-out infinite' }} />
       <div className="font-semibold text-lg text-[var(--foreground)] mb-2">찜한 상품이 없습니다!</div>
       <div className="text-sm text-gray-400 mb-6">
-        마음에 드는 상품에 <FaHeart className="inline mb-1 text-red-400" />를 눌러 찜해보세요.
+        상품의 상세페이지에서 <Image src="/icon/favorite.png" alt="찜하기" width={24} height={24} className="inline w-4 h-4 mb-1" />를 눌러 찜해보세요
       </div>
       <Link
         href="/products"
-        className="inline-block px-6 py-2 bg-neutral-900 dark:bg-neutral-800 text-white rounded-full shadow hover:bg-neutral-700 transition-all"
+        className="inline-block px-6 py-2 bg-[var(--sobi-green)] text-white rounded-full shadow hover:bg-neutral-700 transition-all"
       >
         상품 전체 보기
       </Link>

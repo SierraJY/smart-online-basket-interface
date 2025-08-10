@@ -2,15 +2,14 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useReceipts, Receipt } from '@/utils/hooks/useReceipts';
-import { Receipt as ReceiptIcon, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Receipt as ReceiptIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FaExclamationTriangle as FaExclamationTriangleIcon } from 'react-icons/fa';
-import { useQueryClient } from '@tanstack/react-query';
 
 // 기간별 필터 타입
 type PeriodFilter = 'all' | '1week' | '1month' | '3months' | '6months' | '1year';
@@ -41,7 +40,7 @@ const PeriodFilterComponent = ({
             onClick={() => onPeriodChange(period.value)}
             className={`px-2 py-2 rounded-full text-md justify-center font-medium transition-all whitespace-nowrap ${
               selectedPeriod === period.value
-                ? 'bg-green-600 text-white shadow-md'
+                ? 'bg-[var(--sobi-green)] text-white shadow-md'
                 : 'bg-gray-200 text-gray-700'
             }`}
           >
@@ -104,9 +103,8 @@ const ReceiptCard = React.memo(function ReceiptCard({ receipt, index }: { receip
 });
 
 export default function ReceiptsPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoggedIn, accessToken: token } = useAuth();
+  const { accessToken: token } = useAuth();
   const { data, isLoading, error } = useReceipts(token);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodFilter>('all');
   
@@ -209,7 +207,7 @@ export default function ReceiptsPage() {
   const gotoPage = (page: number) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()));
     params.set('page', String(page));
-    router.push(`?${params.toString()}`);
+    window.history.pushState({}, '', `?${params.toString()}`);
   };
 
   console.log('필터링된 receipts:', filteredAndSortedReceipts);
@@ -300,7 +298,7 @@ export default function ReceiptsPage() {
           <div className="relative">
             {/*  테두리 */}
             <div 
-              className="absolute inset-0 border-2 border-[var(--sobi-green)] rounded-sm"
+              className="absolute inset-0 border-3 border-[var(--sobi-green)] rounded-xs"
               style={{
                 borderStyle: 'solid',
                 borderWidth: '2px',
@@ -369,7 +367,11 @@ export default function ReceiptsPage() {
               </p>
               <Link
                 href="/"
-                className="inline-block mt-4 px-6 py-2 bg-green-600 text-white rounded-full shadow hover:bg-green-700 transition-all"
+                className="inline-block mt-4 px-6 py-2 text-white rounded-full shadow transition-all"
+                style={{
+                  backgroundColor: 'var(--sobi-green)',
+                  border: '1px solid var(--sobi-green)',
+                }}
               >
                 쇼핑하러 가기
               </Link>

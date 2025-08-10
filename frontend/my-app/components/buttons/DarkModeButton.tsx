@@ -41,12 +41,12 @@ export default function DarkModeButton() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-3 rounded-full shadow-sm bg-white/60 hover:scale-110 transition-all backdrop-blur-sm"
+      className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 hover:scale-110 transition-all backdrop-blur-sm"
       aria-label="Toggle dark mode"
     >
       {theme === 'dark'
-        ? <Moon size={25} className="text-yellow-300" />
-        : <SunMedium size={25} className="text-yellow-500" />}
+        ? <Moon size={28} className="text-yellow-300" strokeWidth={1} />
+        : <SunMedium size={28} className="text-yellow-500" strokeWidth={1} />}
     </button>
   )
 }

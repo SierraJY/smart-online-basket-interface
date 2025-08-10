@@ -4,27 +4,33 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
 import SearchBar from '@/components/SearchBar'
 import { useProducts } from '@/utils/hooks/useProducts'
+import { Product } from '@/types'
+import { CategoryName, isValidCategory } from '@/components/categoryIcons'
 
-// 명시적 타입 선언!
-type Product = { category: string; [key: string]: any }
+// SearchModal Props 타입 정의
+interface SearchModalProps {
+  onClose: () => void;
+}
 
-export default function SearchModalContent({ onClose }: { onClose: () => void }) {
+export default function SearchModalContent({ onClose }: SearchModalProps) {
   const router = useRouter()
   const { products, loading, error } = useProducts()
   const [keyword, setKeyword] = useState('')
-  const [category, setCategory] = useState('전체')
+  const [category, setCategory] = useState<CategoryName>('전체')
 
   // 타입 안전하게 카테고리 추출
-  const categories: string[] = useMemo(
+  const categories: CategoryName[] = useMemo(
     () => [
       '전체',
       ...Array.from(
         new Set(
           (products ?? [])
             .map((p: Product) => (p.category ?? '').trim())
-            .filter((cat: string) => !!cat && cat.length > 0)
+            .filter((cat: string): cat is CategoryName => 
+              !!cat && cat.length > 0 && isValidCategory(cat)
+            )
         )
-      ) as string[],
+      ) as CategoryName[],
     ],
     [products]
   )

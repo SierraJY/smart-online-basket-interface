@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import { useBasketStore } from '@/store/useBasketStore';
-import { usePushNotification } from '@/utils/hooks/usePushNotification';
 import '@/utils/polyfills';
+import { Basket } from '@/types';
+import { config } from '@/config/env';
 
 export const ServiceWorkerProvider = () => {
   const swRegistration = useRef<ServiceWorkerRegistration | null>(null);
@@ -12,7 +13,7 @@ export const ServiceWorkerProvider = () => {
   useEffect(() => {
     const registerServiceWorker = async () => {
       // 개발 모드에서는 Service Worker 비활성화
-      if (process.env.NODE_ENV === 'development') {
+      if (config.isDevelopment) {
         console.log('[SW] 개발 모드 - Service Worker 비활성화');
         return;
       }
@@ -94,9 +95,9 @@ export const ServiceWorkerProvider = () => {
   // 장바구니 데이터를 서비스 워커에 전송하는 함수 (전역으로 노출)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).sendBasketUpdateToSW = (basketData: any) => {
+      (window as { sendBasketUpdateToSW?: (basketData: Basket) => void }).sendBasketUpdateToSW = (basketData: Basket) => {
         // 개발 모드에서는 Service Worker 기능 비활성화
-        if (process.env.NODE_ENV === 'development') {
+        if (config.isDevelopment) {
           console.log('[SW] 개발 모드 - Service Worker 기능 비활성화');
           return;
         }

@@ -39,3 +39,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 환경별 설정 파일 (API 주소, 포트 등이 다름)
+config/env.ts
+package.json
+
+# 개발 문서들 (배포환경에 불필요)
+sse_improvement.md
+ts_improvement.md
+report1.md
+memo.md
+html5_to_qrscanner.md
+frontend-analysis-report.md
+
+# 개발환경 전용 Docker 파일
+Dockerfile.dev
+Dockerfile.prod

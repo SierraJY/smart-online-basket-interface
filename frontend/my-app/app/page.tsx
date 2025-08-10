@@ -2,12 +2,12 @@
 
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useProducts } from '@/utils/hooks/useProducts'
 import { FaExclamationTriangle } from "react-icons/fa";
 import { getPerformanceMonitor, logPerformanceInDev } from '@/utils/performance'
+import { config } from '@/config/env'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
@@ -15,12 +15,11 @@ import ShakeWrapper from '@/components/ShakeWrapper'
 import ProfileButton from '@/components/buttons/ProfileButton'
 import { CATEGORY_ICONS } from '@/components/categoryIcons'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Product } from '@/types'
+import { CategoryName } from '@/components/categoryIcons'
 
 export default function Home() {
-  const router = useRouter()
   const { products, loading, error } = useProducts()
-  const [keyword, setKeyword] = useState('')
-  const [category, setCategory] = useState('전체')
   
   // 광고 배너 관련 상태
   const [currentAdIndex, setCurrentAdIndex] = useState(0)
@@ -39,7 +38,7 @@ export default function Home() {
   const featuredRef = useRef<HTMLDivElement>(null)
 
   // Intersection Observer 설정
-  const [aiEndRef, aiEndInView] = useInView({
+  const [, aiEndInView] = useInView({
     threshold: 0.1,
     rootMargin: '0px'
   })
@@ -90,7 +89,7 @@ export default function Home() {
 
   // 성능 모니터링 시작 (개발 환경에서만)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (config.isDevelopment) {
       const monitor = getPerformanceMonitor();
       if (monitor) {
         monitor.startMeasure('HomePage-Mount');
@@ -105,10 +104,12 @@ export default function Home() {
         logPerformanceInDev();
       };
     }
+    // 개발 환경이 아닌 경우 빈 cleanup 함수 반환
+    return () => {};
   }, []);
 
   // 카테고리 배열 정의 (15개)
-  const categories = useMemo(() => [
+  const categories: CategoryName[] = useMemo(() => [
     '전체', '과일', '채소', '쌀_잡곡_견과', '정육_계란류', 
     '수산물_건해산', '우유_유제품', '김치_반찬_델리', '생수_음료_주류', '커피_원두_차',
     '면류_통조림', '양념_오일', '과자_간식', '베이커리_잼', '건강식품'
@@ -116,7 +117,7 @@ export default function Home() {
 
   // 카테고리 배경색 배열
   const categoryColors = useMemo(() => [
-    '#effdeb', '#4ECDC4', '#edb482', '#fab1a2', '#82E0AA',
+    '#21ce80', '#4ECDC4', '#edb482', '#fab1a2', '#82E0AA',
     '#f6b0cd', '#a5ed82', '#b2eafa', '#BB8FCE', '#DDA0DD',
     '#96CEB4', '#F7DC6F', '#98D8C8', '#85C1E9', '#87c873'
   ], [])
@@ -215,9 +216,9 @@ export default function Home() {
     const availableProducts = products.filter(p => p.stock > 0)
     
     // 더 빠른 랜덤 선택 함수 (Math.random() 최소화)
-    const getRandomItems = (array: any[], count: number) => {
+    const getRandomItems = (array: Product[], count: number) => {
       if (array.length <= count) return array
-      const result: any[] = []
+      const result: Product[] = []
       const indices = new Set<number>()
       while (indices.size < count) {
         indices.add(Math.floor(Math.random() * array.length))
@@ -227,7 +228,7 @@ export default function Home() {
     }
     
     // 무한 스크롤을 위해 상품 배열을 복제하는 함수 (메모리 최적화)
-    const createInfiniteArray = (array: any[]) => {
+    const createInfiniteArray = (array: Product[]) => {
       // 원본 배열을 1번만 반복하여 메모리 사용량 극한 줄임
       return array.length > 0 ? [...array, ...array] : []
     }
@@ -237,7 +238,7 @@ export default function Home() {
     
     // 할인 상품 (10개 → 8개로 줄임)
     const discountBase = getRandomItems(
-      availableProducts.filter(p => p.discountRate >= 9 && p.stock <= 30), 8
+      availableProducts.filter(p => p.discountRate >= 9 && p.stock <= 10), 8
     )
     
     // 인기 상품 (10개 → 8개로 줄임)
@@ -265,15 +266,16 @@ export default function Home() {
     }
   }, [products])
 
-  const handleSearch = () => {
-    if (!keyword.trim()) return
-    const query = new URLSearchParams()
-    query.set('keyword', keyword)
-    if (category && category !== '전체') {
-      query.set('category', category)
-    }
-    router.push(`/products?${query.toString()}`)
-  }
+  // 검색 로직 구현 예정
+  // const handleSearch = () => {
+  //   if (!keyword.trim()) return
+  //   const query = new URLSearchParams()
+  //   query.set('keyword', keyword)
+  //   if (category && category !== '전체') {
+  //     query.set('category', category)
+  //   }
+  //   router.push(`/products?${query.toString()}`)
+  // }
 
   // 마우스 드래그 스크롤 핸들러들
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -331,7 +333,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen py-16 pb-28 flex flex-col items-center"
+    <main className="min-h-screen py-16 pb-24 flex flex-col items-center"
       style={{ 
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
@@ -380,18 +382,46 @@ export default function Home() {
           font-display: swap;
           src: url('/_next/static/media/Ownglyph_daelong-Rg.78b4d39e.ttf') format('truetype');
         }
+          
       `}</style>
-      <div className="w-full max-w-4xl">
-        {/* 헤더 */}
-        <div className="text-center mb-12 relative">
-          <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--sobi-green)' }}>
-            test
-          </h1>
+      <div className="pt-4 w-full max-w-4xl">
+        {/* 상단 헤더 */}
+        <div className="flex justify-between items-center mb-6 px-5">
           <ProfileButton />
         </div>
 
+        {/* 카테고리 섹션 */}
+        <div className="mb-8 pt-2 px-5">
+          <div className="grid grid-cols-5 gap-3 max-w-2xl mx-auto">
+            {categories.map((category, index) => {
+              const categoryName = category.replace(/_/g, '/')
+              const backgroundColor = categoryColors[index]
+              
+              return (
+                <Link
+                  key={category}
+                  href={category === '전체' ? '/products' : `/products/category?category=${encodeURIComponent(category)}`}
+                  className="flex flex-col items-center group"
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-110"
+                    style={{ backgroundColor }}
+                  >
+                    <div className="text-white">
+                      {CATEGORY_ICONS[category]}
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-medium text-center text-[var(--foreground)] group-hover:text-[var(--sobi-green)] transition-colors">
+                    {categoryName}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
         {/* 광고 배너 섹션 */}
-        <div className="mb-12">
+        <div className="mb-8">
           <div className="relative w-full max-w-4xl mx-auto">
             {/* 데스크톱용 메인 배너 */}
             {!isMobile && (
@@ -494,90 +524,199 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 카테고리 섹션 */}
-        <div className="mb-12 pt-2 px-5">
-          <div className="grid grid-cols-5 gap-3 max-w-2xl mx-auto">
-            {categories.map((category, index) => {
-              const categoryName = category.replace(/_/g, '/')
-              const backgroundColor = categoryColors[index]
-              
-              return (
-                <Link
-                  key={category}
-                  href={category === '전체' ? '/products' : `/products/category?category=${encodeURIComponent(category)}`}
-                  className="flex flex-col items-center group"
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-110"
-                    style={{ backgroundColor }}
-                  >
-                    <div className="text-white">
-                      {CATEGORY_ICONS[category]}
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-medium text-center text-[var(--foreground)] group-hover:text-[var(--sobi-green)] transition-colors">
-                    {categoryName}
-                  </span>
-                </Link>
-              )
-            })}
+        {/* 로고 섹션 */}
+        <div className="pb-8 text-center mb-6 relative">
+          <div className="text-[65px] flex justify-center items-center">
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: -28,
+                x: [0, -2, 2, -1, 0],
+                y: [0, -1, 1, -0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.5, 
+                  repeat: Infinity, 
+                  repeatDelay: 8,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.5, 
+                  repeat: Infinity, 
+                  repeatDelay: 8,
+                  ease: "easeInOut"
+                }
+              }}
+              onTap={() => {
+                // S 클릭 시 애니메이션
+              }}
+              whileTap={{
+                scale: 1.6,
+                rotate: -8,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.5,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              S
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: 25,
+                x: [0, 2, -2, 1, 0],
+                y: [0, 1, -1, 0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.4, 
+                  repeat: Infinity, 
+                  repeatDelay: 10,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.4, 
+                  repeat: Infinity, 
+                  repeatDelay: 10,
+                  ease: "easeInOut"
+                }
+              }}
+              onTap={() => {
+                // O 클릭 시 애니메이션
+              }}
+              whileTap={{
+                scale: 1.6,
+                rotate: -15,
+                color: '#1d783e',
+                transition: {
+                  duration: 1,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              O
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: 10,
+                x: [0, -1.5, 1.5, -0.75, 0],
+                y: [0, -0.75, 0.75, -0.375, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.6, 
+                  repeat: Infinity, 
+                  repeatDelay: 12,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.6, 
+                  repeat: Infinity, 
+                  repeatDelay: 12,
+                  ease: "easeInOut"
+                }
+              }}
+              onTap={() => {
+                // B 클릭 시 애니메이션
+              }}
+              whileTap={{
+                scale: 1.4,
+                rotate: -10,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.3,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              B
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: -13,
+                x: [0, 1.5, -1.5, 0.75, 0],
+                y: [0, -1, 1, -0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.35, 
+                  repeat: Infinity, 
+                  repeatDelay: 9,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.35, 
+                  repeat: Infinity, 
+                  repeatDelay: 9,
+                  ease: "easeInOut"
+                }
+              }}
+              onTap={() => {
+                // I 클릭 시 애니메이션
+              }}
+              whileTap={{
+                scale: 1.8,
+                rotate: 10,
+                color: '#1d783e',
+                transition: {
+                  duration: 1.2,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              I
+            </motion.span>
           </div>
         </div>
 
         {/* 테마별 상품 섹션들 */}
         <div className="space-y-4">
-          {/* AI 추천 상품 */}
-          {themeProducts.aiRecommended && themeProducts.aiRecommended.length > 0 && !loading && (
-            <section>
-              <div className="relative flex justify-center items-center mb-2">
-                <h2 className="text-3xl font-bold">AI추천</h2>
-              </div>
-              <div 
-                className="flex overflow-x-auto overflow-y-hidden gap-2 scrollbar-none drag-scroll-container"
-                style={{ maxHeight: 130 }}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                ref={aiRecommendedRef}
-              >
-                {themeProducts.aiRecommended.map((product, index) => {
-                  // AI 추천 전용 기울기
-                  const rotations = [-2, -1, 3.5, -2, 2, -1, 1, -4]
-                  const rotation = rotations[index % rotations.length]
-                  
-                  return (
-                    <div key={`ai-${product.id}-${index}`} className="flex-shrink-0 py-1">
-                      <ShakeWrapper item={product}>
-                        <Link href={`/products/${product.id}`}>
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.name}
-                            width={140}
-                            height={110}
-                            className="w-[140px] h-[110px] object-cover rounded-2xl hover:scale-105 transition-transform duration-200 shadow-lg"
-                            style={{
-                              transform: `rotate(${rotation}deg)`,
-                              transformOrigin: 'center'
-                            }}
-                            sizes="(max-width: 768px) 200px, 200px"
-                            quality={75}
-                            loading="lazy"
-                            placeholder="blur"
-                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                          />
-                        </Link>
-                      </ShakeWrapper>
-                    </div>
-                  )
-                })}
-                {/* 무한 스크롤 관찰 요소 */}
-                <div ref={aiEndRef} className="flex-shrink-0 w-1 h-1" />
-              </div>
-            </section>
-          )}
 
-                    {/* 할인 상품 */}
+          {/* 할인 상품 */}
           {themeProducts.discount && themeProducts.discount.length > 0 && !loading && (
             <section>
               <div className="text-center mb-2">

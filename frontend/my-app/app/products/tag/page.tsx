@@ -13,7 +13,7 @@ import { Product } from '@/types'
 import { FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import Image from 'next/image';
-import { replaceCategoryName, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
+import { formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // 정렬 옵션 타입 정의
@@ -195,6 +195,7 @@ export default function TagPage() {
   return (
     <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center"
       style={{
+        backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s'
       }}>
@@ -206,7 +207,7 @@ export default function TagPage() {
       <SearchBar
         keyword={keyword}
         setKeyword={onKeywordChange}
-        category=""
+        category="전체"
         setCategory={() => {}}
         onSearch={() => {}}
         showCategorySelect={false}
@@ -340,18 +341,41 @@ export default function TagPage() {
           </div>
         )}
         {pagedProducts.map((item: Product) => (
-          <div key={item.id} className={cardClass}>
+          <div key={item.id} className={`${cardClass} group hover:scale-105 transition-all duration-300`}>
             <ShakeWrapper item={item}>
-              <div className="w-full h-[100px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden bg-[var(--input-background)] relative">
+              <div className="w-full h-[100px] md:h-[110px] flex items-center justify-center mb-2 rounded-xl overflow-hidden relative"
+                style={{
+                  background: 'linear-gradient(135deg, var(--sobi-green-light) 0%, var(--input-background) 100%)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}>
                 <Link href={`/products/${item.id}`} className="w-full h-full flex items-center justify-center">
                   <Image
                     src={item.imageUrl}
                     alt={item.name}
                     width={90}
                     height={80}
-                    className="object-cover w-full h-full"
-                    style={{ backgroundColor: 'var(--input-background)' }}
+                    className="object-cover w-full h-full rounded-xl group-hover:scale-110"
+                    style={{ 
+                      backgroundColor: 'var(--input-background)',
+                      transition: 'all 0.3s ease'
+                    }}
                     loading="lazy"
+                  />
+                  {/* 그라데이션 오버레이 - 페이드아웃 효과 */}
+                  <div 
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{
+                      background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
+                      opacity: 0.8
+                    }}
+                  />
+                  {/* 테두리 그라데이션 효과 */}
+                  <div 
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+                      opacity: 0.6
+                    }}
                   />
                 </Link>
                 {/* 할인 배지 */}

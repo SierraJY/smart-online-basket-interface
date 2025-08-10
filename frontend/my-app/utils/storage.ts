@@ -131,4 +131,42 @@ export const basketStorage = {
   setActivatedBasketId: (id: string) => storage.set(STORAGE_KEYS.ACTIVATED_BASKET_ID, id),
   
   clear: () => storage.clearBasket(),
+  
+  /**
+   * 완전한 장바구니 상태 초기화 (SSE 연결 해제 포함)
+   */
+  clearComplete: async () => {
+    console.log('[Storage] 장바구니 완전 초기화 시작');
+    
+    // 1. SSE 연결 해제
+    try {
+      const { disconnectGlobalSSE } = await import('@/utils/hooks/useGlobalBasketSSE');
+      disconnectGlobalSSE();
+      console.log('[Storage] SSE 연결 해제 완료');
+    } catch (e) {
+      console.warn('[Storage] SSE 해제 중 경고:', e);
+    }
+    
+    // 2. localStorage 완전 정리
+    storage.removeMultiple([
+      STORAGE_KEYS.BASKET_ID,
+      STORAGE_KEYS.ACTIVATED_BASKET_ID,
+      STORAGE_KEYS.BASKET_STORAGE,
+    ]);
+    
+    // 3. Zustand store 초기화 (동적 import로 순환 참조 방지)
+    try {
+      const { useBasketStore } = await import('@/store/useBasketStore');
+      const store = useBasketStore.getState();
+      store.clearBasketId();
+      store.clearBasketData();
+      store.setBasketId('');
+      store.setActivatedBasketId(null);
+      console.log('[Storage] Zustand store 초기화 완료');
+    } catch (e) {
+      console.warn('[Storage] Zustand store 초기화 중 경고:', e);
+    }
+    
+    console.log('[Storage] 장바구니 완전 초기화 완료');
+  },
 }; 
