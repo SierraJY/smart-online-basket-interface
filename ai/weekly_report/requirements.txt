@@ -1,21 +1,26 @@
-# 데이터 처리 및 분석
-pandas
-numpy
+# 데이터 처리
+pandas==2.2.2
+numpy==1.26.4
 
-# 머신러닝 및 분석
-scikit-learn
+# 머신러닝
+scikit-learn==1.4.2
 lightgbm==4.3.0
 mlxtend==0.23.1
-tqdm
+tqdm==4.66.4
 
 # 시각화
-matplotlib
-Pillow
+matplotlib==3.8.4
+Pillow==10.3.0
 
-# API 및 환경설정
-python-dotenv
-openai==1.1.1  # OpenAI의 새로운 클라이언트를 위해 최신 버전 필요
+# API/환경
+python-dotenv==1.0.1
 
-# 이메일 및 보고서 생성
-jinja2
-pdfkit
+# OpenAI
+openai==1.40.6
+
+# 이메일/리포트
+Jinja2==3.1.4
+pdfkit==1.0.0
+
+# DB
+psycopg2-binary==2.9.9
