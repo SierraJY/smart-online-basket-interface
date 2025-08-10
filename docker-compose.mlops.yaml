@@ -65,10 +65,20 @@ services:
       context: ./ai/weekly_report
       dockerfile: Dockerfile
     image: sobi/weekly-report:1.0
+    volumes:
+      - ./ai/weekly_report/output:/app/output
+      - ./ai/weekly_report/templates:/app/templates
     networks:
       - sobi-net
     environment:
       DB_URL: postgresql://airflow:airflow@sobi-db:5432/sobi
+      # 이메일 전송을 위한 설정
+      SMTP_SERVER: ${SMTP_SERVER}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      # LLM summarizer를 위한 설정
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     entrypoint: ["sleep", "infinity"]
 
 networks:
