@@ -1,147 +1,192 @@
-import pandas as pd
 import os
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mtick
-from PIL import Image
+import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
 import lightgbm as lgb
+import psycopg2
+from datetime import datetime, timedelta
 
 plt.rcParams["font.family"] = "Malgun Gothic"
 
 
-def create_features(df):
-    df["week"] = df["ds"].dt.isocalendar().week
-    df["year"] = df["ds"].dt.year
-    df = df.sort_values("ds")
-    df["lag_1"] = df["y"].shift(1)
-    df["lag_2"] = df["y"].shift(2)
-    df["lag_3"] = df["y"].shift(3)
-    df = df.dropna()
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "sobi-db"),
+        database=os.getenv("DB_NAME", "sobi"),
+        user=os.getenv("DB_USER", "airflow"),
+        password=os.getenv("DB_PASSWORD", "airflow"),
+        port=int(os.getenv("DB_PORT", "5432")),
+    )
+
+
+def get_last_week_range(execution_date=None):
+    if execution_date is None:
+        execution_date = datetime.now()
+    end_date = execution_date.date() - timedelta(days=1)      
+    start_date = end_date - timedelta(days=6)                 
+    return start_date, end_date
+
+
+def load_daily_series_until(end_date):
+    query = """
+        SELECT purchased_at::timestamp AS purchased_at
+        FROM receipt
+        WHERE DATE(purchased_at) <= %s
+    """
+    with get_db_connection() as conn:
+        df = pd.read_sql(query, conn, params=(end_date,))
+    if df.empty:
+        raise ValueError("[ERROR] receipt 테이블에서 데이터가 조회되지 않았습니다.")
+
+    df["ds"] = pd.to_datetime(df["purchased_at"]).dt.date
+    daily = (
+        df.groupby("ds").size().reset_index(name="y")
+        .sort_values("ds")
+        .reset_index(drop=True)
+    )
+    daily["ds"] = pd.to_datetime(daily["ds"])
+    return daily  # columns: ds (datetime64[D]), y (int)
+
+
+def make_features(df):
+    """ df: columns [ds(datetime), y] """
+    df = df.copy().sort_values("ds")
+    df["dow"] = df["ds"].dt.weekday.astype(int)         
+    df["week"] = df["ds"].dt.isocalendar().week.astype(int)
+    df["year"] = df["ds"].dt.year.astype(int)
+    for k in [1, 2, 3, 7]:
+        df[f"lag_{k}"] = df["y"].shift(k)
+    df = df.dropna().reset_index(drop=True)
     return df
 
 
-def generate_restock_summary():
-    df = pd.read_csv("./data/dummy2.csv")
-    df["id"] = df["product_id"].astype(str)
-    if "timestamp" in df.columns:
-        df["ds"] = pd.to_datetime(df["timestamp"], unit="ms")
-    elif "purchase_date" in df.columns:
-        df["ds"] = pd.to_datetime(df["purchase_date"])
-    else:
-        raise Exception("날짜 컬럼 없음")
-    df["ds"] = df["ds"] - pd.to_timedelta(df["ds"].dt.weekday, unit="d")
-    df["ds"] = df["ds"].dt.to_period("W").dt.start_time
+def recursive_predict_next_7days(model, history_df):
+    """
+    history_df: columns [ds, y] (정렬), 마지막 날짜 다음날부터 7일 예측.
+    lag 특성은 1,2,3,7 사용.
+    """
+    preds = []
+    hist = history_df.copy().sort_values("ds").reset_index(drop=True)
 
-    # 상위 20개 중 6주 이상 데이터가 있는 상품만 top4 추출
-    product_counts = df.groupby("id")["ds"].nunique()
-    candidate_ids = product_counts[product_counts >= 6].index.tolist()
-    topk_ids = [pid for pid in df["id"].value_counts().index if pid in candidate_ids][
-        :4
-    ]
-    colors = ["#0072B2", "#D55E00", "#009E73", "#CC79A7"]
+    last_date = hist["ds"].iloc[-1]
+    current_df = hist.copy()
 
-    os.makedirs("./output", exist_ok=True)
-    summaries = []
+    for i in range(1, 8):
+        pred_date = last_date + timedelta(days=i)
+        # 특성 생성용으로 최근 행들 활용
+        tmp = current_df.copy()
+        # 다음날 row를 미리 만들되 y는 NaN
+        next_row = pd.DataFrame({"ds": [pred_date], "y": [np.nan]})
+        tmp = pd.concat([tmp, next_row], ignore_index=True)
 
-    avg_sales_list = []
-    pred_sales_list = []
-    product_labels = []
+        # 피처 만들기
+        feat = tmp.copy()
+        feat["dow"] = feat["ds"].dt.weekday.astype(int)
+        feat["week"] = feat["ds"].dt.isocalendar().week.astype(int)
+        feat["year"] = feat["ds"].dt.year.astype(int)
+        for k in [1, 2, 3, 7]:
+            feat[f"lag_{k}"] = feat["y"].shift(k)
 
-    for idx, prod in enumerate(topk_ids):
-        product_id = prod
-        df_prod = df[df["id"] == prod].copy()
-        df_week = df_prod.groupby("ds").size().reset_index(name="y")
-        df_feat = create_features(df_week)
+        # 예측 대상 행(마지막 행)의 피처 row
+        row = feat.iloc[-1][["dow", "week", "year", "lag_1", "lag_2", "lag_3", "lag_7"]]
 
-        print(
-            f"\n[상품ID {product_id}] 전체 주간 데이터 개수: {len(df_week)}, 피처 데이터 개수: {len(df_feat)}"
+        # lag에 NaN 있으면 과거 데이터 부족 -> 0으로 보수적 대체
+        row = row.fillna(0)
+
+        yhat = float(model.predict(row.values.reshape(1, -1))[0])
+        # 음수 방지
+        yhat = max(0.0, yhat)
+        preds.append({"ds": pred_date, "yhat": yhat})
+
+        # 예측을 history에 반영하여 다음날 lag 생성에 활용
+        current_df.loc[len(current_df) - 1, "y"] = current_df.loc[len(current_df) - 1, "y"]  # no-op for readability
+        current_df = pd.concat(
+            [current_df, pd.DataFrame({"ds": [pred_date], "y": [yhat]})],
+            ignore_index=True,
         )
-        if len(df_feat) < 2:
-            print(
-                f"[SKIP] 상품ID {product_id}: 데이터 부족 (len(df_feat)={len(df_feat)})"
-            )
-            continue
 
-        last4 = df_week.tail(4)
-        print(f"[상품ID {product_id}] 최근 4주 날짜: {last4['ds'].tolist()}")
-        print(f"[상품ID {product_id}] 최근 4주 판매량: {last4['y'].tolist()}")
+    return pd.DataFrame(preds)  # columns: ds, yhat
 
-        train = df_feat.iloc[:-1]
-        val = df_feat.iloc[-1:]
-        X_train = train[["week", "year", "lag_1", "lag_2", "lag_3"]]
-        y_train = train["y"]
 
-        if X_train.shape[0] < 2 or X_train.shape[1] == 0:
-            print(f"[SKIP] 상품ID {product_id}: 학습데이터 부족, 예측 스킵")
-            pred = last4["y"].iloc[-1] if len(last4) > 0 else 0
-        else:
-            model = lgb.LGBMRegressor()
-            model.fit(X_train, y_train)
-            pred = model.predict(val[["week", "year", "lag_1", "lag_2", "lag_3"]])[0]
-
-        pred_date = val["ds"].values[0]
-        pred_y = pred
-
-        avg_last4 = last4["y"].mean()
-
-        avg_sales_list.append(avg_last4)
-        pred_sales_list.append(pred_y)
-        product_labels.append(product_id)
-
-        change = pred_y - avg_last4
-        if change > 0:
-            summary = f"상품ID {product_id}: 다음 주 판매량이 {change:.1f} 증가 예측."
-        else:
-            summary = f"상품ID {product_id}: 다음 주 판매량이 {abs(change):.1f} 감소/정체 예상."
-        summaries.append(summary)
-
-    # 막대그래프 그리기
-    bar_width = 0.35
-    x = np.arange(len(product_labels))
-
+def _save_bar_chart(labels, avg_vals, pred_vals, out_png):
     plt.figure(figsize=(10, 6))
-    plt.bar(
-        x - bar_width / 2,
-        avg_sales_list,
-        width=bar_width,
-        color="#4c72b0",
-        label="최근 4주 평균 판매량",
-    )
-    plt.bar(
-        x + bar_width / 2,
-        pred_sales_list,
-        width=bar_width,
-        color="#55a868",
-        label="다음 주 예측 판매량",
-    )
+    x = np.arange(len(labels))
+    bar_w = 0.35
 
-    plt.xticks(x, product_labels, fontsize=12)
-    plt.ylabel("판매량", fontsize=14)
-    plt.title(
-        "상위 4개 상품 최근 4주 평균 vs 다음 주 예측 판매량",
-        fontsize=16,
-        fontweight="bold",
-    )
-    plt.legend(fontsize=12)
+    plt.bar(x - bar_w/2, avg_vals, width=bar_w, label="최근 7일 평균")
+    plt.bar(x + bar_w/2, pred_vals, width=bar_w, label="다음 7일 예측 합계")
+
+    plt.xticks(x, labels)
+    plt.ylabel("거래 수(건)")
+    plt.title("최근 7일 평균 vs 다음 7일 예측 합계")
+    plt.legend()
     plt.grid(axis="y", linestyle="--", alpha=0.5)
 
-    # y축 정수 표시 및 범위 약간 여유있게 조절
-    max_val = max(max(avg_sales_list), max(pred_sales_list))
-    plt.ylim(0, max_val * 1.15)
-    plt.gca().yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    y_max = max(max(avg_vals or [0]), max(pred_vals or [0]))
+    plt.ylim(0, max(1, y_max * 1.15))
 
     plt.tight_layout()
-
-    png_path = "./output/lightgbm_bar_chart.png"
-    plt.savefig(png_path, dpi=180)
+    plt.savefig(out_png, dpi=180)
     plt.close()
 
-    jpg_path = png_path.replace(".png", ".jpg")
-    Image.open(png_path).convert("RGB").save(jpg_path)
-    abs_jpg_path = os.path.abspath(jpg_path)
 
-    joined_summary = "\n".join(summaries)
-    return joined_summary, abs_jpg_path
+def generate_restock_summary(execution_date=None):
+    # fp_growth 기준의 날짜 윈도우
+    start_date, end_date = get_last_week_range(execution_date)
+    print(f"[INFO] 기준 윈도우(최근 7일): {start_date} ~ {end_date}")
+
+    # 예측 기준일(end_date)까지의 과거 전체 로드 후, 일 단위 시계열 생성
+    daily = load_daily_series_until(end_date)
+    print(f"[INFO] 전체 일 단위 데이터 개수: {len(daily)}")
+    if len(daily) < 14:
+        print("[WARN] 히스토리가 너무 짧습니다. 최소 2~3주 이상 권장.")
+
+    # 피처 생성 및 학습/검증
+    feat = make_features(daily)  # dropna 이후
+    if feat.empty or feat.shape[0] < 7:
+        # 데이터 부족 시 보수적 대체
+        last_7 = daily[daily["ds"].between(pd.to_datetime(start_date), pd.to_datetime(end_date))]
+        avg_last7 = float(last_7["y"].mean()) if not last_7.empty else 0.0
+        pred_sum7 = avg_last7 * 7.0
+        summary = f"데이터가 부족하여 보수적으로 다음 7일 합계를 최근 7일 평균×7({pred_sum7:.1f})로 가정합니다."
+        # 시각화 저장
+        os.makedirs("./output", exist_ok=True)
+        png_path = "./output/lightgbm_bar_chart.png"
+        _save_bar_chart(["ALL"], [avg_last7], [pred_sum7], png_path)
+        jpg_path = os.path.abspath(png_path.replace(".png", ".jpg"))
+        Image.open(png_path).convert("RGB").save(jpg_path)
+        return summary, jpg_path
+
+    # 학습 데이터/피처
+    X = feat[["dow", "week", "year", "lag_1", "lag_2", "lag_3", "lag_7"]]
+    y = feat["y"]
+    model = lgb.LGBMRegressor()
+    model.fit(X, y)
+
+    # 다음 7일 예측 (end_date 다음날부터 7일)
+    preds7 = recursive_predict_next_7days(model, daily[["ds", "y"]])
+    pred_sum7 = float(preds7["yhat"].sum())
+
+    # 최근 7일 평균 계산(리포트 기준 동일 윈도우)
+    last_7 = daily[daily["ds"].between(pd.to_datetime(start_date), pd.to_datetime(end_date))]
+    avg_last7 = float(last_7["y"].mean()) if not last_7.empty else 0.0
+
+    delta = pred_sum7 - (avg_last7 * 7.0)
+    if delta > 0:
+        summary = f"다음 7일 총 거래량이 최근 7일 평균 대비 {delta:.1f}건 증가 예측."
+    else:
+        summary = f"다음 7일 총 거래량이 최근 7일 평균 대비 {abs(delta):.1f}건 감소/정체 예상."
+
+    # 시각화 저장
+    os.makedirs("./output", exist_ok=True)
+    png_path = "./output/lightgbm_bar_chart.png"
+    _save_bar_chart(["ALL"], [avg_last7], [pred_sum7], png_path)
+
+    jpg_path = os.path.abspath(png_path.replace(".png", ".jpg"))
+    Image.open(png_path).convert("RGB").save(jpg_path)
+
+    return summary, jpg_path
 
 
 if __name__ == "__main__":

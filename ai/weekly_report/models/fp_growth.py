@@ -1,11 +1,56 @@
+import os
 import pandas as pd
 from mlxtend.frequent_patterns import fpgrowth, association_rules
 import matplotlib.pyplot as plt
-import os
 from tqdm import tqdm
 import time
+import psycopg2
+from datetime import datetime, timedelta
 
 plt.rcParams["font.family"] = "Malgun Gothic"
+
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv('DB_HOST', 'sobi-db'),
+        database=os.getenv('DB_NAME', 'sobi'),
+        user=os.getenv('DB_USER', 'airflow'),
+        password=os.getenv('DB_PASSWORD', 'airflow')
+    )
+
+def get_last_week_data(execution_date=None):
+    try:
+        if execution_date is None:
+            execution_date = datetime.now()
+        
+        end_date = execution_date.date() - timedelta(days=1)
+        start_date = end_date - timedelta(days=6)
+        
+        query = """
+        SELECT session_id, product_id
+        FROM training_data
+        WHERE DATE(purchased_at) >= %s
+        AND DATE(purchased_at) <= %s
+        """
+        
+        with get_db_connection() as conn:
+            df = pd.read_sql(
+                query,
+                conn,
+                params=(start_date, end_date)
+            )
+        
+        print(f"[데이터 조회 기간] {start_date} ~ {end_date}")
+        print(f"[조회된 데이터 건수] {len(df)}건")
+        
+        if len(df) == 0:
+            raise ValueError(f"해당 기간({start_date} ~ {end_date})에 데이터가 없습니다.")
+            
+        return df
+        
+    except Exception as e:
+        print(f"[ERROR] 데이터 조회 실패: {str(e)}")
+        raise
 
 
 def safe_basket_prep(
@@ -36,6 +81,7 @@ class FPGrowthRecommender:
         self.rules = None
         self.frequent_itemsets = None
 
+
     def fit(self, transactions):
         print("\n[2] FP-Growth 입력 데이터(장바구니) shape/예시:")
         print(transactions.head(5))
@@ -43,7 +89,7 @@ class FPGrowthRecommender:
         print("[2-2] 평균 품목 수:", transactions["cart_list"].apply(len).mean())
 
         if len(transactions) == 0 or transactions["cart_list"].str.len().sum() == 0:
-            print("❗️ [경고] cart_list 데이터가 없습니다. FP-Growth 중단.")
+            print("[경고] cart_list 데이터가 없습니다. FP-Growth 중단.")
             self.rules = pd.DataFrame()
             self.frequent_itemsets = pd.DataFrame()
             return
@@ -72,7 +118,7 @@ class FPGrowthRecommender:
         print(f"[3-2] 메모리 사용량: {mem_mb:.2f}MB")
 
         if basket_df.shape[0] == 0 or basket_df.shape[1] == 0:
-            print("❗️ [경고] one-hot 데이터프레임이 비어 있습니다. FP-Growth 중단.")
+            print("[경고] one-hot 데이터프레임이 비어 있습니다. FP-Growth 중단.")
             self.rules = pd.DataFrame()
             self.frequent_itemsets = pd.DataFrame()
             return
@@ -90,11 +136,11 @@ class FPGrowthRecommender:
             print(f"[4-2] 2개 이상 상품 조합 frequent itemsets 개수: {len(freq_multi)}")
             print(freq_multi.head(5))
         else:
-            print("❗️ [경고] frequent_itemsets가 없습니다.")
+            print("[경고] frequent_itemsets가 없습니다.")
 
         if frequent_itemsets.empty:
             print(
-                "❗️ [경고] Frequent itemsets가 비어 있습니다. Association rules 미생성."
+                "[경고] Frequent itemsets가 비어 있습니다. Association rules 미생성."
             )
             self.rules = pd.DataFrame()
             return
@@ -112,11 +158,12 @@ class FPGrowthRecommender:
                 ].head()
             )
         else:
-            print("❗️ [경고] 연관규칙이 없습니다.")
+            print("[경고] 연관규칙이 없습니다.")
+
 
     def get_single_item_rules(self, top_k=10, min_conf=None, save_path=None):
         if self.rules is None or self.rules.empty:
-            print("❗️ [경고] 연관규칙이 없습니다. 결과 없음.")
+            print("[경고] 연관규칙이 없습니다. 결과 없음.")
             return []
 
         min_conf = min_conf or self.min_confidence
@@ -162,11 +209,12 @@ class FPGrowthRecommender:
         return result
 
 
-def generate_association_summary():
-    df = pd.read_csv("./data/dummy2.csv")
+def generate_association_summary(execution_date=None):
+    df = get_last_week_data(execution_date)
     print(f"\n[시작] 원본 데이터 shape: {df.shape}")
     print("[원본 데이터 샘플]:")
     print(df.head(5))
+    
     basket = safe_basket_prep(df)
     output_dir = "./output"
     os.makedirs(output_dir, exist_ok=True)
