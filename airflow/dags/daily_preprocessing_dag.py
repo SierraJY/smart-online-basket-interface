@@ -17,7 +17,7 @@ default_args = {
 with DAG(
     dag_id="daily_preprocessing",
     description="Append yesterday's receipts to training_data",
-    schedule="0 3 * * *",
+    schedule="0 2 * * *",
     start_date=datetime(2025, 8, 1),
     catchup=False,
     max_active_runs=1,
