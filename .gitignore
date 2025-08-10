@@ -1,12 +1,11 @@
-# 모델 파일 (회원/비회원)
-app/models/member_model/
-app/models/guest_model/
-
-# 기타 캐시, 로그, 환경
-__pycache__/
-*.pyc
+# 환경 변수
 .env
+
+# 로그파일
 *.log
+
+# Python 캐시 (혹시 모듈 작성 시 대비)
+__pycache__/
 
 # Docker DB 데이터 볼륨
 db_data/
@@ -36,4 +35,10 @@ Thumbs.db
 
 # json 파일 모두 무시
 *.json
+
+
+# Airflow
+airflow/logs/*
+airflow/plugins/__pycache__/
+airflow/plugins/*.pyc
 
