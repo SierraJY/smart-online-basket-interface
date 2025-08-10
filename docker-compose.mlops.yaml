@@ -1,6 +1,10 @@
 x-airflow-common: &airflow-common
   image: apache/airflow:2.7.1-python3.10
+  build:
+    context: ./airflow
+    dockerfile: Dockerfile
   environment:
+    TZ: Asia/Seoul
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@sobi-db:5432/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://web-redis:6379/0
@@ -33,23 +37,13 @@ services:
       - airflow-init
 
   airflow-init:
-    image: apache/airflow:2.7.1-python3.10
-    restart: no
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
-      - ./ai:/opt/airflow/ai:ro                   
-    environment:
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@sobi-db:5432/airflow
-      PYTHONPATH: /opt/airflow:/opt/airflow/ai   
+    <<: *airflow-common
+    restart: "no"
     command: >
       bash -c "
         airflow db init &&
         airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com
       "
-    networks:
-      - sobi-net
 
   mlflow:
     image: bitnami/mlflow:3.1.4-debian-12-r6
