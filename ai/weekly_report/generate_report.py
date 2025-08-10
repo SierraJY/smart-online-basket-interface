@@ -82,7 +82,12 @@ def generate_report() -> bytes:
     # 4. HTML 렌더링 및 PDF 바이트 생성
     html_out = template.render(**context)
     config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
-    options = {"enable-local-file-access": ""}
+    options = {
+        "enable-local-file-access": "",
+        "encoding": "UTF-8",
+        "disable-smart-substitutions": "",
+        "disable-smart-quotes": ""
+    }
 
     try:
         pdf_bytes = pdfkit.from_string(
