@@ -18,7 +18,8 @@ x-airflow-common: &airflow-common
     - ./airflow/plugins:/opt/airflow/plugins
     - ./ai:/opt/airflow/ai:ro
     - /var/run/docker.sock:/var/run/docker.sock  
-  networks: sobi-net
+  networks: 
+    - sobi-net
 
 services:
   airflow-webserver:
@@ -52,7 +53,8 @@ services:
       context: ./ai/weekly_report
       dockerfile: Dockerfile
     image: sobi/weekly-report:1.0
-    networks: sobi-net
+    networks:
+      - sobi-net
     environment:
       DB_HOST: sobi-db
       DB_NAME: sobi
