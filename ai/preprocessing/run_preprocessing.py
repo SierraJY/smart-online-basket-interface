@@ -39,6 +39,9 @@ def run_preprocessing():
         conn.close()
         return
 
+    # gender 값 변환 (0 → male, 1 → female)
+    df["gender"] = df["gender"].map({0: "male", 1: "female"})
+
     # 2. purchased_at → purchase_date 컬럼 변환 (YYYY-MM-DD 형식)
     df["purchase_date"] = pd.to_datetime(df["purchased_at"]).dt.date
 
