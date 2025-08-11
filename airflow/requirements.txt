@@ -1,5 +1,5 @@
-pandas==2.2.2
-numpy==1.26.4
-psycopg2-binary==2.9.9
-apache-airflow-providers-docker==3.8.0
+pandas==2.1.0
+numpy==1.24.4
+psycopg2-binary==2.9.7
+apache-airflow-providers-docker      # 버전 고정 제거
 docker==6.1.3
