@@ -1,20 +1,31 @@
 // 에러 처리 통일 유틸리티
+import { AppError } from '../types';
+import { config } from '@/config/env';
 
-export interface AppError {
-  message: string;
-  code?: string;
+// 에러 타입 정의
+interface ApiError extends Error {
   status?: number;
-  originalError?: any;
+  code?: string;
+}
+
+interface NetworkError extends Error {
+  name: 'TypeError';
+  message: string;
+}
+
+interface SSEError extends Error {
+  name: string;
+  message: string;
 }
 
 /**
  * API 에러를 사용자 친화적인 메시지로 변환
  */
-export function handleApiError(error: any): AppError {
+export function handleApiError(error: unknown): AppError {
   console.error('[Error Handler]', error);
 
   // 네트워크 에러
-  if (error.name === 'TypeError' && error.message.includes('fetch')) {
+  if (isNetworkError(error)) {
     return {
       message: '네트워크 연결을 확인해주세요.',
       code: 'NETWORK_ERROR',
@@ -23,7 +34,7 @@ export function handleApiError(error: any): AppError {
   }
 
   // HTTP 상태 코드별 에러
-  if (error.status) {
+  if (isApiError(error) && error.status) {
     switch (error.status) {
       case 400:
         return {
@@ -71,7 +82,7 @@ export function handleApiError(error: any): AppError {
   }
 
   // 커스텀 에러 메시지
-  if (error.message) {
+  if (isErrorWithMessage(error)) {
     return {
       message: error.message,
       code: 'CUSTOM_ERROR',
@@ -90,24 +101,24 @@ export function handleApiError(error: any): AppError {
 /**
  * React Query 에러를 처리
  */
-export function handleQueryError(error: any): AppError {
+export function handleQueryError(error: unknown): AppError {
   return handleApiError(error);
 }
 
 /**
  * Mutation 에러를 처리
  */
-export function handleMutationError(error: any): AppError {
+export function handleMutationError(error: unknown): AppError {
   return handleApiError(error);
 }
 
 /**
  * SSE 연결 에러를 처리
  */
-export function handleSSEError(error: any): AppError {
+export function handleSSEError(error: unknown): AppError {
   console.error('[SSE Error Handler]', error);
 
-  if (error.name === 'AbortError') {
+  if (isSSEError(error) && error.name === 'AbortError') {
     return {
       message: '연결이 중단되었습니다.',
       code: 'SSE_ABORTED',
@@ -115,7 +126,7 @@ export function handleSSEError(error: any): AppError {
     };
   }
 
-  if (error.message?.includes('fetch')) {
+  if (isErrorWithMessage(error) && error.message?.includes('fetch')) {
     return {
       message: '실시간 연결에 실패했습니다. 네트워크를 확인해주세요.',
       code: 'SSE_NETWORK_ERROR',
@@ -128,6 +139,25 @@ export function handleSSEError(error: any): AppError {
     code: 'SSE_ERROR',
     originalError: error
   };
+}
+
+// 타입 가드 함수들
+function isNetworkError(error: unknown): error is NetworkError {
+  return error instanceof Error && 
+         error.name === 'TypeError' && 
+         error.message.includes('fetch');
+}
+
+function isApiError(error: unknown): error is ApiError {
+  return error instanceof Error && 'status' in error;
+}
+
+function isSSEError(error: unknown): error is SSEError {
+  return error instanceof Error;
+}
+
+function isErrorWithMessage(error: unknown): error is Error {
+  return error instanceof Error && !!error.message;
 }
 
 /**
@@ -156,7 +186,7 @@ export function logError(error: AppError, context?: string): void {
     }
   };
 
-  if (process.env.NODE_ENV === 'development') {
+  if (config.isDevelopment) {
     console.error('[Error Log]', logData);
   } else {
     // 프로덕션에서는 에러 추적 서비스로 전송

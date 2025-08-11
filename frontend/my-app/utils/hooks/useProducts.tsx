@@ -10,13 +10,29 @@ interface Options extends SearchOptions {
   id?: string | number;
 }
 
+// 에러 타입 정의
+interface ApiError {
+  status?: number;
+  message?: string;
+  [key: string]: unknown;
+}
+
 async function fetchProducts(options: Options = {}): Promise<{ product: Product | null; products: Product[] }> {
   const { id, keyword = "", category = "" } = options
 
+  // 디버깅을 위한 로그 추가
+  console.log('[Products API] API_BASE_URL:', config.API_BASE_URL);
+  console.log('[Products API] API_ENDPOINTS.PRODUCTS:', config.API_ENDPOINTS.PRODUCTS);
+
   // id가 있으면 단일 상품 조회
   if (id) {
-    const res = await fetch(`${config.API_ENDPOINTS.PRODUCTS}/${id}`)
-    if (!res.ok) throw new Error("상품 데이터 로드 실패")
+    const url = `${config.API_ENDPOINTS.PRODUCTS}/${id}`;
+    console.log('[Products API] 단일 상품 조회 URL:', url);
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.error('[Products API] 단일 상품 조회 실패:', res.status, res.statusText);
+      throw new Error("상품 데이터 로드 실패")
+    }
     const data: ProductDetailResponse = await res.json()
     return { product: data.product || null, products: [] }
   }
@@ -29,9 +45,14 @@ async function fetchProducts(options: Options = {}): Promise<{ product: Product 
     url = `${config.API_ENDPOINTS.PRODUCTS_CATEGORY}/${encodeURIComponent(category)}`
   }
 
+  console.log('[Products API] 상품 목록 조회 URL:', url);
   const res = await fetch(url)
-  if (!res.ok) throw new Error("상품 데이터 로드 실패")
+  if (!res.ok) {
+    console.error('[Products API] 상품 목록 조회 실패:', res.status, res.statusText);
+    throw new Error("상품 데이터 로드 실패")
+  }
   const data: ProductListResponse = await res.json()
+  console.log('[Products API] 상품 목록 조회 성공, 상품 수:', data.products?.length || 0);
   return { product: null, products: Array.isArray(data.products) ? data.products : [] }
 }
 
@@ -57,9 +78,9 @@ export function useProducts(options: Options = {}) {
     // 네트워크 재연결 시에만 refetch
     refetchOnReconnect: true,
     // 에러 발생 시 재시도 설정
-    retry: (failureCount, error: any) => {
+    retry: (failureCount: number, error: ApiError) => {
       // 4xx 에러는 재시도하지 않음
-      if (error?.status >= 400 && error?.status < 500) {
+      if (error?.status && error.status >= 400 && error.status < 500) {
         return false;
       }
       // 최대 2번까지만 재시도

@@ -1,10 +1,9 @@
 'use client'
 
 // useAuth.tsx
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useState, useEffect, useCallback } from 'react';
 import { useBasketStore } from '@/store/useBasketStore';
-import { config } from '@/config/env';
 import { authStorage } from '@/utils/storage';
 import { loginApi, signupApi, guestLoginApi, refreshToken as refreshTokenApi } from '@/utils/api/auth';
 
@@ -59,7 +58,6 @@ function getTokenExpiryTime(token: string): number {
 }
 
 export function useAuth() {
-  const queryClient = useQueryClient();
 
   // "실시간" 동기화용 마운트 + 상태
   const [mounted, setMounted] = useState(false);
@@ -196,7 +194,7 @@ export function useAuth() {
       window.removeEventListener('storage', sync);
       window.removeEventListener('authChanged', sync);
     }
-  }, []);
+  }, [refreshAccessToken]);
 
   // 로그인
   const loginMutation = useMutation({

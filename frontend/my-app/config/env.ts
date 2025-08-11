@@ -31,7 +31,6 @@ export const config = {
       // 장바구니 관련
       BASKET_STREAM: `${this.API_BASE_URL}/api/baskets/my/stream`,
       BASKET_START: `${this.API_BASE_URL}/api/baskets/start`,
-      BASKET_ITEMS: `${this.API_BASE_URL}/api/baskets/my/items`,
       BASKET_CHECKOUT: `${this.API_BASE_URL}/api/baskets/my/checkout`,
       
       // 상품 관련

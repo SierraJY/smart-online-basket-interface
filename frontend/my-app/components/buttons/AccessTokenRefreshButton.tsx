@@ -11,8 +11,9 @@ export default function AccessTokenRefreshButton() {
       alert('갱신 성공!\n새 accessToken:\n' + newToken);
       // 여기서 console.log로 상태/스토리지 확인도 가능!
       console.log('새 accessToken:', newToken);
-    } catch (err: any) {
-      alert('갱신 실패!\n' + err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+      alert('갱신 실패!\n' + errorMessage);
       console.error(err);
     }
   };

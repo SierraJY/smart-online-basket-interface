@@ -30,6 +30,7 @@ interface Receipt {
   // 계산된 필드들
   totalAmount?: number;
   totalCount?: number;
+  totalProductTypes?: number;
   items?: ReceiptItem[];
 }
 
@@ -47,6 +48,13 @@ interface ReceiptsResponse {
   customerId: number;
   count: number;
   message: string;
+}
+
+// 에러 타입 정의
+interface ApiError {
+  status?: number;
+  message?: string;
+  [key: string]: unknown;
 }
 
 async function fetchReceipts(): Promise<ReceiptsResponse> {
@@ -86,9 +94,9 @@ export function useReceipts(token: string | null) {
     // 네트워크 재연결 시 새로고침
     refetchOnReconnect: true,
     // 에러 발생 시 재시도 설정
-    retry: (failureCount: number, error: any) => {
+    retry: (failureCount: number, error: ApiError) => {
       // 4xx 에러는 재시도하지 않음
-      if (error?.status >= 400 && error?.status < 500) {
+      if (error?.status && error.status >= 400 && error.status < 500) {
         return false;
       }
       // 최대 2번까지만 재시도

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import SearchModal from '../modals/SearchModal'
-import { FaMagnifyingGlass } from "react-icons/fa6";
+import { PiMagnifyingGlassLight  } from "react-icons/pi";
 
 export default function SearchButton() {
   const [isOpen, setIsOpen] = useState(false)
@@ -33,14 +33,14 @@ export default function SearchButton() {
       {/* 돋보기 버튼 */}
       <motion.button
         onClick={openModal}
-        className="p-3 rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
+        className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
         whileHover={{ 
           scale: 1.1,
           boxShadow: "0 8px 25px rgba(0,0,0,0.15)"
         }}
         whileTap={{ scale: 0.95 }}
       >
-        <FaMagnifyingGlass size={25} color="var(--foreground)" strokeWidth={1} />
+        <PiMagnifyingGlassLight  size={24} color="var(--foreground)" strokeWidth={1} />
       </motion.button>
 
       {/* 모달 */}

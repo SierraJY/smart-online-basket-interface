@@ -1,5 +1,6 @@
 // API 클라이언트 - 토큰 자동 갱신 기능 포함
 import { authStorage } from '@/utils/storage';
+import { AuthTokens } from '../../types';
 import { config } from '@/config/env';
 
 // JWT 토큰 디코딩 함수
@@ -82,13 +83,13 @@ export async function apiRequest(
       if (isRefreshing && refreshPromise) {
         try {
           await refreshPromise;
-        } catch (error) {
+        } catch {
           throw new Error("토큰 갱신에 실패했습니다. 다시 로그인해주세요.");
         }
       } else {
         // 새로운 토큰 갱신 시작
         isRefreshing = true;
-        refreshPromise = refreshTokenApi(refreshToken).then((data: any) => {
+        refreshPromise = refreshTokenApi(refreshToken).then((data: AuthTokens) => {
           authStorage.setAccessToken(data.accessToken);
           return data.accessToken;
         }).finally(() => {
@@ -98,7 +99,7 @@ export async function apiRequest(
         
         try {
           await refreshPromise;
-        } catch (error) {
+        } catch {
           throw new Error("토큰 갱신에 실패했습니다. 다시 로그인해주세요.");
         }
       }
@@ -123,7 +124,7 @@ export async function apiRequest(
     
     if (refreshToken && !isRefreshing) {
       isRefreshing = true;
-      refreshPromise = refreshTokenApi(refreshToken).then((data: any) => {
+      refreshPromise = refreshTokenApi(refreshToken).then((data: AuthTokens) => {
         authStorage.setAccessToken(data.accessToken);
         return data.accessToken;
       }).finally(() => {
@@ -146,7 +147,7 @@ export async function apiRequest(
           };
           return await fetch(url, newOptions);
         }
-      } catch (error) {
+      } catch {
         // 토큰 갱신 실패 시 로그아웃 처리
         authStorage.clear();
         window.dispatchEvent(new Event("authChanged"));
@@ -163,14 +164,14 @@ export const apiClient = {
   get: (url: string, requireAuth: boolean = true) => 
     apiRequest(url, { method: 'GET' }, requireAuth),
     
-  post: (url: string, data?: any, requireAuth: boolean = true) => 
+  post: (url: string, data?: unknown, requireAuth: boolean = true) => 
     apiRequest(url, { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' },
       body: data ? JSON.stringify(data) : undefined 
     }, requireAuth),
     
-  put: (url: string, data?: any, requireAuth: boolean = true) => 
+  put: (url: string, data?: unknown, requireAuth: boolean = true) => 
     apiRequest(url, { 
       method: 'PUT', 
       headers: { 'Content-Type': 'application/json' },

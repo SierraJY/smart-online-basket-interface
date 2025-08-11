@@ -1,12 +1,7 @@
 // 상품 랜덤 흔들림 컴포넌트
 
 import React, { useEffect, useState } from "react"
-
-type Product = {
-  id: number | string
-  stock: number
-  [key: string]: any
-}
+import { Product } from "../types"
 
 type ShakeWrapperProps = {
   item: Product
@@ -17,17 +12,17 @@ export default function ShakeWrapper({ item, children }: ShakeWrapperProps) {
   const [shaking, setShaking] = useState(false)
 
   useEffect(() => {
-    if (!(item.stock > 0 && item.stock <= 30)) { // 흔들 애니메이션 기준 stock
+    if (!(item.stock > 0 && item.stock <= 10)) { // 흔들 애니메이션 기준 stock
       setShaking(false)
       return
     }
     let timeout: NodeJS.Timeout
     const shakeOnce = () => {
       setShaking(true)
-      const shakeDuration = 350 + Math.random() * 300
+      const shakeDuration = 200 + Math.random() * 150  // 350+300 → 200+150 (더 짧게)
       timeout = setTimeout(() => {
         setShaking(false)
-        timeout = setTimeout(shakeOnce, 600 + Math.random() * 600)
+        timeout = setTimeout(shakeOnce, 2000 + Math.random() * 1500)  // 600+600 → 2000+1500 (더 긴 간격)
       }, shakeDuration)
     }
     shakeOnce()
