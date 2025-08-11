@@ -29,8 +29,12 @@ const handleLogin = async (e: React.FormEvent) => {
     setTimeout(() => {
       router.push('/')
     }, 0)
-  } catch (err: any) {
-    setMessage(err?.message || loginError?.message || '로그인 실패')
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 
+                        (err as { message?: string })?.message || 
+                        loginError?.message || 
+                        '로그인 실패';
+    setMessage(errorMessage);
   }
 }
 
@@ -47,8 +51,12 @@ const handleGuestLogin = async () => {
     setTimeout(() => {
       router.push('/')
     }, 0)
-  } catch (err: any) {
-    setMessage(err?.message || guestLoginError?.message || '게스트 로그인 실패')
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 
+                        (err as { message?: string })?.message || 
+                        guestLoginError?.message || 
+                        '게스트 로그인 실패';
+    setMessage(errorMessage);
   }
 }
 

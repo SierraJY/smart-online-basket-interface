@@ -1,35 +1,107 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/utils/hooks/useAuth';
-import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { apiClient } from '@/utils/api/apiClient';
+import Image from 'next/image';
+import { Product } from '@/types';
+import { AlertCircle, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { apiRequest } from '@/utils/api/apiClient';
 import { config } from '@/config/env';
 
-// 상품 타입 정의
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  stock: number;
-  category: string;
-  imageUrl: string;
-  discountRate: number;
-  sales: number;
-  tag: string;
-  location: string;
-  description: string;
-  brand: string;
-  discountedPrice?: number;
+// 상수 정의
+const CONSTANTS = {
+  CARD: {
+    MAX_WIDTH: 300,
+    MIN_HEIGHT: 180,
+    MIN_HEIGHT_SMALL: 70,
+    ASPECT_RATIO: 3 / 4, // 4:3 비율
+    WIDTH_DECREASE: 60,
+    HEIGHT_DECREASE_RATIO: 2 / 5,
+    HEIGHT_DECREASE_SMALL: 15,
+    HEIGHT_DECREASE_TINY: 8
+  },
+  VIEW: {
+    HEIGHT: 500,
+    SCROLL_THRESHOLD: 0.3,
+    SCROLL_SENSITIVITY: 0.1
+  },
+  TOUCH: {
+    MIN_SWIPE_DISTANCE: 50
+  },
+  PRODUCTS: {
+    MAX_COUNT: 30
+  }
+} as const;
+
+// 커스텀 에러 클래스
+class ProductTransformError extends Error {
+  constructor(message: string, public productId?: number | string) {
+    super(message);
+    this.name = 'ProductTransformError';
+  }
 }
+
+// 상품 데이터 변환 함수
+const transformProductData = (rawProduct: unknown): Product => {
+  // 타입 가드를 사용한 기본 검증
+  if (!rawProduct || typeof rawProduct !== 'object') {
+    throw new ProductTransformError('상품 데이터가 객체가 아닙니다.');
+  }
+  
+  const product = rawProduct as Record<string, unknown>;
+  
+  // 필수 필드 검증
+  if (!product.id || !product.name || !product.imageUrl) {
+    throw new ProductTransformError(
+      `상품 데이터가 불완전합니다: ID=${product.id}, 이름=${product.name}`,
+      String(product.id)
+    );
+  }
+  
+  const discountRate = Number(product.discountRate) || 0;
+  const price = Number(product.price) || 0;
+  
+  // 가격 검증
+  if (price <= 0) {
+    throw new ProductTransformError(
+      `유효하지 않은 가격입니다: ${product.price}`,
+      String(product.id)
+    );
+  }
+  
+  const transformedProduct: Product = {
+    id: Number(product.id),
+    name: String(product.name),
+    price,
+    stock: Number(product.stock) || 0,
+    category: String(product.category || ''),
+    imageUrl: String(product.imageUrl),
+    discountRate,
+    sales: Number(product.sales) || 0,
+    tag: String(product.tag || ''),
+    location: product.location ? String(product.location) : null,
+    description: product.description ? String(product.description) : null,
+    brand: product.brand ? String(product.brand) : null,
+    discountedPrice: discountRate > 0 
+      ? Math.floor(price * (1 - discountRate / 100))
+      : price
+  };
+  
+          // 최종 검증: 변환된 상품이 유효한 Product 타입인지 확인
+        if (!transformedProduct) { // Assuming transformedProduct is defined and not null/undefined
+          throw new ProductTransformError(
+            '변환된 상품 데이터가 유효하지 않습니다.',
+            'unknown'
+          );
+        }
+  
+  return transformedProduct;
+};
 
 // 수직 카드 페이저 컴포넌트
 interface VerticalCardPagerProps {
-  products: Product[];
+  products: readonly Product[]; // readonly로 변경하여 불변성 보장
   onPageChanged?: (page: number) => void;
   onSelectedItem?: (index: number) => void;
   initialPage?: number;
@@ -42,13 +114,9 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
   initialPage = 2
 }) => {
   const [currentPosition, setCurrentPosition] = useState(initialPage);
-  const [isScrolling, setIsScrolling] = useState(false);
   const [scrollOffset, setScrollOffset] = useState(0); // 스크롤 오프셋 추가
 
-  const handlePageChange = useCallback((newPosition: number) => {
-    setCurrentPosition(newPosition);
-    onPageChanged?.(newPosition);
-  }, [onPageChanged]);
+
 
   const handleItemSelect = useCallback((index: number) => {
     onSelectedItem?.(index);
@@ -56,25 +124,25 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
 
   // 카드 너비 계산
   const getCardWidth = useCallback((index: number) => {
-    const cardMaxWidth = 300;
+    const cardMaxWidth = CONSTANTS.CARD.MAX_WIDTH;
     const diff = Math.abs(currentPosition - index);
-    return Math.max(cardMaxWidth - 60 * diff, 0);
+    return Math.max(cardMaxWidth - CONSTANTS.CARD.WIDTH_DECREASE * diff, 0);
   }, [currentPosition]);
 
   // 카드 높이 계산 (4:3 비율 적용, 최소 높이 보장)
   const getCardHeight = useCallback((index: number) => {
     const cardWidth = getCardWidth(index);
-    const aspectRatio = 3 / 4; // 4:3 비율 (가로:세로 = 4:3, 세로:가로 = 3:4)
-    const baseHeight = Math.max(cardWidth * aspectRatio, 180); // 최소 높이 180px로 조정
+    const aspectRatio = CONSTANTS.CARD.ASPECT_RATIO; // 4:3 비율 (가로:세로 = 4:3, 세로:가로 = 3:4)
+    const baseHeight = Math.max(cardWidth * aspectRatio, CONSTANTS.CARD.MIN_HEIGHT); // 최소 높이 180px로 조정
     const diff = Math.abs(currentPosition - index);
     
     if (diff >= 0 && diff < 1) {
-      return baseHeight - baseHeight * (2 / 5) * (diff - Math.floor(diff)); // 높이 감소율 더 줄임
+      return baseHeight - baseHeight * CONSTANTS.CARD.HEIGHT_DECREASE_RATIO * (diff - Math.floor(diff)); // 높이 감소율 더 줄임
     } else if (diff >= 1 && diff < 2) {
-      return baseHeight - baseHeight * (2 / 5) - 15 * (diff - Math.floor(diff)); // 최소 높이 보장
+      return baseHeight - baseHeight * CONSTANTS.CARD.HEIGHT_DECREASE_RATIO - CONSTANTS.CARD.HEIGHT_DECREASE_SMALL * (diff - Math.floor(diff)); // 최소 높이 보장
     } else {
-      const height = baseHeight - baseHeight * (2 / 5) - 15 - 8 * (diff - Math.floor(diff));
-      return Math.max(height, 70); // 최소 70px 보장
+      const height = baseHeight - baseHeight * CONSTANTS.CARD.HEIGHT_DECREASE_RATIO - CONSTANTS.CARD.HEIGHT_DECREASE_SMALL - CONSTANTS.CARD.HEIGHT_DECREASE_TINY * (diff - Math.floor(diff));
+      return Math.max(height, CONSTANTS.CARD.MIN_HEIGHT_SMALL); // 최소 70px 보장
     }
   }, [currentPosition, getCardWidth]);
 
@@ -82,7 +150,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
 
   // 카드 위치 계산 (스크롤 오프셋 반영)
   const getCardTop = useCallback((index: number) => {
-    const viewHeight = 500; // 500px로 변경
+    const viewHeight = CONSTANTS.VIEW.HEIGHT; // 500px로 변경
     const cardHeight = getCardHeight(index);
     const diff = currentPosition - index + scrollOffset; // 스크롤 오프셋 추가
     const diffAbs = Math.abs(diff);
@@ -111,7 +179,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
         return basePosition + cardMaxHeight * (5 / 7);
       }
     }
-  }, [currentPosition, getCardHeight, scrollOffset]);
+  }, [currentPosition, getCardHeight, scrollOffset, getCardWidth]);
 
   // 투명도 계산 (스크롤 오프셋 반영)
   const getOpacity = useCallback((index: number) => {
@@ -128,23 +196,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
     }
   }, [currentPosition, scrollOffset]);
 
-  // 폰트 크기 계산 (스크롤 오프셋 반영)
-  const getFontSize = useCallback((index: number) => {
-    const diffAbs = Math.abs(currentPosition - index + scrollOffset); // 스크롤 오프셋 추가
-    const maxFontSize = 50;
-    
-    if (diffAbs >= 0 && diffAbs < 1) {
-      if (diffAbs < 0.02) {
-        return maxFontSize;
-      }
-      return maxFontSize - 25 * (diffAbs - Math.floor(diffAbs));
-    } else if (diffAbs >= 1 && diffAbs < 2) {
-      return maxFontSize - 25 - 5 * (diffAbs - Math.floor(diffAbs));
-    } else {
-      const fontSize = maxFontSize - 30 - 15 * (diffAbs - Math.floor(diffAbs));
-      return fontSize > 0 ? fontSize : 0;
-    }
-  }, [currentPosition, scrollOffset]);
+
 
   // 터치/클릭 이벤트 처리
   const handleCardClick = useCallback((index: number) => {
@@ -169,7 +221,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   // 최소 스와이프 거리 (픽셀)
-  const minSwipeDistance = 50;
+  const minSwipeDistance = CONSTANTS.TOUCH.MIN_SWIPE_DISTANCE;
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     setTouchEnd(null);
@@ -200,7 +252,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
       setScrollOffset(0);
       onPageChanged?.(newPosition);
     }
-  }, [touchStart, touchEnd, currentPosition, products.length, onPageChanged]);
+  }, [touchStart, touchEnd, currentPosition, products.length, onPageChanged, minSwipeDistance]);
 
   // 휠 이벤트를 위한 ref
   const wheelRef = useRef<HTMLDivElement>(null);
@@ -214,14 +266,14 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
       e.preventDefault();
       
       // 스크롤 감도 조절 (더 부드러운 움직임)
-      const sensitivity = 0.1;
+      const sensitivity = CONSTANTS.VIEW.SCROLL_SENSITIVITY;
       const delta = e.deltaY * sensitivity;
       
       // 새로운 오프셋 계산
       const newOffset = scrollOffset + delta;
       
       // 임계값 설정 (0.3 = 30% 스크롤 시 다음/이전 상품으로 이동)
-      const threshold = 0.3;
+      const threshold = CONSTANTS.VIEW.SCROLL_THRESHOLD;
       
       if (newOffset > threshold) {
         // 다음 상품으로 이동
@@ -266,7 +318,6 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
           const cardHeight = getCardHeight(index);
           const cardTop = getCardTop(index);
           const opacity = getOpacity(index);
-          const fontSize = getFontSize(index);
 
           if (opacity <= 0) return null;
 
@@ -340,7 +391,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
                     )}
                     
                     {/* 브랜드 배지 */}
-                    {product.brand && product.brand !== 'NULL::character varying' && (
+                    {product.brand && (
                       <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded-full">
                         {product.brand}
                       </div>
@@ -371,8 +422,7 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
 
 export default function AIPage() {
   const router = useRouter();
-  const { accessToken: token } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<readonly Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -383,29 +433,54 @@ export default function AIPage() {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.get(config.API_ENDPOINTS.PRODUCTS, true);
+      const response = await apiRequest(config.API_ENDPOINTS.PRODUCTS, { method: 'GET' }, true);
       
       if (response.ok) {
         const data = await response.json();
         
         // 응답 데이터 구조 확인 및 변환
-        const productsData = data.products || data || [];
-        const aiProducts: Product[] = productsData.slice(0, 30).map((product: any) => ({
-          ...product,
-          discountedPrice: product.discountRate > 0 
-            ? Math.floor(product.price * (1 - product.discountRate / 100))
-            : product.price
-        }));
+        const productsData = data.data || [];
+        const aiProducts: Product[] = productsData
+          .slice(0, CONSTANTS.PRODUCTS.MAX_COUNT) // 최대 30개 상품으로 제한
+          .map((rawProduct: unknown, index: number) => {
+            try {
+              return transformProductData(rawProduct);
+            } catch (error) {
+              if (error instanceof ProductTransformError) {
+                console.warn(`상품 ${index} 변환 실패 (ID: ${error.productId}):`, error.message);
+              } else {
+                console.warn(`상품 ${index} 변환 실패:`, error);
+              }
+              return null;
+            }
+          })
+          .filter((product: Product | null): product is Product => product !== null); // null 값 제거
         
         setProducts(aiProducts);
-        console.log(`AI 페이지: ${aiProducts.length}개 상품 로드 완료`);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || '상품 데이터를 불러오는데 실패했습니다.');
-      }
+        
+        if (aiProducts.length === 0) {
+          console.warn('AI 페이지: 변환된 상품이 없습니다.');
+        } else {
+          console.log(`AI 페이지: ${aiProducts.length}개 상품 로드 완료`);
+        }
+              } else {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}: 상품 데이터를 불러오는데 실패했습니다.`;
+          throw new Error(errorMessage);
+        }
     } catch (err) {
       console.error('AI 페이지 상품 데이터 로딩 오류:', err);
-      setError(err instanceof Error ? err.message : '네트워크 오류가 발생했습니다.');
+      let errorMessage = '네트워크 오류가 발생했습니다.';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errorMessage = String(err.message);
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -419,7 +494,8 @@ export default function AIPage() {
   // 초기 선택된 상품 설정
   useEffect(() => {
     if (products.length > 0 && !selectedProduct) {
-      setSelectedProduct(products[2]); // 초기 페이지(2)에 해당하는 상품
+      const initialIndex = Math.min(2, products.length - 1); // 안전한 인덱스 계산
+      setSelectedProduct(products[initialIndex]);
     }
   }, [products, selectedProduct]);
 
@@ -436,14 +512,18 @@ export default function AIPage() {
   // 아이템 선택 핸들러
   const handleItemSelected = useCallback((index: number) => {
     const product = products[index];
-    if (product) {
+    if (product && product.id) {
       router.push(`/products/${product.id}`);
     }
   }, [products, router]);
 
   // 새로고침 핸들러
-  const handleRefresh = useCallback(() => {
-    fetchProducts();
+  const handleRefresh = useCallback(async () => {
+    try {
+      await fetchProducts();
+    } catch (error) {
+      console.error('새로고침 중 오류 발생:', error);
+    }
   }, [fetchProducts]);
 
   // 로딩 상태
@@ -617,7 +697,7 @@ export default function AIPage() {
                     {selectedProduct.price.toLocaleString()}원
                   </p>
                 )}
-                {selectedProduct.brand && selectedProduct.brand !== 'NULL::character varying' && (
+                {selectedProduct.brand && (
                   <p className="text-lg font-semibold text-[var(--foreground)] mb-2">
                     {selectedProduct.brand}
                   </p>
@@ -637,7 +717,7 @@ export default function AIPage() {
               {/* 상품 설명 */}
               <div>
                 <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">상품 설명</h3>
-                {selectedProduct.description && selectedProduct.description !== '(NULL)' ? (
+                {selectedProduct.description ? (
                   <p className="text-base leading-relaxed text-[var(--text-secondary)]">
                     {selectedProduct.description}
                   </p>

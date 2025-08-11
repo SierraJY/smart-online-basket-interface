@@ -1,4 +1,4 @@
-import { config } from './config/env';
+
 // @ts-ignore
 import nextPWA from 'next-pwa';
 
@@ -32,7 +32,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /^https:\/\/13\.125\.215\.242\/api\/.*/i,
+      urlPattern: new RegExp(`^${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sobi-basket.app'}/api/.*`, 'i'),
       handler: 'NetworkFirst',
       options: {
         cacheName: 'api-cache',
@@ -40,7 +40,7 @@ const withPWA = require('next-pwa')({
           maxEntries: 25, // 50 → 25로 줄임
           maxAgeSeconds: 60 * 60 * 24, // 1일
         },
-        networkTimeoutSeconds: 3,
+        networkTimeoutSeconds: 30, // 3초 → 30초로 증가
       },
     },
   ],
@@ -48,14 +48,15 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'export',
-  output: 'standalone',
+  output: 'standalone', // Docker 빌드를 위해 활성화
   // 개발 환경에서 허용할 origin 설정
   allowedDevOrigins: [
-    'https://13.125.215.242',
-    'http://13.125.215.242',
+    process.env.NEXT_PUBLIC_API_BASE_URL || 'https://sobi-basket.app',
+    process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000',
     'https://localhost',
-    'http://localhost'
+    'http://localhost',
+    'http://192.168.0.80:3001', // 폰 테스트용 IP 추가
+    'http://192.168.0.80:8082'  // 백엔드 테스트용 IP 추가
   ],
   reactStrictMode: true,
   experimental: {
@@ -73,14 +74,15 @@ const nextConfig = {
     },
   },  
   
-  // async rewrites() {
-  //   return [
-  //     {
-  //       source: "/api/:path*",
-  //       destination: `${config.API_BASE_URL}/api/:path*`, // 백엔드 API 주소
-  //     },
-  //   ]
-  // },
+  async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`, // 백엔드 API 주소
+      },
+    ]
+  },
 
 
   // 이미지 도메인 설정 (극한 최적화)
@@ -95,7 +97,13 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '13.125.215.242',
+        hostname: 'i.postimg.cc',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '') || 'sobi-basket.app',
         port: '',
         pathname: '/**',
       },
@@ -113,6 +121,15 @@ const nextConfig = {
 
   // 웹팩 최적화 (극한 성능 최적화)
   webpack: (config: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+    // 개발 환경에서 파일 감시 설정
+    if (dev && !isServer) {
+      config.watchOptions = {
+        poll: 1000, // 1초마다 파일 변경 감지
+        aggregateTimeout: 300, // 300ms 대기 후 재빌드
+        ignored: ['**/node_modules', '**/.next', '**/.git'],
+      };
+    }
+    
     // 프로덕션에서만 최적화 적용
     if (!dev && !isServer) {
       // 번들 분석기 추가 (선택사항)

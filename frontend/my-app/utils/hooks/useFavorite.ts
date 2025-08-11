@@ -1,6 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { config } from '@/config/env'
-import { FavoriteRequest, FavoriteListResponse } from '@/types'
+import { FavoriteRequest, FavoriteListResponse, FavoriteProduct } from '@/types'
+
+// 에러 타입 정의
+interface ApiError {
+  status?: number;
+  message?: string;
+  [key: string]: unknown;
+}
+
+// 캐시 데이터 타입 정의
+interface FavoriteCacheData {
+  favoriteProducts: FavoriteProduct[];
+  [key: string]: unknown;
+}
 
 export const fetchFavoriteList = async (token: string): Promise<FavoriteListResponse> => {
   if (!token || token.length === 0) {
@@ -54,9 +67,9 @@ export function useFavorite(token: string | null) {
     staleTime: 30 * 1000, // 30초
     gcTime: 5 * 60 * 1000, // 5분
     // 에러 발생 시 재시도 설정
-    retry: (failureCount, error: any) => {
+    retry: (failureCount: number, error: ApiError) => {
       // 4xx 에러는 재시도하지 않음
-      if (error?.status >= 400 && error?.status < 500) {
+      if (error?.status && error.status >= 400 && error.status < 500) {
         return false;
       }
       // 최대 2번까지만 재시도
@@ -72,17 +85,17 @@ export function useFavorite(token: string | null) {
       await queryClient.cancelQueries({ queryKey: ['favorites', token] })
       const previousFavorites = queryClient.getQueryData(['favorites', token])
       
-      queryClient.setQueryData(['favorites', token], (old: any) => {
+      queryClient.setQueryData(['favorites', token], (old: FavoriteCacheData | undefined) => {
         if (!old?.favoriteProducts) return old
         return {
           ...old,
-          favoriteProducts: [...old.favoriteProducts, { id: productId }]
+          favoriteProducts: [...old.favoriteProducts, { id: productId } as FavoriteProduct]
         }
       })
       
       return { previousFavorites }
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // 에러 발생 시 이전 상태로 롤백
       if (context?.previousFavorites) {
         queryClient.setQueryData(['favorites', token], context.previousFavorites)
@@ -102,17 +115,17 @@ export function useFavorite(token: string | null) {
       await queryClient.cancelQueries({ queryKey: ['favorites', token] })
       const previousFavorites = queryClient.getQueryData(['favorites', token])
       
-      queryClient.setQueryData(['favorites', token], (old: any) => {
+      queryClient.setQueryData(['favorites', token], (old: FavoriteCacheData | undefined) => {
         if (!old?.favoriteProducts) return old
         return {
           ...old,
-          favoriteProducts: old.favoriteProducts.filter((p: any) => p.id !== productId)
+          favoriteProducts: old.favoriteProducts.filter((p: FavoriteProduct) => p.id !== productId)
         }
       })
       
       return { previousFavorites }
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // 에러 발생 시 이전 상태로 롤백
       if (context?.previousFavorites) {
         queryClient.setQueryData(['favorites', token], context.previousFavorites)
@@ -125,7 +138,7 @@ export function useFavorite(token: string | null) {
   })
 
   return {
-    favoriteList: data?.favoriteProducts?.map((p: any) => p.id) || [],
+    favoriteList: data?.favoriteProducts?.map((p: FavoriteProduct) => p.id) || [],
     loading: isLoading,
     addFavorite: add.mutateAsync,
     removeFavorite: remove.mutateAsync,

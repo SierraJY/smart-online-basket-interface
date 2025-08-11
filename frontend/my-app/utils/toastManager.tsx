@@ -13,6 +13,7 @@ interface ToastConfig {
   position?: ToastPosition;
   duration?: number;
   style?: React.CSSProperties;
+  id?: string;
 }
 
 // 기본 toast 설정
@@ -161,6 +162,89 @@ class ToastManager {
     const finalConfig = { ...defaultConfig, ...config };
     const defaultMessage = '로그아웃 중 오류가 발생했습니다';
     return toast.error(message || defaultMessage, finalConfig);
+  }
+
+  // 장바구니 사용 중 로그아웃 방지 toast
+  static basketInUse(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('장바구니를 사용 중입니다. 먼저 결제를 완료하거나 연결을 해제해주세요.', finalConfig);
+  }
+
+  // 바구니 관련 toast들
+  static basketActivationPending(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('장바구니 활성화가 진행 중입니다. 잠시 후 다시 시도해주세요.', finalConfig);
+  }
+
+  static basketAlreadyConnected(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.success('이미 연결되어 있습니다!', { ...finalConfig, duration: 2000 });
+  }
+
+  static basketReconnecting(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.loading('재연결 중...', { ...finalConfig, id: 'reconnect', duration: 5000 });
+  }
+
+  static basketConnectionFailed(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('연결에 실패했습니다. 다시 시도해주세요.', finalConfig);
+  }
+
+  static basketLoginRequired(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('로그인이 필요합니다.', finalConfig);
+  }
+
+  static basketEmpty(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('장바구니가 비어있습니다.', finalConfig);
+  }
+
+  static basketCheckoutProcessing(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.loading('결제 처리 중...', { ...finalConfig, id: 'checkout' });
+  }
+
+  static basketCheckoutSuccess(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.success('결제가 완료되었습니다!', { ...finalConfig, id: 'checkout' });
+  }
+
+  static basketCheckoutDatabaseError(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('결제 처리 중 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', { ...finalConfig, id: 'checkout' });
+  }
+
+  static basketCheckoutFailed(errorMessage: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(`결제 실패: ${errorMessage}`, { ...finalConfig, id: 'checkout' });
+  }
+
+  static basketCheckoutNetworkError(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('결제 요청 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', { ...finalConfig, id: 'checkout' });
+  }
+
+  static basketDisconnectPreparing(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast('연결 해제 기능은 준비 중입니다.', { ...finalConfig, duration: 3000 });
+  }
+
+  // SSE 에러 관련 toast들
+  static sseAuthError(message: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(`${message} 로그인 페이지로 이동하세요.`, { ...finalConfig, duration: 5000 });
+  }
+
+  static sseTimeoutError(message: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(message, { ...finalConfig, duration: 4000 });
+  }
+
+  static sseGeneralError(message: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(message, { ...finalConfig, duration: 3000 });
   }
 
   // 장바구니 상품 추가 toast (이미지 포함)

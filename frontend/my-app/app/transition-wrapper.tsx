@@ -24,12 +24,12 @@ export default function TransitionWrapper({ children }: { children: ReactNode })
       <motion.div
         className="backdrop-blur-md bg-white/80 rounded-xl shadow-lg"
         key={pathname}
-        initial={{ y: 120, opacity: 0 }}
+        initial={{ y: 150, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 0, opacity: 0 }}
+        exit={{ y: -50, opacity: 0 }}
         transition={{
-          duration: 1.0,
-          ease: [0.25, 0.1, 0.25, 1], // cubic-bezier for "ease-out-quart" 느낌
+          duration: 0.5,
+          ease: [0.25, 0.46, 0.45, 0.94], // 더 부드러운 이징
         }}
       >
         {showChildren ? children : null}

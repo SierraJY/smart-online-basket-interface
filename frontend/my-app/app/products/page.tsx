@@ -14,8 +14,9 @@ import SearchBar from '@/components/SearchBar'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import FavoriteIcon from '@/components/FavoriteIcon'
 import { useScrollRestore } from '@/store/useScrollRestore'
-import { useAuth } from '@/utils/hooks/useAuth'
 import { replaceCategoryName, extractCategories, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
+import { CATEGORY_ICONS, CategoryName } from '@/components/categoryIcons'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const CATEGORY_LIMIT = 10
 
@@ -23,20 +24,39 @@ export default function ProductsPage() {
   const { products, loading, error } = useProducts()
   useScrollRestore(!loading && products.length > 0)
   const searchParams = useSearchParams()
-  const router = useRouter()
+      const router = useRouter()
+    const [showTooltip, setShowTooltip] = useState(false)
+    const tooltipRef = useRef<HTMLDivElement>(null)
+
+    // 외부 클릭 시 툴팁 닫기
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+          setShowTooltip(false)
+        }
+      }
+
+      if (showTooltip) {
+        document.addEventListener('mousedown', handleClickOutside)
+      }
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }, [showTooltip])
 
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
-  const [category, setCategory] = useState<string>(categoryFromURL)
-  const { isLoggedIn, accessToken: token } = useAuth()
+  const [category, setCategory] = useState<CategoryName>(categoryFromURL as CategoryName)
+
   const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
   const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
     setKeyword(keywordFromURL)
-    setCategory(categoryFromURL)
+    setCategory(categoryFromURL as CategoryName)
     setExcludeOutOfStock(excludeOutOfStockFromURL)
   }, [keywordFromURL, categoryFromURL, excludeOutOfStockFromURL])
 
@@ -47,7 +67,7 @@ export default function ProductsPage() {
     params.set('keyword', val)
     router.replace(`?${params.toString()}`)
   }
-  const onCategoryChange = (val: string) => {
+  const onCategoryChange = (val: CategoryName) => {
     setCategory(val)
     const params = new URLSearchParams(searchParams)
     params.set('category', val)
@@ -93,7 +113,7 @@ export default function ProductsPage() {
     }
   })
 
-  const cardClass = "item-card flex-shrink-0 w-[120px] h-[180px] md:w-[150px] md:h-[200px] snap-start flex flex-col items-center px-2 pt-2 pb-1 transition-all relative bg-transparent"
+  const cardClass = "item-card flex-shrink-0 w-[100px] h-[150px] md:w-[130px] md:h-[170px] snap-start flex flex-col items-center px-1 pt-1 pb-1 transition-all relative bg-transparent"
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center min-h-[300px] py-12"
@@ -133,7 +153,7 @@ export default function ProductsPage() {
     if (!ref?.current) return
     const card = ref.current.querySelector('.item-card') as HTMLElement | null
     if (card) {
-      const width = card.getBoundingClientRect().width + 24
+      const width = card.getBoundingClientRect().width + 12
       ref.current.scrollBy({ left: dir * width, behavior: 'smooth' })
     }
   }
@@ -141,14 +161,57 @@ export default function ProductsPage() {
 
 
   return (
-    <main className="min-h-screen px-4 py-10 pb-24 flex flex-col items-center" 
+    <main className="min-h-screen px-3 py-6 pb-20 flex flex-col items-center" 
       style={{ 
         color: 'var(--foreground)', 
         transition: 'background-color 1.6s, color 1.6s',
         backgroundColor: 'var(--background)'
       }}
     >
-      <h1 className="text-2xl font-bold mb-6 mt-10" style={{ color: 'var(--sobi-green)' }}>전체 상품 목록</h1>
+      <div className="flex items-center justify-center mb-4 mt-10">
+        <div className="relative" ref={tooltipRef}>
+          <div 
+            className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200 touch-manipulation"
+            onClick={() => setShowTooltip(!showTooltip)}
+          >
+            {CATEGORY_ICONS["전체"]}
+          </div>
+          
+          <AnimatePresence>
+            {showTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 rounded-2xl text-sm font-medium whitespace-nowrap z-10"
+                style={{
+                  background: 'var(--sobi-green)',
+                  border: '1px solid var(--footer-border)',
+                  backdropFilter: 'blur(10px) saturate(140%)',
+                  color: 'var(--foreground)',
+                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)'
+                }}
+              >
+                {/* 말풍선 꼬리 */}
+                <div 
+                  className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0"
+                  style={{
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderTop: `8px solid var(--sobi-green)`,
+                    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+                  }}
+                />
+                
+                <div className="text-center text-white">
+                  <div className="font-semibold">전체 상품 목록</div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
       <SearchBar
         keyword={keyword}
         setKeyword={onKeywordChange}
@@ -158,7 +221,7 @@ export default function ProductsPage() {
         showCategorySelect={true}
         showResultButton={false}
       />
-      <div className="flex items-center gap-3 mb-6 mt-4 select-none">
+      <div className="flex items-center gap-3 mb-4 mt-3 select-none">
         <label htmlFor="excludeOutOfStock" className="flex items-center gap-2 cursor-pointer group" style={{ userSelect: "none" }}>
           <div className="relative">
             <input
@@ -189,7 +252,7 @@ export default function ProductsPage() {
           </span>
         </label>
       </div>
-      <div className="w-full mt-10 max-w-4xl">
+      <div className="w-full mt-6 max-w-4xl">
         {categorySections.length === 0 && (
           <p className="text-lg text-center mt-10" style={{ color: 'var(--text-secondary)' }}>
             검색 결과가 없습니다
@@ -202,7 +265,7 @@ export default function ProductsPage() {
           const showMore = items.length > CATEGORY_LIMIT
           return (
             <section key={cat} className="mb-2">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-3">
                 <h2 className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>
                   {replaceCategoryName(cat)}
                 </h2>
@@ -225,40 +288,63 @@ export default function ProductsPage() {
                   <ChevronLeft size={26} />
                 </button>
                 {/* 상품 리스트 */}
-                <div ref={scrollRef} className="flex overflow-x-auto gap-5 snap-x snap-mandatory -mx-1 scrollbar-none cursor-pointer" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}>
+                <div ref={scrollRef} className="flex overflow-x-auto gap-3 snap-x snap-mandatory -mx-1 scrollbar-none cursor-pointer" style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}>
                   {items.slice(0, CATEGORY_LIMIT).map((item: Product) => (
-                    <div key={item.id} className={cardClass}>
+                    <div key={item.id} className={`${cardClass} group hover:scale-105 transition-all duration-300`}>
                       <ShakeWrapper item={item}>
-                        <div className="relative w-full h-[110px] flex items-center justify-center">
+                        <div className="relative w-full h-[90px] flex items-center justify-center">
                           <Link href={`/products/${item.id}`} className="hover:scale-105 transition-all duration-200 hover:scale-105 block w-full h-full flex items-center justify-center">
-                            <Image
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="object-cover w-full h-full rounded-2xl"
-                              style={{ 
-                                maxHeight: 110, 
-                                maxWidth: 120, 
-                                backgroundColor: 'var(--input-background)',
-                                minHeight: 110,
-                                minWidth: 120
-                              }}
-                              width={120}
-                              height={120}
-                              priority={false}
-                              loading="lazy"
-                              sizes="(max-width: 768px) 120px, 120px"
-                              quality={85}
-                              onLoad={(e) => {
-                                // 이미지 로드 완료 후 레이아웃 안정화
-                                const target = e.target as HTMLImageElement;
-                                target.style.opacity = '1';
-                              }}
-                              onError={(e) => {
-                                // 에러 시에도 레이아웃 유지
-                                const target = e.target as HTMLImageElement;
-                                target.style.opacity = '1';
-                              }}
-                            />
+                            <div className="relative w-full h-full rounded-2xl overflow-hidden"
+                              style={{
+                                background: 'linear-gradient(135deg, var(--sobi-green-light) 0%, var(--input-background) 100%)',
+                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                              }}>
+                              <Image
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="object-cover w-full h-full rounded-2xl group-hover:scale-110"
+                                style={{ 
+                                  maxHeight: 90, 
+                                  maxWidth: 100, 
+                                  backgroundColor: 'var(--input-background)',
+                                  minHeight: 90,
+                                  minWidth: 100,
+                                  transition: 'all 0.3s ease'
+                                }}
+                                width={120}
+                                height={120}
+                                priority={false}
+                                loading="lazy"
+                                sizes="(max-width: 768px) 100px, 100px"
+                                quality={85}
+                                onLoad={(e) => {
+                                  // 이미지 로드 완료 후 레이아웃 안정화
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.opacity = '1';
+                                }}
+                                onError={(e) => {
+                                  // 에러 시에도 레이아웃 유지
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.opacity = '1';
+                                }}
+                              />
+                              {/* 그라데이션 오버레이 - 페이드아웃 효과 */}
+                              <div 
+                                className="absolute inset-0 rounded-2xl pointer-events-none"
+                                style={{
+                                  background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
+                                  opacity: 0.8
+                                }}
+                              />
+                              {/* 테두리 그라데이션 효과 */}
+                              <div 
+                                className="absolute inset-0 rounded-2xl pointer-events-none"
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+                                  opacity: 0.6
+                                }}
+                              />
+                            </div>
                           </Link>
                           {/* 할인 배지 */}
                           {item.discountRate > 0 && (
@@ -272,7 +358,7 @@ export default function ProductsPage() {
                       </ShakeWrapper>
                       <Link href={`/products/${item.id}`}>
                         {/* 가격 부분 */}
-                        <div className="h-[55px] flex flex-col justify-center">
+                        <div className="h-[45px] flex flex-col justify-center">
                            {item.discountRate > 0 ? (
                              <div className={"flex flex-col items-center gap-0.5 " + (item.stock === 0 ? "opacity-60 grayscale" : "")}>
                                <span className="text-[13px] text-gray-400 line-through opacity-70">
@@ -293,10 +379,10 @@ export default function ProductsPage() {
                   ))}
                   {/* 더보기 카드 */}
                   {showMore && (
-                    <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="flex-shrink-0 w-[100px] h-[100px] snap-start flex flex-col items-center justify-center hover:scale-110 transition-all font-semibold text-md cursor-pointer"
+                    <Link href={`/products/category?category=${encodeURIComponent(cat)}`} className="flex-shrink-0 w-[80px] h-[80px] snap-start flex flex-col items-center justify-center hover:scale-110 transition-all font-semibold text-md cursor-pointer"
                       style={{ 
-                        minHeight: '155px', 
-                        height: '155px', 
+                        minHeight: '125px', 
+                        height: '125px', 
                         alignItems: 'center',
                         color: 'var(--text-secondary)',
                         borderRadius: '8px'
@@ -319,7 +405,7 @@ export default function ProductsPage() {
                 </button>
               </div>
               {/* 구분선 */}
-              <div className="w-full border-b border-[var(--input-border)] my-6" />
+              <div className="w-full border-b border-[var(--input-border)] my-4" />
             </section>
           )
         })}

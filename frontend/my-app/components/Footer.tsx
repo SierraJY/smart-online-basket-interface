@@ -1,26 +1,26 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/utils/hooks/useAuth'
 import {
-  PackageSearch, Home, ShoppingBasket,
+  Home, ShoppingBasket,
 } from 'lucide-react'
-import { useEffect, useState, useRef } from 'react'
+import { useHasNewItems } from '@/store/useBasketStore'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RxHamburgerMenu } from "react-icons/rx";
+import { Menu } from 'lucide-react'
 import CategoryModal from './modals/CategoryModal'
 
 export default function Footer() {
-  const router = useRouter()
-  const { isLoggedIn, logout, mounted } = useAuth();
+  const { mounted } = useAuth();
   const [isVisible, setIsVisible] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
   const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const hasNewItems = useHasNewItems()
 
   // 사용자 활동 감지 함수
-  const resetInactivityTimer = () => {
+  const resetInactivityTimer = useCallback(() => {
     // 기존 타이머가 있다면 클리어
     if (inactivityTimerRef.current) {
       clearTimeout(inactivityTimerRef.current)
@@ -32,7 +32,7 @@ export default function Footer() {
         setIsVisible(false)
       }, 5000) // 5초
     }
-  }
+  }, [isVisible])
 
   // 사용자 활동 이벤트 리스너들 (터치/클릭 감지)
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function Footer() {
         clearTimeout(inactivityTimerRef.current)
       }
     }
-  }, [isVisible]) // isVisible이 변경될 때마다 재설정
+  }, [isVisible, resetInactivityTimer]) // resetInactivityTimer 의존성 추가
 
   // 스크롤 감지 (아래로 스크롤 시 Footer 숨기기)
   useEffect(() => {
@@ -108,28 +108,32 @@ export default function Footer() {
           >
             {/* 네비/아이콘 버튼들 */}
             <div className="flex flex-row justify-between items-center w-full">
+
+              <motion.button
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="hover:scale-110"
+                  title="카테고리"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ 
+                    duration: 0.2,
+                    ease: [0.25, 0.46, 0.45, 0.94]
+                  }}
+                >
+                <Menu color="var(--foreground)" strokeWidth={1.5} />
+              </motion.button>
+              
               <Link href="/" className="hover:scale-110" title="홈">
                 <Home size={22} color="var(--foreground)" strokeWidth={1.2} />
               </Link>
-              {/* <Link href="/products" className="hover:scale-110" title="상품목록">
-                <PackageSearch size={22} color="var(--foreground)" strokeWidth={1.5} />
-              </Link> */}
-              <Link href="/baskets" className="hover:scale-110" title="장바구니">
-                <ShoppingBasket size={24} color="var(--sobi-green)" strokeWidth={1.2} />
+
+              <Link href="/baskets" className="hover:scale-110 relative" title="장바구니">
+                <ShoppingBasket size={24} color="var(--sobi-green)" strokeWidth={1.8} />
+                {/* 새로운 상품 알림 표시 */}
+                {hasNewItems && (
+                  <div className="absolute -top-1 -left-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                )}
               </Link>
-              <motion.button
-                onClick={() => setIsCategoryModalOpen(true)}
-                className="hover:scale-110"
-                title="카테고리"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ 
-                  duration: 0.2,
-                  ease: [0.25, 0.46, 0.45, 0.94]
-                }}
-              >
-                <RxHamburgerMenu size={22} color="var(--foreground)" strokeWidth={1} />
-              </motion.button>
               {/* {realLoggedIn ? (
                 <button
                   onClick={handleLogout}

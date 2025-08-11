@@ -23,8 +23,12 @@ export default function SignupPage() {
     try {
       await signup({ userId, password, gender, age })
       router.push('/')
-    } catch (err: any) {
-      setMessage(err?.message || signupError?.message || '회원가입 실패')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 
+                          (err as { message?: string })?.message || 
+                          signupError?.message || 
+                          '회원가입 실패';
+      setMessage(errorMessage);
     }
   }
 
