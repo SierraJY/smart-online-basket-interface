@@ -69,6 +69,7 @@ services:
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USERNAME: ${SMTP_USERNAME}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+      REPORT_RECEIVER_EMAILS: ${REPORT_RECEIVER_EMAILS}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GMS_BASE_URL: "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
       GMS_MODEL: "gpt-4.1-nano"
