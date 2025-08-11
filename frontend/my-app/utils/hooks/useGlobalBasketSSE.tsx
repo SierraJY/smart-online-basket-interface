@@ -449,63 +449,61 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
          }
        };
 
-      // 이벤트 리스너 설정
-      globalEventSource.addEventListener('basket-initial', (event: MessageEvent) => {
-        try {
-          const data: Basket = JSON.parse(event.data);
-          handleBasketData(data);
-        } catch (e) {
-          console.error("[Global SSE] basket-initial 데이터 파싱 실패:", e);
+    // 이벤트 리스너 설정
+    globalEventSource.addEventListener('basket-initial', (event: MessageEvent) => {
+      try {
+        const data: Basket = JSON.parse(event.data);
+        handleBasketData(data);
+      } catch (e) {
+        console.error("[Global SSE] basket-initial 데이터 파싱 실패:", e);
+      }
+    });
+
+    globalEventSource.addEventListener('basket-update', (event: MessageEvent) => {
+      try {
+        const data: Basket = JSON.parse(event.data);
+        handleBasketData(data);
+      } catch (e) {
+        console.error("[Global SSE] basket-update 데이터 파싱 실패:", e);
+      }
+    });
+
+    globalEventSource.onerror = (error: Event) => {
+      console.log("[Global SSE] 연결 에러 - 재연결 준비", error);
+
+      const errorInfo = classifyError(error);
+      updateErrorInfo(errorInfo);
+
+      if (globalEventSource) {
+        globalEventSource.close();
+        globalEventSource = null;
+      }
+
+      isConnecting = false;
+      updateConnectionStatus('error');
+      stopConnectionCheck();
+
+      // 인증 에러인 경우 재연결 중단
+      if (errorInfo.type === 'auth') {
+        console.log("[Global SSE] 인증 에러로 인해 재연결 중단");
+        return;
+      }
+
+      // 지수 백오프 + 지터 적용 (최대 30초)
+      const baseDelayMs = Math.min(30000, Math.pow(2, Math.max(0, retryAttempt)) * 1000);
+      const jitterMs = Math.floor(Math.random() * 500);
+      const delayMs = baseDelayMs + jitterMs;
+      retryAttempt = Math.min(retryAttempt + 1, 10);
+
+      console.log(`[Global SSE] ${delayMs}ms 후 재연결 시도 (attempt=${retryAttempt})`);
+      updateConnectionStatus('reconnecting');
+      setTimeout(() => {
+        if (!isConnecting) {
+          reconnectGlobalSSE();
         }
-      });
-
-      globalEventSource.addEventListener('basket-update', (event: MessageEvent) => {
-        try {
-          const data: Basket = JSON.parse(event.data);
-          handleBasketData(data);
-        } catch (e) {
-          console.error("[Global SSE] basket-update 데이터 파싱 실패:", e);
-        }
-      });
-
-      globalEventSource.onerror = (error: Event) => {
-        console.log("[Global SSE] 연결 에러 - 재연결 준비", error);
-
-        // 에러 분류 및 정보 업데이트
-        const errorInfo = classifyError(error);
-        updateErrorInfo(errorInfo);
-
-        if (globalEventSource) {
-          globalEventSource.close();
-          globalEventSource = null;
-        }
-      });
-
-        isConnecting = false;
-        updateConnectionStatus('error');
-        stopConnectionCheck();
-
-        // 인증 에러인 경우 재연결 중단
-        if (errorInfo.type === 'auth') {
-          console.log("[Global SSE] 인증 에러로 인해 재연결 중단");
-          return;
-        }
-
-        // 지수 백오프 + 지터 적용 (최대 30초)
-        const baseDelayMs = Math.min(30000, Math.pow(2, Math.max(0, retryAttempt)) * 1000);
-        const jitterMs = Math.floor(Math.random() * 500);
-        const delayMs = baseDelayMs + jitterMs;
-        retryAttempt = Math.min(retryAttempt + 1, 10);
-
-        console.log(`[Global SSE] ${delayMs}ms 후 재연결 시도 (attempt=${retryAttempt})`);
-        updateConnectionStatus('reconnecting');
-        setTimeout(() => {
-          if (!isConnecting) {
-            reconnectGlobalSSE();
-          }
-        }, delayMs);
-      };
-    }
+      }, delayMs);
+    };
+  }
 
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
