@@ -3,8 +3,8 @@ services:
     build:
       context: ./frontend/my-app
       dockerfile: Dockerfile
-    image: sobi/frontend:blue
-    container_name: sobi-frontend-blue
+    image: sobi/frontend
+    container_name: sobi-frontend
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -22,8 +22,8 @@ services:
     build:
       context: ./backend/sobi_backend
       dockerfile: ../Dockerfile
-    image: sobi/backend:blue
-    container_name: sobi-backend-blue
+    image: sobi/backend
+    container_name: sobi-backend
     ports:
       - "8080:8080"
     environment:
@@ -32,9 +32,6 @@ services:
       - SPRING_DATASOURCE_PASSWORD=sobipass
       - SPRING_DATA_REDIS_HOST=redis
       - APP_MQTT_BROKER_URL=tcp://172.26.6.236:1883
-    depends_on:
-      - db
-      - redis
     restart: unless-stopped
     networks:
       - sobi-net
