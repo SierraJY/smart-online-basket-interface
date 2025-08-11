@@ -11,7 +11,7 @@ export default function TestPage() {
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
-    data?: any;
+    data?: Record<string, unknown>;
   } | null>(null);
 
   // 토큰 정보 디코딩 함수
@@ -27,7 +27,7 @@ export default function TestPage() {
       }).join(''));
       
       return JSON.parse(jsonPayload);
-    } catch (error) {
+    } catch {
       return null;
     }
   };
@@ -78,10 +78,11 @@ export default function TestPage() {
         window.location.reload();
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '토큰 갱신 실패';
       setResult({
         success: false,
-        message: error.message || '토큰 갱신 실패'
+        message: errorMessage
       });
     } finally {
       setIsLoading(false);
@@ -346,7 +347,7 @@ export default function TestPage() {
             
             {result.data && (
               <div className="text-sm bg-gray-100 dark:bg-gray-800 p-3 rounded">
-                <pre className="whitespace-pre-wrap">{JSON.stringify(result.data, null, 2)}</pre>
+                <pre className="whitespace-pre-wrap">{String(JSON.stringify(result.data, null, 2))}</pre>
               </div>
             )}
           </motion.div>

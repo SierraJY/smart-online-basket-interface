@@ -4,6 +4,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
 
 @font-face {
+  font-family: 'BMJUA';
+  src: url('./font/BMJUA.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
   font-family: 'Yeongwol';
   src: url('./font/Yeongwol.ttf') format('truetype');
   font-weight: normal;
@@ -31,6 +38,13 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'LOTTERIACHAB';
+  src: url('./font/chab.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 .test-font {
   font-family: 'Jua', 'Cafe24Ssurround', 'Pretendard', Arial, sans-serif;
   font-size: 0.8rem;
@@ -41,7 +55,7 @@
 
 :root {
   --input-background: #ffffff;
-  --background: #e1f2e3;
+  --background: #ddeedf;
   --foreground: #171717;
   /* --input-foreground: #171717; */
   --input-border: #cccccc;
@@ -55,11 +69,14 @@
   --search-modal-border: rgba(255,255,255,0.18);
   
   /* SOBI 브랜드 컬러 */
-  --sobi-green: #21ce80;
+  --sobi-green: #2dc07e;
   --sobi-green-light: rgba(18, 130, 17, 0.1);
   --sobi-green-lighter: rgba(18, 130, 17, 0.05);
   --sobi-green-border: rgba(18, 130, 17, 0.2);
   --sobi-green-border-light: rgba(18, 130, 17, 0.1);
+  
+  /* 게스트 사용자 컬러 */
+  --guest-orange: #f0952d;
   
 
 }
@@ -80,11 +97,14 @@
   --search-modal-border: rgba(160,160,180,0.13);
   
   /* SOBI 브랜드 컬러 (다크모드) */
-  --sobi-green: #1a6d39;  /* 다크모드에서는 더 밝은 그린 */
+  --sobi-green: #166935;  /* 다크모드에서는 더 밝은 그린 */
   --sobi-green-light: rgba(74, 222, 128, 0.15);
   --sobi-green-lighter: rgba(74, 222, 128, 0.08);
   --sobi-green-border: rgba(74, 222, 128, 0.25);
   --sobi-green-border-light: rgba(74, 222, 128, 0.15);
+  
+  /* 게스트 사용자 컬러 (다크모드) */
+  --guest-orange: #f0952d;
   
 
 }
@@ -168,6 +188,19 @@ textarea {
 
 .animate-shake-random {
   animation: shake-random 0.55s cubic-bezier(.35,.07,.72,1.34);
+}
+
+/* 로고 전용 부드러운 흔들림 애니메이션 */
+@keyframes logo-shake {
+  0% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(-2px) translateY(-1px); }
+  50% { transform: translateX(2px) translateY(1px); }
+  75% { transform: translateX(-1px) translateY(-0.5px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+.animate-logo-shake {
+  animation: logo-shake 0.3s ease-in-out;
 }
 
 /* 점 애니메이션 */

@@ -6,8 +6,7 @@ import { X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { CATEGORY_ICONS } from '../categoryIcons'
 import { useProducts } from '@/utils/hooks/useProducts'
-
-type Product = { category: string; [key: string]: any }
+import { Product } from '@/types'
 
 interface CategoryModalProps {
   onClose: () => void
@@ -105,7 +104,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
 
             {/* 헤더 */}
             <div className="text-center mb-6">
-              <p className="text-lg font-semibold text-[var(--foreground)]">카테고리</p>
+              <p className="text-xl font-semibold text-[var(--foreground)]">카테고리</p>
             </div>
                 
             {/* 카테고리 리스트 */}
@@ -132,7 +131,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
                 >
                   {/* 아이콘 */}
                   <span className="text-2xl flex-shrink-0 w-8 text-center">
-                    {CATEGORY_ICONS[category] || '🍽️'}
+                    {CATEGORY_ICONS[category as keyof typeof CATEGORY_ICONS] || '🍽️'}
                   </span>
                   {/* 카테고리명 */}
                   <span className="text-base font-medium flex-1">

@@ -2,11 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { useBasketStore } from '@/store/useBasketStore';
+import { Basket } from '@/types';
+
+// 테스트용 장바구니 데이터 타입
+interface TestBasketData {
+  basketId: number;
+  totalPrice: number;
+  totalCount: number;
+  items: Array<{
+    epcPattern: string;
+    quantity: number;
+    product: {
+      name: string;
+      price: number;
+    };
+  }>;
+}
 
 export default function PWATestPage() {
   const [swStatus, setSwStatus] = useState<string>('확인 중...');
   const [notificationStatus, setNotificationStatus] = useState<string>('확인 중...');
-  const [basketData, setBasketData] = useState<any>(null);
+  const [basketData, setBasketData] = useState<Basket | null>(null);
   const { basketData: storeBasketData } = useBasketStore();
 
   useEffect(() => {
@@ -37,10 +53,11 @@ export default function PWATestPage() {
     if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
       try {
         const registration = await navigator.serviceWorker.ready;
-        await (registration as any).sync.register('basket-sync');
+        await (registration as ServiceWorkerRegistration & { sync: { register: (tag: string) => Promise<void> } }).sync.register('basket-sync');
         alert('백그라운드 동기화 등록 성공!');
       } catch (error) {
-        alert('백그라운드 동기화 등록 실패: ' + error);
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류';
+        alert('백그라운드 동기화 등록 실패: ' + errorMessage);
       }
     } else {
       alert('백그라운드 동기화를 지원하지 않습니다.');
@@ -59,8 +76,8 @@ export default function PWATestPage() {
   };
 
   const testBasketUpdate = () => {
-    if (typeof window !== 'undefined' && (window as any).sendBasketUpdateToSW) {
-      const testData = {
+    if (typeof window !== 'undefined' && (window as { sendBasketUpdateToSW?: (basketData: TestBasketData) => void }).sendBasketUpdateToSW) {
+      const testData: TestBasketData = {
         basketId: 1,
         totalPrice: 10000,
         totalCount: 2,

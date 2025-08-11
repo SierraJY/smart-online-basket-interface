@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { shallow } from 'zustand/shallow';
 
 // 백엔드 SSE 명세서에 맞는 타입 정의
 interface Product {
@@ -39,11 +38,17 @@ interface BasketState {
   basketId: string;
   activatedBasketId: string | null;
   basketData: BasketData | null;
+  introSeenMap: Record<string, boolean>;
+  hasNewItems: boolean; // 새로운 상품 알림 상태
   setBasketId: (basketId: string) => void;
   setActivatedBasketId: (basketId: string | null) => void;
   setBasketData: (data: BasketData | null) => void;
   clearBasketId: () => void;
   clearBasketData: () => void;
+  markIntroSeen: (basketId: string) => void;
+  hasIntroSeen: (basketId?: string | null) => boolean;
+  resetIntroSeen: (basketId: string) => void;
+  setHasNewItems: (hasNew: boolean) => void; // 새로운 상품 알림 설정
   // 최적화된 selector들
   getBasketId: () => string;
   getActivatedBasketId: () => string | null;
@@ -61,6 +66,8 @@ export const useBasketStore = create<BasketState>()(
       basketId: "",
       activatedBasketId: null,
       basketData: null,
+      introSeenMap: {},
+      hasNewItems: false,
       
       // 액션들
       setBasketId: (basketId) => {
@@ -77,6 +84,28 @@ export const useBasketStore = create<BasketState>()(
       },
       clearBasketData: () => {
         set({ basketData: null });
+      },
+      markIntroSeen: (basketId) => {
+        if (!basketId) return;
+        const map = { ...(get().introSeenMap || {}) };
+        map[basketId] = true;
+        set({ introSeenMap: map });
+      },
+      hasIntroSeen: (basketId) => {
+        const id = basketId || get().basketId;
+        if (!id) return false;
+        return !!get().introSeenMap?.[id];
+      },
+      resetIntroSeen: (basketId) => {
+        if (!basketId) return;
+        const map = { ...(get().introSeenMap || {}) };
+        if (map[basketId]) {
+          delete map[basketId];
+          set({ introSeenMap: map });
+        }
+      },
+      setHasNewItems: (hasNew) => {
+        set({ hasNewItems: hasNew });
       },
       
       // 최적화된 selector들
@@ -97,7 +126,9 @@ export const useBasketStore = create<BasketState>()(
       // basketData는 실시간 데이터이므로 저장하지 않음
       partialize: (state) => ({ 
         basketId: state.basketId,
-        activatedBasketId: state.activatedBasketId
+        activatedBasketId: state.activatedBasketId,
+        introSeenMap: state.introSeenMap,
+        hasNewItems: state.hasNewItems
       }),
     }
   )
@@ -115,6 +146,10 @@ export const useIsBasketEmpty = () => useBasketStore(state => {
   return !basketData || basketData.totalCount === 0; // totalCount 사용
 });
 export const useHasActivatedBasket = () => useBasketStore(state => !!state.activatedBasketId);
+
+// 새로운 상품 알림 관련 훅들
+export const useHasNewItems = () => useBasketStore(state => state.hasNewItems);
+export const useSetHasNewItems = () => useBasketStore(state => state.setHasNewItems);
 
 // 액션 훅들 - 개별 훅으로 분리하여 최적화
 export const useSetBasketId = () => useBasketStore(state => state.setBasketId);

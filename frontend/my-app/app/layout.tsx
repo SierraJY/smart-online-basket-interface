@@ -11,6 +11,8 @@ import GlobalBasketSSE from '@/components/GlobalBasketSSE'
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider'
 import { Toaster } from 'react-hot-toast'
 import GuestTimeOut from '@/components/GuestTimeOut'
+// 개발용 테스트 컴포넌트 (배포 시 이 줄만 주석 처리)
+import TestForDev from '@/components/modals/TestForDev'
 
 export { metadata }
 
@@ -70,8 +72,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ReactQueryProvider>
           <ServiceWorkerProvider />
           <GlobalBasketSSE />
+          {/* 개발용 테스트 컴포넌트 (배포 시 이 줄만 주석 처리) */}
+          <TestForDev />
           <TransitionWrapper>
-          <GuestTimeOut />
+          
             <Suspense fallback={null}>
               {children}
             </Suspense>
@@ -82,13 +86,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               해당 페이지는 모바일에 최적화 되어있습니다
             </p>
           </div>
+          <GuestTimeOut />
           {/* BackButton */}
-          <div className="fixed bottom-7 right-4 z-50">
+          <div className="fixed bottom-9 right-5 z-50">
             <BackButton />
           </div>
           <Footer />
           {/* MenuButton */}
-          <div className="fixed bottom-7 left-4 z-50">
+          <div className="fixed bottom-9 left-5 z-50">
             <MenuButton />
           </div>
           

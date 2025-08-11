@@ -103,9 +103,9 @@ export default function WhatsUrGenderOrAge({
         </button>
 
         {/* 헤더 */}
-        <div className="text-center mb-6">
+        {/* <div className="text-center mb-6">
           <p className="text-lg font-semibold text-[var(--foreground)]">추가 정보 입력</p>
-        </div>
+        </div> */}
 
         {/* 안내문구 */}
         <div className="mb-6 text-center">
@@ -113,10 +113,10 @@ export default function WhatsUrGenderOrAge({
             성별과 나이를 선택하면
           </div>
           <div className="font-semibold mb-1" style={{ color: 'var(--sobi-green)' }}>
-            SOBI AI 추천 서비스
+            <span className="text-xl text-bold text-green-500">더욱 !</span> 정교한 SOBI AI 추천을
           </div>
           <div className="text-[15px] text-[var(--text-secondary)]">
-            를 제공 받으실 수 있어요!
+            제공 받으실 수 있어요!
           </div>
         </div>
 

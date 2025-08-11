@@ -3,26 +3,31 @@
 import { useState, useEffect, useRef } from "react"
 import { Package, PackageOpen } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
-import { usePathname } from "next/navigation"
-import LogoutButton from './LogoutButton'
+import { usePathname, useRouter } from "next/navigation"
+import Image from 'next/image'
+import ProfileButton from './ProfileButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
+import { useAuth } from '@/utils/hooks/useAuth'
 
 export default function MenuButton() {
   const [open, setOpen] = useState(false)
-  const [isDark, setIsDark] = useState(false) // 테마는 읽기
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const router = useRouter()
+  const { isLoggedIn } = useAuth()
 
-  // 다크모드 상태 동기화 (읽기만, setTheme 없음)
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains('dark'))
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains('dark'))
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
-  }, [])
+  // 찜 목록 버튼 클릭 핸들러
+  const handleFavoriteClick = () => {
+    if (isLoggedIn) {
+      router.push('/favorite')
+    } else {
+      router.push('/login')
+    }
+    setOpen(false)
+  }
+
+
 
   // ESC로 닫기
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function MenuButton() {
               transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
-              <LogoutButton />
+              <ProfileButton inline />
             </motion.div>
 
             <motion.div
@@ -78,6 +83,36 @@ export default function MenuButton() {
             >
               <SearchButton />
             </motion.div>
+
+            <motion.div
+              key="favorite"
+              initial={{ opacity: 0, translateY: 32 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              exit={{ opacity: 0, translateY: 32 }}
+              transition={{ delay: 0.125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              className="mb-3"
+            >
+              <motion.button
+                onClick={handleFavoriteClick}
+                className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
+                whileHover={{ 
+                  scale: 1.1,
+                  boxShadow: "0 8px 25px rgba(0,0,0,0.15)"
+                }}
+                whileTap={{ scale: 0.95 }}
+                aria-label={isLoggedIn ? "찜 목록" : "로그인하고 찜 목록 보기"}
+                title={isLoggedIn ? "찜 목록" : "로그인이 필요합니다"}
+              >
+                <Image
+                  src="/icon/favorite.png"
+                  alt="찜 목록"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6"
+                />
+              </motion.button>
+            </motion.div>
+
             <motion.div
               key="darkmode"
               initial={{ opacity: 0, translateY: 32 }}
@@ -96,11 +131,11 @@ export default function MenuButton() {
       <button
         onClick={() => setOpen(!open)}
         className={`
-          w-12 h-12 flex items-center justify-center rounded-full
+          w-10 h-10 flex items-center justify-center rounded-full
           z-50 hover:scale-110 transition-all
         `}
         style={{
-          backgroundColor: 'var(--footer-background)',
+          backgroundColor: 'var(--background)',
           border: '1px solid var(--footer-border)',
           backdropFilter: 'blur(10px) saturate(140%)'
         }}

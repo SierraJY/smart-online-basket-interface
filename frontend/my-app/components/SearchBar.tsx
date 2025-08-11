@@ -1,21 +1,24 @@
 import { useState, useRef, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { CategoryName, isValidCategory } from "./categoryIcons"
 
+// 검색바 Props 타입 정의
 interface SearchBarProps {
   keyword: string
-  setKeyword: (v: string) => void
-  category?: string
-  setCategory?: (v: string) => void
-  categories?: string[]
+  setKeyword: (value: string) => void
+  category?: CategoryName
+  setCategory?: (value: CategoryName) => void
+  categories?: readonly CategoryName[]
   onSearch: () => void
   showCategorySelect?: boolean // 카테고리 select 숨김여부
   showResultButton?: boolean
 }
 
+// 검색바 컴포넌트
 export default function SearchBar({
   keyword,
   setKeyword,
-  category = '',
+  category = '전체',
   setCategory,
   categories = [],
   onSearch,
@@ -25,20 +28,44 @@ export default function SearchBar({
   const [open, setOpen] = useState(false)
   const selectRef = useRef<HTMLDivElement>(null)
 
+  // 카테고리 변경 핸들러
+  const handleCategoryChange = (newCategory: string) => {
+    if (isValidCategory(newCategory) && setCategory) {
+      setCategory(newCategory)
+      setOpen(false)
+    }
+  }
+
+  // 키보드 이벤트 핸들러
+  const handleKeyDown = (e: React.KeyboardEvent, cat: string) => {
+    if (e.key === 'Enter') {
+      handleCategoryChange(cat)
+    }
+  }
+
+  // 외부 클릭 감지
   useEffect(() => {
     if (!open) return
+    
     const handler = (e: MouseEvent) => {
       if (selectRef.current && !selectRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
+    
     window.addEventListener('mousedown', handler)
     return () => window.removeEventListener('mousedown', handler)
   }, [open])
 
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSearch()
+  }
+
   return (
     <form
-      onSubmit={e => { e.preventDefault(); onSearch() }}
+      onSubmit={handleSubmit}
       className="w-full max-w-md flex flex-col gap-4"
     >
       <div
@@ -55,18 +82,30 @@ export default function SearchBar({
         }}
       >
         {/* 검색 input */}
-        <input
-          type="text"
-          placeholder="상품명을 입력하세요..."
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          className="flex-1 px-5 py-3 text-sm bg-transparent focus:outline-none"
-          style={{
-            color: 'var(--foreground)',
-            border: 'none',
-          }}
-          autoComplete="on"
-        />
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            placeholder="상품명을 입력하세요"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            className="w-full px-5 py-3 text-sm bg-transparent focus:outline-none"
+            style={{
+              color: 'var(--foreground)',
+              border: 'none',
+            }}
+            autoComplete="on"
+          />
+          {/* 점 애니메이션 - ProductDetailClient와 동일한 방식 */}
+          {!keyword && (
+            <div className="absolute left-28 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <span className="inline-block">
+                <span className="animate-dots">.</span>
+                <span className="animate-dots" style={{ animationDelay: '0.2s' }}>.</span>
+                <span className="animate-dots" style={{ animationDelay: '0.4s' }}>.</span>
+              </span>
+            </div>
+          )}
+        </div>
 
         {showCategorySelect && !!setCategory && categories.length > 0 && (
           <>
@@ -117,26 +156,26 @@ export default function SearchBar({
                       fontWeight: 500,
                     }}
                   >
-                    {categories.map((c) => (
+                    {categories.map((cat) => (
                       <li
-                        key={c}
-                        onClick={() => { setCategory(c); setOpen(false); }}
+                        key={cat}
+                        onClick={() => handleCategoryChange(cat)}
                         style={{
                           padding: '11px 24px',
                           color: 'var(--text-secondary)',
-                          background: c === category
+                          background: cat === category
                             ? 'rgba(0,0,0,0.06)'
                             : 'transparent',
                           cursor: 'pointer',
-                          fontWeight: c === category ? 700 : 400,
+                          fontWeight: cat === category ? 700 : 400,
                           transition: 'background 0.18s',
                           fontSize: 11,
                           letterSpacing: '-0.2px'
                         }}
                         tabIndex={0}
-                        onKeyDown={e => e.key === 'Enter' && (setCategory(c), setOpen(false))}
+                        onKeyDown={(e) => handleKeyDown(e, cat)}
                       >
-                        {c}
+                        {cat}
                       </li>
                     ))}
                   </motion.ul>

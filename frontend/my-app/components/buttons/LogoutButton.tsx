@@ -1,60 +1,89 @@
 'use client'
 
-import { LogOut } from "lucide-react";
-import { useAuth } from '@/utils/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { logoutApi } from '@/utils/api/auth';
-import ToastManager from '@/utils/toastManager';
-import { useEffect } from 'react';
+import { LogOut } from 'lucide-react'
+import { useAuth } from '@/utils/hooks/useAuth'
+import { useBasketId, useActivatedBasketId } from '@/store/useBasketStore'
+import { useSSEConnectionStatus } from '@/utils/hooks/useGlobalBasketSSE'
+import ToastManager from '@/utils/toastManager'
 
-export default function LogoutButton() {
-  const { logout, isLoggedIn, userId } = useAuth();
-  const router = useRouter();
+interface LogoutButtonProps {
+  /** 버튼의 클래스명 (선택사항) */
+  className?: string
+  /** 아이콘 크기 (기본값: 18) */
+  iconSize?: number
+  /** 툴팁 표시 여부 (기본값: true) */
+  showTooltip?: boolean
+  /** 로그아웃 성공 후 실행할 콜백 함수 */
+  onLogoutSuccess?: () => void
+  /** 로그아웃 실패 시 실행할 콜백 함수 */
+  onLogoutError?: (error: any) => void
+}
 
-  // isLoggedIn 상태 변화 감지
-  useEffect(() => {
-    console.log('isLoggedIn 상태 변화:', isLoggedIn);
-  }, [isLoggedIn]);
+export default function LogoutButton({
+  className = "absolute top-4 right-4 p-2 rounded-full transition-colors",
+  iconSize = 18,
+  showTooltip = true,
+  onLogoutSuccess,
+  onLogoutError
+}: LogoutButtonProps) {
+  const { logout, userId } = useAuth()
+  
+  // 바구니 상태 확인
+  const basketId = useBasketId()
+  const activatedBasketId = useActivatedBasketId()
+  const sseStatus = useSSEConnectionStatus()
+  
+  // 바구니 사용 중인지 확인하는 함수
+  const isBasketInUse = () => {
+    return !!(basketId && activatedBasketId && sseStatus === 'connected')
+  }
 
+  // 로그아웃 처리
   const handleLogout = async () => {
-    try {
-      // 백엔드 로그아웃 API 호출
-      const data = await logoutApi();
-      
-      if (data.success) {
-        // 로컬 상태 정리
-        await logout();
-        
-        // 성공 메시지 표시
-        ToastManager.logoutSuccess(userId || undefined);
-        
-        // 로그인 페이지로 리다이렉트
-        router.push('/login');
-      } else {
-        throw new Error(data.message || '로그아웃 처리 중 오류가 발생했습니다.');
-      }
-      
-    } catch (error) {
-      console.error('로그아웃 오류:', error);
-      ToastManager.logoutError();
-      
-      // 오류가 발생해도 로컬 상태는 정리
-      try {
-        await logout();
-        router.push('/login');
-      } catch (localError) {
-        console.error('로컬 상태 정리 오류:', localError);
-      }
+    // 바구니 사용 중인지 확인
+    if (isBasketInUse()) {
+      ToastManager.basketInUse()
+      return
     }
-  };
+    
+    try {
+      await logout()
+      ToastManager.logoutSuccess(userId || undefined)
+      onLogoutSuccess?.()
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+      onLogoutError?.(error)
+    }
+  }
+
+  // 동적 클래스명 생성
+  const buttonClassName = `${className} ${
+    isBasketInUse() 
+      ? 'opacity-30 cursor-not-allowed' 
+      : 'hover:bg-[var(--footer-border)]'
+  }`
+
+  // 툴팁 메시지
+  const tooltipMessage = isBasketInUse() 
+    ? `장바구니 사용 중 (번호: ${basketId}) - 로그아웃 불가`
+    : '로그아웃'
 
   return (
     <button 
       onClick={handleLogout}
-      className="p-3 rounded-full shadow-sm bg-white/60 hover:scale-110 transition-all backdrop-blur-sm"
-      title="로그아웃"
+      className={buttonClassName}
+      title={showTooltip ? tooltipMessage : undefined}
+      aria-label={tooltipMessage}
     >
-      <LogOut size={25} color="var(--foreground)" />
+      <LogOut 
+        size={iconSize} 
+        className={
+          isBasketInUse() 
+            ? 'opacity-30' 
+            : 'text-[var(--foreground)]'
+        } 
+      />
     </button>
-  );
+  )
 }

@@ -1,20 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useReceipts, Receipt } from '@/utils/hooks/useReceipts';
-import { Receipt as ReceiptIcon, Printer } from 'lucide-react';
-import { IoReceiptOutline } from "react-icons/io5";
+import { Receipt as ReceiptIcon } from 'lucide-react';
+
 import { FaExclamationTriangle as FaExclamationTriangleIcon } from 'react-icons/fa';
 
 export default function ReceiptDetailPage() {
-  const router = useRouter();
   const params = useParams();
-  const { isLoggedIn, accessToken: token } = useAuth();
+  const { accessToken: token } = useAuth();
   const { data, isLoading, error } = useReceipts(token);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
 
@@ -36,12 +35,14 @@ export default function ReceiptDetailPage() {
 
         const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
         const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+        const totalProductTypes = items.length; // 구매한 상품 종류 수
 
         setReceipt({
           ...foundReceipt,
           items,
           totalAmount,
-          totalCount
+          totalCount,
+          totalProductTypes
         });
       }
     }
@@ -52,9 +53,7 @@ export default function ReceiptDetailPage() {
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   };
 
@@ -152,15 +151,68 @@ export default function ReceiptDetailPage() {
           className="receipt-container bg-white rounded-lg shadow-lg overflow-hidden print:shadow-none print:rounded-none print:bg-white print:min-h-auto print:flex print:flex-col print:justify-start print:mb-0"
         >
           {/* 영수증 헤더 */}
-          <div className="bg-green-600 text-white p-6 text-center">
-            <IoReceiptOutline  className="w-12 h-12 mx-auto mb-3" />
+          <div className="text-[var(--sobi-green)] p-6 text-center">
+            {/* SOBI 로고 */}
+            <div className="text-[65px] flex justify-center items-center mb-3">
+              <span
+                style={{ 
+                  color: 'var(--sobi-green)',
+                  fontFamily: 'LOTTERIACHAB, sans-serif',
+                  WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
+                  transform: 'rotate(-28deg)',
+                  transformOrigin: 'center'
+                }}
+              >
+                S
+              </span>
+              
+              <span
+                style={{ 
+                  color: 'var(--sobi-green)',
+                  fontFamily: 'LOTTERIACHAB, sans-serif',
+                  WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
+                  transform: 'rotate(25deg)',
+                  transformOrigin: 'center'
+                }}
+              >
+                O
+              </span>
+              
+              <span
+                style={{ 
+                  color: 'var(--sobi-green)',
+                  fontFamily: 'LOTTERIACHAB, sans-serif',
+                  WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
+                  transform: 'rotate(10deg)',
+                  transformOrigin: 'center'
+                }}
+              >
+                B
+              </span>
+              
+              <span
+                style={{ 
+                  color: 'var(--sobi-green)',
+                  fontFamily: 'LOTTERIACHAB, sans-serif',
+                  WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))',
+                  transform: 'rotate(-13deg)',
+                  transformOrigin: 'center'
+                }}
+              >
+                I
+              </span>
+            </div>
             <h2 className="text-2xl font-bold mb-2">
               <span className="typewriter-text">SOBI 영수증</span>
             </h2>
           </div>
 
           {/* 구매 정보 */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="p-6">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-500 dark:text-gray-400">영수증 번호:</span>
@@ -175,17 +227,15 @@ export default function ReceiptDetailPage() {
                 <div className="font-semibold">{formatTime(receipt.purchasedAt)}</div>
               </div>
               <div>
-                <span className="text-gray-500 dark:text-gray-400">총 상품 수:</span>
-                <div className="font-semibold">{receipt.totalCount || 0}개</div>
+                <span className="text-gray-500 dark:text-gray-400">총 구매 품목:</span>
+                <div className="font-semibold">{receipt.totalProductTypes || 0}개</div>
               </div>
             </div>
           </div>
 
           {/* 상품 목록 */}
           <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              구매 상품
-            </h3>
+
             <div className="space-y-4">
               {receipt.items?.map((item, index) => (
                 <div 
@@ -211,7 +261,7 @@ export default function ReceiptDetailPage() {
                       {item.productName}
                     </Link>
                     <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {item.quantity}개 × {item.productPrice.toLocaleString()}원
+                    {item.productPrice.toLocaleString()}원 × {item.quantity}개 
                     </div>
                   </div>
                   <div className="text-right">
@@ -225,7 +275,7 @@ export default function ReceiptDetailPage() {
           </div>
 
           {/* 총액 */}
-          <div className="p-6 border-t border-gray-200 dark:border-gray-600">
+          <div className="p-6 border-t border-dotted border-gray-200 dark:border-gray-600">
             <div className="flex justify-between items-center text-xl font-bold">
               <span>총 결제 금액</span>
               <span style={{ color: 'var(--sobi-green)' }}>
@@ -253,23 +303,29 @@ export default function ReceiptDetailPage() {
               const day = String(date.getDate()).padStart(2, '0');
               const fileName = `SOBI_영수증_${year}${month}${day}_#${receipt.id}.pdf`;
               
-              // 파일명을 클립보드에 복사
-              navigator.clipboard.writeText(fileName).then(() => {
-                // 사용자에게 안내 메시지 표시
-                const message = `PDF 저장 시 파일명을 다음과 같이 지정해주세요:\n\n${fileName}\n\n파일명이 클립보드에 복사되었습니다.`;
-                alert(message);
-                
-                // PDF 인쇄 다이얼로그 열기
-                window.print();
-              }).catch(() => {
-                // 클립보드 복사 실패 시에도 PDF 인쇄는 진행
+              // 클립보드 API 지원 여부 확인
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                // 파일명을 클립보드에 복사
+                navigator.clipboard.writeText(fileName).then(() => {
+                  // 사용자에게 안내 메시지 표시
+                  const message = `PDF 저장 시 파일명을 다음과 같이 지정해주세요:\n\n${fileName}\n\n파일명이 클립보드에 복사되었습니다.`;
+                  alert(message);
+                  
+                  // PDF 인쇄 다이얼로그 열기
+                  window.print();
+                }).catch(() => {
+                  // 클립보드 복사 실패 시에도 PDF 인쇄는 진행
+                  alert(`PDF 저장 시 파일명을 "${fileName}"로 지정해주세요!`);
+                  window.print();
+                });
+              } else {
+                // 클립보드 API가 지원되지 않는 경우
                 alert(`PDF 저장 시 파일명을 "${fileName}"로 지정해주세요!`);
                 window.print();
-              });
+              }
             }}
             className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all print:hidden"
           >
-            <Printer className="w-4 h-4" />
             PDF 저장
           </button>
         </div>

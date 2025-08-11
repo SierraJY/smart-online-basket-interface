@@ -3,10 +3,13 @@
 import { useEffect, useRef } from 'react';
 import QrScanner from 'qr-scanner';
 
-// QRScanner 컴포넌트
-export default function QrScannerComponent({ onScan }: {
+// QRScanner Props 타입 정의
+interface QrScannerProps {
   onScan: (text: string) => void;
-}) {
+}
+
+// QRScanner 컴포넌트
+export default function QrScannerComponent({ onScan }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const qrScannerRef = useRef<QrScanner | null>(null);
   const stoppedRef = useRef(false);
@@ -91,6 +94,20 @@ export default function QrScannerComponent({ onScan }: {
       })
       .catch((error) => {
         console.error('[QrScanner] QR 스캐너 시작 실패:', error);
+        
+        // 상세한 에러 정보 출력
+        if (error instanceof Error) {
+          console.error('[QrScanner] 에러 상세 정보:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+          
+          // HTTPS 관련 에러 체크
+          if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            console.error('[QrScanner] HTTPS가 아닌 환경에서 카메라 접근 시도');
+          }
+        }
       });
 
     // 컴포넌트 언마운트 시 정리

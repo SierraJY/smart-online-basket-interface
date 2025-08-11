@@ -23,7 +23,7 @@ export async function signupApi({ userId, password, gender, age }: { userId: str
 }
 
 // 회원정보 조회 API
-export async function fetchMe(token: string) {
+export async function fetchMe() {
   const res = await apiClient.get(config.API_ENDPOINTS.CUSTOMERS_PROFILE);
   if (!res.ok) throw new Error("회원정보 조회 실패");
   return await res.json();

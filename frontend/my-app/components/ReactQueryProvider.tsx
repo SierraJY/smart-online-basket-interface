@@ -5,7 +5,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactNode, useState } from "react"
 
-export default function ReactQueryProvider({ children }: { children: ReactNode }) {
+// 타입 가드 함수
+function isHttpError(error: unknown): error is { status: number } {
+  return typeof error === 'object' && error !== null && 'status' in error && typeof (error as { status: unknown }).status === 'number';
+}
+
+// ReactQueryProvider Props 타입 정의
+interface ReactQueryProviderProps {
+  children: ReactNode;
+}
+
+export default function ReactQueryProvider({ children }: ReactQueryProviderProps) {
   // 클라이언트에서만 상태 생성
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
@@ -15,9 +25,9 @@ export default function ReactQueryProvider({ children }: { children: ReactNode }
         // 기본 cache time을 10분으로 설정
         gcTime: 10 * 60 * 1000,
         // 재시도 횟수 제한
-        retry: (failureCount, error: any) => {
+        retry: (failureCount, error: unknown) => {
           // 4xx 에러는 재시도하지 않음
-          if (error?.status >= 400 && error?.status < 500) {
+          if (isHttpError(error) && error.status >= 400 && error.status < 500) {
             return false;
           }
           // 최대 3번까지만 재시도

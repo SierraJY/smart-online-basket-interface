@@ -12,14 +12,7 @@ const DefaultLoading: React.FC = () => (
   </div>
 );
 
-/**
- * 기본 에러 컴포넌트
- */
-const DefaultError: React.FC<{ error: Error }> = ({ error }) => (
-  <div className="flex items-center justify-center p-4 text-red-500">
-    <div>컴포넌트 로드 실패: {error.message}</div>
-  </div>
-);
+
 
 /**
  * 동적 임포트 설정
@@ -131,7 +124,7 @@ export function createConditionalLazyImport<T extends React.ComponentType<any>>(
  * 
  * // 조건부 로딩
  * const ConditionalComponent = createConditionalLazyImport(
- *   () => process.env.NODE_ENV === 'development',
+ *   () => config.isDevelopment,
  *   () => import('./DevTools'),
  *   () => <div>Production Mode</div>
  * );

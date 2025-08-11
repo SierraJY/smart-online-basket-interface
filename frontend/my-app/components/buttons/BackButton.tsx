@@ -23,11 +23,11 @@ export default function BackButton({ className = '', onClick }: BackButtonProps)
     <button
       onClick={handleClick}
       className={`
-        w-12 h-12 flex items-center justify-center rounded-full
+        w-10 h-10 flex items-center justify-center rounded-full
         z-50 hover:scale-110 transition-all ${className}
       `}
       style={{
-        backgroundColor: 'var(--footer-background)',
+        backgroundColor: 'var(--background)',
         border: '1px solid var(--footer-border)',
         backdropFilter: 'blur(10px) saturate(140%)'
       }}

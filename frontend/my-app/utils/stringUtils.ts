@@ -1,4 +1,5 @@
 // 문자열 처리 유틸리티 함수들
+import { Product } from '../types';
 
 /**
  * 카테고리 이름에서 언더스코어를 슬래시로 변환
@@ -14,7 +15,7 @@ export const replaceCategoryName = (cat: string): string => {
  * @param products 상품 배열
  * @returns 카테고리 배열 (전체 포함, 중복 제거)
  */
-export const extractCategories = (products: any[]): string[] => {
+export const extractCategories = (products: Product[]): string[] => {
   if (!products || !Array.isArray(products)) {
     return ['전체'];
   }
