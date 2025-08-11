@@ -35,7 +35,7 @@ const globalListeners = new Set<((data: Basket) => void)>();
 const globalStatusListeners = new Set<((status: SSEConnectionStatus) => void)>();
 const globalErrorListeners = new Set<((error: SSEErrorInfo) => void)>();
 let isConnecting = false;
-let connectionCheckInterval: NodeJS.Timeout | null = null;
+let connectionCheckInterval: ReturnType<typeof setInterval> | null = null;
 let retryAttempt = 0; // 지수 백오프 재시도 횟수
 let currentStatus: SSEConnectionStatus = 'disconnected';
 let lastError: SSEErrorInfo | null = null;
@@ -160,8 +160,7 @@ function testSSEConnection(): void {
   console.log('[Global SSE] 연결 테스트 시작');
   
   let initialDataReceived = false;
-  let testTimeout: NodeJS.Timeout;
-  
+  let testTimeout: ReturnType<typeof setTimeout>;
   // 초기 데이터 수신 대기 (10초 타임아웃)
   const waitForInitialData = () => {
     testTimeout = setTimeout(() => {
@@ -523,9 +522,9 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
 // 전역 SSE 훅 (수동 연결 전용)
 export function useGlobalBasketSSE(): Basket | null {
   const { accessToken: token } = useAuth();
-  const basketId = useBasketStore((s) => s.basketId);
-  const activatedBasketId = useBasketStore((s) => s.activatedBasketId);
-  const setBasketData = useBasketStore((s) => s.setBasketData);
+  const basketId = useBasketStore((s: any) => s.basketId);
+  const activatedBasketId = useBasketStore((s: any) => s.activatedBasketId);
+  const setBasketData = useBasketStore((s: any) => s.setBasketData);
 
   const [basket, setBasket] = useState<Basket | null>(null);
   const listenerRef = useRef<((data: Basket) => void) | null>(null);
