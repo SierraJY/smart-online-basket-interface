@@ -150,53 +150,17 @@ public class BasketController {
         try {
             System.out.println("내 바구니 내용 조회 요청");
 
-            // 인증된 사용자 정보 가져오기
-            if (authentication == null || !authentication.isAuthenticated()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "로그인이 필요합니다");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error); // 401 Unauthorized
+            // 인증 및 바구니 조회 공통 로직
+            BasketInfo basketInfo = getBasketInfo(authentication);
+            if (basketInfo.errorResponse != null) {
+                return basketInfo.errorResponse;
             }
 
-            JwtAuthenticationFilter.JwtUserPrincipal principal =
-                    (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
-            Integer customerId = principal.getId();
-
-            // Redis에서 사용자의 바구니 ID 조회
-            String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
-            if (basketIdStr == null) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "사용 중인 바구니가 없습니다");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            Integer basketId;
-            try {
-                basketId = Integer.parseInt(basketIdStr);
-            } catch (NumberFormatException e) {
-                // Redis 데이터 불일치 - 정리
-                redisTemplate.delete("user_basket:" + customerId);
-                redisTemplate.delete("basket_user:" + basketIdStr); // 역방향 매핑도 정리
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "바구니 정보가 올바르지 않습니다. 다시 시작해주세요");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            // 바구니 존재 확인
-            Optional<Basket> basketOpt = basketService.getBasketById(basketId);
-            if (basketOpt.isEmpty()) {
-                // Redis 데이터 불일치 - 정리
-                redisTemplate.delete("user_basket:" + customerId);
-                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "바구니 정보가 일치하지 않습니다. 다시 시작해주세요");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            Basket basket = basketOpt.get();
+            Basket basket = basketInfo.basket;
 
             // Redis에서 실제 바구니 데이터 조회 (상품 정보 포함)
             List<BasketCacheService.BasketItemInfo> basketItems =
-                    basketCacheService.getBasketItemsWithProductInfo(basketId);
+                    basketCacheService.getBasketItemsWithProductInfo(basketInfo.basketId);
 
             // 총 가격 계산
             int totalPrice = basketItems.stream()
@@ -215,9 +179,9 @@ public class BasketController {
             response.put("items", basketItems);           // 실제 상품 정보 리스트
             response.put("totalCount", totalCount);       // 전체 아이템 개수
             response.put("totalPrice", totalPrice);       // 전체 가격 (할인 적용됨)
-            response.put("basketId", basketId);
+            response.put("basketId", basketInfo.basketId);
 
-            System.out.println("바구니 내용 조회 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 아이템수=" + totalCount);
+            System.out.println("바구니 내용 조회 완료: 고객ID=" + basketInfo.customerId + ", basketId=" + basketInfo.basketId + ", 아이템수=" + totalCount);
             return ResponseEntity.ok(response); // 200 OK
         } catch (Exception e) {
             System.err.println("바구니 내용 조회 중 오류: " + e.getMessage());
@@ -233,60 +197,14 @@ public class BasketController {
         try {
             System.out.println("내 바구니 결제 요청");
 
-            // 인증된 사용자 정보 가져오기
-            if (authentication == null || !authentication.isAuthenticated()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "로그인이 필요합니다");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error); // 401 Unauthorized
-            }
-
-            JwtAuthenticationFilter.JwtUserPrincipal principal =
-                    (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
-            Integer customerId = principal.getId();
-
-            // Redis에서 사용자의 바구니 ID 조회
-            String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + customerId);
-            if (basketIdStr == null) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "사용 중인 바구니가 없습니다");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            Integer basketId;
-            try {
-                basketId = Integer.parseInt(basketIdStr);
-            } catch (NumberFormatException e) {
-                // Redis 데이터 불일치 - 정리
-                redisTemplate.delete("user_basket:" + customerId);
-                redisTemplate.delete("basket_user:" + basketIdStr); // 역방향 매핑도 정리
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "바구니 정보가 올바르지 않습니다. 다시 시작해주세요");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            // 바구니 존재 및 사용 중 확인
-            Optional<Basket> basketOpt = basketService.getBasketById(basketId);
-            if (basketOpt.isEmpty()) {
-                // Redis 데이터 불일치 - 정리
-                redisTemplate.delete("user_basket:" + customerId);
-                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "바구니 정보가 일치하지 않습니다. 다시 시작해주세요");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error); // 404 Not Found
-            }
-
-            Basket basket = basketOpt.get();
-            if (basket.getUsable()) {
-                // Redis 데이터 불일치 - 정리
-                redisTemplate.delete("user_basket:" + customerId);
-                redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 정리
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "사용 중이지 않은 바구니입니다");
-                return ResponseEntity.badRequest().body(error); // 400 Bad Request
+            // 인증 및 바구니 조회 공통 로직
+            BasketInfo basketInfo = getBasketInfo(authentication);
+            if (basketInfo.errorResponse != null) {
+                return basketInfo.errorResponse;
             }
 
             // EPC 패턴 목록으로 결제 처리
-            List<String> epcPatterns = basketCacheService.getEpcPatternsForCheckout(basketId);
+            List<String> epcPatterns = basketCacheService.getEpcPatternsForCheckout(basketInfo.basketId);
 
             // 바구니가 비어있는지 확인
             if (epcPatterns.isEmpty()) {
@@ -296,20 +214,10 @@ public class BasketController {
             }
 
             // 결제 처리 (Redis에서 가져온 EPC 패턴들로 자동 결제)
-            var receipt = receiptService.createReceiptFromEpcPatterns(customerId, epcPatterns);
+            var receipt = receiptService.createReceiptFromEpcPatterns(basketInfo.customerId, epcPatterns);
 
-            // 바구니 반납 (결제 완료 후)
-            basketService.returnBasket(basketId);
-
-            // Redis에서 바구니 데이터 삭제
-            basketCacheService.clearBasketItems(basketId);
-
-            // Redis에서 양방향 매핑 삭제
-            redisTemplate.delete("user_basket:" + customerId);
-            redisTemplate.delete("basket_user:" + basketId); // 역방향 매핑도 삭제
-
-            // **MQTT 종료 메시지 발행 (Shutdown)**
-            basketMqttHandler.publishEndMessage(basketId);
+            // 바구니 정리 및 MQTT 종료 메시지 발행
+            cleanupBasket(basketInfo.customerId, basketInfo.basketId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "결제가 완료되었습니다");
@@ -317,9 +225,9 @@ public class BasketController {
             response.put("basketReturned", true);
             response.put("epcPatterns", epcPatterns);
             response.put("totalItems", epcPatterns.size());
-            response.put("basketId", basketId);
+            response.put("basketId", basketInfo.basketId);
 
-            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + customerId + ", basketId=" + basketId + ", 영수증ID=" + receipt.getId() + ", Redis 양방향 매핑 삭제 완료, MQTT 종료 메시지 발행 완료");
+            System.out.println("바구니 결제 및 반납 완료: 고객ID=" + basketInfo.customerId + ", basketId=" + basketInfo.basketId + ", 영수증ID=" + receipt.getId() + ", Redis 양방향 매핑 삭제 완료, MQTT 종료 메시지 발행 완료");
             return ResponseEntity.ok(response); // 200 OK
         } catch (IllegalArgumentException e) { // 유효하지 않은 EPC 패턴 등
             System.err.println("바구니 결제 실패: " + e.getMessage());
@@ -332,5 +240,131 @@ public class BasketController {
             error.put("error", "결제 처리 중 오류가 발생했습니다: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error); // 500 Internal Server Error
         }
+    }
+
+    // 내 바구니 사용 취소 (POST /api/baskets/my/cancel)
+    @PostMapping("/my/cancel")
+    public ResponseEntity<?> cancelMyBasket(Authentication authentication) {
+        try {
+            System.out.println("내 바구니 사용 취소 요청");
+
+            // 인증 및 바구니 조회 공통 로직
+            BasketInfo basketInfo = getBasketInfo(authentication);
+            if (basketInfo.errorResponse != null) {
+                return basketInfo.errorResponse;
+            }
+
+            // 바구니가 비어있는지 확인
+            Map<String, Integer> basketItems = basketCacheService.getBasketItems(basketInfo.basketId);
+            if (!basketItems.isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "바구니에 상품이 있어 취소할 수 없습니다. 결제를 진행하거나 상품을 모두 제거해주세요");
+                return ResponseEntity.badRequest().body(error); // 400 Bad Request
+            }
+
+            // 바구니 정리 및 MQTT 종료 메시지 발행
+            cleanupBasket(basketInfo.customerId, basketInfo.basketId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "바구니 사용이 취소되었습니다");
+            response.put("basketReturned", true);
+            response.put("basketId", basketInfo.basketId);
+            response.put("customerId", basketInfo.customerId);
+
+            System.out.println("바구니 사용 취소 완료: 고객ID=" + basketInfo.customerId + ", basketId=" + basketInfo.basketId + ", Redis 양방향 매핑 삭제 완료, MQTT 종료 메시지 발행 완료");
+            return ResponseEntity.ok(response); // 200 OK
+        } catch (Exception e) {
+            System.err.println("바구니 사용 취소 중 오류: " + e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "바구니 사용 취소 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error); // 500 Internal Server Error
+        }
+    }
+
+    // 인증 및 바구니 조회 공통 로직
+    private BasketInfo getBasketInfo(Authentication authentication) {
+        BasketInfo info = new BasketInfo();
+
+        // 인증된 사용자 정보 가져오기
+        if (authentication == null || !authentication.isAuthenticated()) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "로그인이 필요합니다");
+            info.errorResponse = ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return info;
+        }
+
+        JwtAuthenticationFilter.JwtUserPrincipal principal =
+                (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
+        info.customerId = principal.getId();
+
+        // Redis에서 사용자의 바구니 ID 조회
+        String basketIdStr = redisTemplate.opsForValue().get("user_basket:" + info.customerId);
+        if (basketIdStr == null) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "사용 중인 바구니가 없습니다");
+            info.errorResponse = ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return info;
+        }
+
+        try {
+            info.basketId = Integer.parseInt(basketIdStr);
+        } catch (NumberFormatException e) {
+            // Redis 데이터 불일치 - 정리
+            redisTemplate.delete("user_basket:" + info.customerId);
+            redisTemplate.delete("basket_user:" + basketIdStr);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "바구니 정보가 올바르지 않습니다. 다시 시작해주세요");
+            info.errorResponse = ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return info;
+        }
+
+        // 바구니 존재 및 사용 중 확인
+        Optional<Basket> basketOpt = basketService.getBasketById(info.basketId);
+        if (basketOpt.isEmpty()) {
+            // Redis 데이터 불일치 - 정리
+            redisTemplate.delete("user_basket:" + info.customerId);
+            redisTemplate.delete("basket_user:" + info.basketId);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "바구니 정보가 일치하지 않습니다. 다시 시작해주세요");
+            info.errorResponse = ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+            return info;
+        }
+
+        info.basket = basketOpt.get();
+        if (info.basket.getUsable()) {
+            // Redis 데이터 불일치 - 정리
+            redisTemplate.delete("user_basket:" + info.customerId);
+            redisTemplate.delete("basket_user:" + info.basketId);
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "사용 중이지 않은 바구니입니다");
+            info.errorResponse = ResponseEntity.badRequest().body(error);
+            return info;
+        }
+
+        return info;
+    }
+
+    // 바구니 정리 공통 로직
+    private void cleanupBasket(Integer customerId, Integer basketId) {
+        // 바구니 반납 (결제 완료 또는 취소 후)
+        basketService.returnBasket(basketId);
+
+        // Redis에서 바구니 데이터 삭제
+        basketCacheService.clearBasketItems(basketId);
+
+        // Redis에서 양방향 매핑 삭제
+        redisTemplate.delete("user_basket:" + customerId);
+        redisTemplate.delete("basket_user:" + basketId);
+
+        // MQTT 종료 메시지 발행
+        basketMqttHandler.publishEndMessage(basketId);
+    }
+
+    // 바구니 정보를 담는 내부 클래스
+    private static class BasketInfo {
+        Integer customerId;
+        Integer basketId;
+        Basket basket;
+        ResponseEntity<?> errorResponse;
     }
 }
