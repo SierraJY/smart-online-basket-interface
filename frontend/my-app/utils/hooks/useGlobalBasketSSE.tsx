@@ -530,11 +530,11 @@ export function useGlobalBasketSSE(): Basket | null {
 
   // 자동 연결 비활성화 - 이제 수동으로만 연결
   // 활성화 완료 후 reconnectGlobalSSE()를 통해서만 연결
-  console.log('[Global SSE] 훅 초기화 - 자동 연결 비활성화, 수동 연결 대기 중');
-  console.log('[Global SSE] 현재 상태 - basketId:', basketId, 'activatedBasketId:', activatedBasketId, 'hasToken:', !!token);
 
   // 리스너 등록
   useEffect(() => {
+    console.log('[Global SSE] 훅 초기화 - 자동 연결 비활성화, 수동 연결 대기 중');
+    console.log('[Global SSE] 현재 상태 - basketId:', basketId, 'activatedBasketId:', activatedBasketId, 'hasToken:', !!token);
     listenerRef.current = (data: Basket) => {
       setBasket(data);
       setBasketData(data as BasketData);
