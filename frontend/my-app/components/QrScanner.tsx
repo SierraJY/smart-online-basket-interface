@@ -36,16 +36,13 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
       qrScannerRef.current = null;
     }
     
-    // 추가로 모든 카메라 스트림 강제 중지
-    try {
-      const streams = await navigator.mediaDevices.getUserMedia({ video: true });
-      streams.getTracks().forEach(track => {
-        track.stop();
-        console.log('[QrScanner] 추가 카메라 트랙 중지:', track.kind);
-      });
-    } catch (e) {
-      console.log('[QrScanner] 추가 카메라 정리 중 에러:', e);
+    // 비디오 요소 추가 정리 (더 확실한 정리를 위해)
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      console.log('[QrScanner] 비디오 요소 정리 완료');
     }
+    
+    console.log('[QrScanner] 카메라 정리 완료');
   }
 
   useEffect(() => {
@@ -78,7 +75,7 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
           console.log('[QrScanner] 스캔 에러 (무시):', error);
         },
         preferredCamera: 'environment',
-        maxScansPerSecond: 10,
+        maxScansPerSecond: 5, // iOS에서 더 안정적
         highlightScanRegion: true,
         highlightCodeOutline: true,
         returnDetailedScanResult: true
@@ -87,12 +84,17 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
 
     qrScannerRef.current = qrScanner;
 
-    // 스캔 시작
-    qrScanner.start()
-      .then(() => {
+    // iOS Safari 호환성을 위한 지연된 시작
+    const startScanner = async () => {
+      try {
+        // iOS에서 더 안정적인 시작을 위해 약간의 지연
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        await qrScanner.start();
         console.log('[QrScanner] QR 스캐너 시작 완료');
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('[QrScanner] QR 스캐너 시작 실패:', error);
         
         // 상세한 에러 정보 출력
@@ -103,12 +105,32 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
             stack: error.stack
           });
           
+          // iOS 특화 에러 체크
+          if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            console.error('[QrScanner] iOS 환경에서 카메라 접근 실패');
+            
+            // iOS에서 후면 카메라 실패 시 전면 카메라로 재시도
+            if (error.name === 'NotFoundError' || error.message.includes('camera')) {
+              console.log('[QrScanner] iOS에서 전면 카메라로 재시도');
+              try {
+                await qrScanner.setCamera('user');
+                await qrScanner.start();
+                console.log('[QrScanner] 전면 카메라로 시작 성공');
+              } catch (retryError) {
+                console.error('[QrScanner] 전면 카메라 재시도도 실패:', retryError);
+              }
+            }
+          }
+          
           // HTTPS 관련 에러 체크
           if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
             console.error('[QrScanner] HTTPS가 아닌 환경에서 카메라 접근 시도');
           }
         }
-      });
+      }
+    };
+
+    startScanner();
 
     // 컴포넌트 언마운트 시 정리
     return () => { 
@@ -126,6 +148,9 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
     }}>
       <video 
         ref={videoRef}
+        playsInline={true}
+        muted={true}
+        autoPlay={false}
         style={{ 
           width: "100%", 
           height: "100%",
