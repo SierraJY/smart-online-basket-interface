@@ -12,7 +12,7 @@ import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider'
 import { Toaster } from 'react-hot-toast'
 import GuestTimeOut from '@/components/GuestTimeOut'
 // 개발용 테스트 컴포넌트 (배포 시 이 줄만 주석 처리)
-import TestForDev from '@/components/modals/TestForDev'
+// import TestForDev from '@/components/modals/TestForDev'
 
 export { metadata }
 
@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ServiceWorkerProvider />
           <GlobalBasketSSE />
           {/* 개발용 테스트 컴포넌트 (배포 시 이 줄만 주석 처리) */}
-          <TestForDev />
+          {/* <TestForDev /> */}
           <TransitionWrapper>
           
             <Suspense fallback={null}>
