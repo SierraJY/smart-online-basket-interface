@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 # DB 연결 설정
 DB_CONFIG = {
-    "host": "postgres",  # docker-compose의 서비스 이름
+    "host": "db",  # docker-compose의 서비스 이름
     "dbname": "sobi",
     "user": "sobiuser",
     "password": "sobipass",
