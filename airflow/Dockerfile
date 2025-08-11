@@ -9,7 +9,6 @@ ARG AIRFLOW_VERSION=2.7.1
 ARG PYTHON_VERSION=3.10
 ENV CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
 
-# 의존성 설치 (constraints 적용 후 docker provider 강제 업그레이드)
+# 의존성 설치 (constraints 적용)
 COPY requirements.txt /requirements.txt
-RUN pip install --no-cache-dir --constraint "${CONSTRAINT_URL}" -r /requirements.txt \
-    && pip install --no-cache-dir "apache-airflow-providers-docker==3.8.0"
+RUN pip install --no-cache-dir --constraint "${CONSTRAINT_URL}" -r /requirements.txt
