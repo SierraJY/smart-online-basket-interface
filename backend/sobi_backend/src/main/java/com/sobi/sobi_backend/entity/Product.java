@@ -37,7 +37,6 @@ public class Product {
     @Column(name = "location")
     private String location;
 
-    @Lob
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
