@@ -2,11 +2,9 @@
 
 import React from 'react';
 
-import { config } from '@/config/env';
-
 // 환경별 설정
-const IS_DEVELOPMENT = config.isDevelopment;
-const IS_PRODUCTION = config.isProduction;
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 interface PerformanceMetric {
   name: string;

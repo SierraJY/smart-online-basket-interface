@@ -1,6 +1,5 @@
 // 에러 처리 통일 유틸리티
 import { AppError } from '../types';
-import { config } from '@/config/env';
 
 // 에러 타입 정의
 interface ApiError extends Error {
@@ -186,7 +185,7 @@ export function logError(error: AppError, context?: string): void {
     }
   };
 
-  if (config.isDevelopment) {
+  if (process.env.NODE_ENV === 'development') {
     console.error('[Error Log]', logData);
   } else {
     // 프로덕션에서는 에러 추적 서비스로 전송

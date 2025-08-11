@@ -224,7 +224,7 @@ export default function BasketsPage() {
       console.error('결제 요청 오류:', error);
       ToastManager.basketCheckoutNetworkError();
     }
-  }, [token, basket, clearBasketId, clearBasketData, setBasketId, router]);
+  }, [token, basket, clearBasketId, clearBasketData, setBasketId, router, basketId, resetIntroSeen]);
 
   // 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {

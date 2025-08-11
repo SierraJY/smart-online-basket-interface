@@ -124,7 +124,7 @@ export function createConditionalLazyImport<T extends React.ComponentType<any>>(
  * 
  * // 조건부 로딩
  * const ConditionalComponent = createConditionalLazyImport(
- *   () => config.isDevelopment,
+ *   () => process.env.NODE_ENV === 'development',
  *   () => import('./DevTools'),
  *   () => <div>Production Mode</div>
  * );

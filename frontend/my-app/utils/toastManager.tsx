@@ -231,6 +231,11 @@ class ToastManager {
     return toast('연결 해제 기능은 준비 중입니다.', { ...finalConfig, duration: 3000 });
   }
 
+  static basketDisconnectRequiresEmpty(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('연결 해제를 위해선 장바구니를 비워주세요', { ...finalConfig, duration: 3000 });
+  }
+
   // SSE 에러 관련 toast들
   static sseAuthError(message: string, config?: ToastConfig) {
     const finalConfig = { ...defaultConfig, ...config };
