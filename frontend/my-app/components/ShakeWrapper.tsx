@@ -19,10 +19,10 @@ export default function ShakeWrapper({ item, children }: ShakeWrapperProps) {
     let timeout: NodeJS.Timeout
     const shakeOnce = () => {
       setShaking(true)
-      const shakeDuration = 350 + Math.random() * 300
+      const shakeDuration = 200 + Math.random() * 150  // 350+300 → 200+150 (더 짧게)
       timeout = setTimeout(() => {
         setShaking(false)
-        timeout = setTimeout(shakeOnce, 600 + Math.random() * 600)
+        timeout = setTimeout(shakeOnce, 2000 + Math.random() * 1500)  // 600+600 → 2000+1500 (더 긴 간격)
       }, shakeDuration)
     }
     shakeOnce()

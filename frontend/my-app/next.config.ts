@@ -97,6 +97,12 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'i.postimg.cc',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/^https?:\/\//, '') || 'sobi-basket.app',
         port: '',
         pathname: '/**',

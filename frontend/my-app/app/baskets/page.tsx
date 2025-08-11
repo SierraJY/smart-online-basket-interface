@@ -529,7 +529,7 @@ export default function BasketsPage() {
 
         {/* 시작 이후: 상단 재연결 버튼 */}
         {uiStarted && (
-          <div className="text-center mb-4">
+          <div className="text-center mb-2">
             <button 
               onClick={handleStartBasket}
               disabled={sseStatus === 'connecting' || sseStatus === 'reconnecting'}
@@ -555,33 +555,30 @@ export default function BasketsPage() {
         )}
 
         {uiStarted && (
-        <div className="mb-4 p-4 rounded-lg">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-            <div className="flex justify-between items-center p-3 rounded-lg"
-
-            >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 상품 품목</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>{basket?.totalCount || 0}개</span>
-            </div>
-            <div className="flex justify-between items-center p-3 rounded-lg"
-
-            >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 상품 개수</span>
-              <span className="text-xl font-bold" style={{ color: 'var(--sobi-green)' }}>
-                {validItems.reduce((sum, item) => sum + item.quantity, 0)}개
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 rounded-lg"
-            >
-              <span className="text-base" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
-              <span className="text-2xl font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket?.totalPrice || 0).toLocaleString()}원</span>
-            </div>
+        <div className="mb-3 p-3 rounded-lg">
+          <div className="flex justify-center items-center gap-8 mb-1">
+            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
+              <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{basket?.totalCount || 0}</span>개 품목
+            </span>
+            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
+              총 상품 <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{validItems.reduce((sum, item) => sum + item.quantity, 0)}개</span>
+            </span>
+          </div>
+          <div className="flex justify-center items-center gap-8 p-2 rounded-lg">
+            <span className="text-[24px]" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
+            <span className="text-[28px] font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket?.totalPrice || 0).toLocaleString()}원</span>
           </div>
           
           {/* 연결 해제 및 결제 완료 버튼 */}
           <div className="text-center flex flex-row gap-2 justify-center">
             <button
               onClick={() => {
+                // 장바구니에 상품이 있을 때 토스트 메시지 표시
+                if (basket && basket.items && basket.items.length > 0) {
+                  ToastManager.basketDisconnectRequiresEmpty();
+                  return;
+                }
+                
                 // TODO: 백엔드 연결 해제 API 구현 후 아래 로직으로 교체
                 // 예상 API: BASKET_DISCONNECT: `${baseUrl}/api/baskets/my/disconnect`
                 // 
@@ -603,8 +600,11 @@ export default function BasketsPage() {
                 ToastManager.basketDisconnectPreparing();
                 if (basketId) resetIntroSeen(basketId);
               }}
-              disabled={!!(basket && basket.items && basket.items.length > 0)}
-              className="inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+              className={`inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-full shadow-lg transition-all duration-300 ${
+                basket && basket.items && basket.items.length > 0 
+                  ? 'opacity-30 cursor-not-allowed' 
+                  : 'hover:shadow-xl'
+              }`}
               style={{
                 backgroundColor: 'var(--sobi-green)',
                 color: 'white',
@@ -617,7 +617,7 @@ export default function BasketsPage() {
             <button
               onClick={handleCheckout}
               disabled={!basket || !basket.items || basket.items.length === 0}
-              className="inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
+              className="inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-30"
               style={{
                 backgroundColor: 'var(--sobi-green)',
                 color: 'white',

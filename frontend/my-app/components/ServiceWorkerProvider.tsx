@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 import { useBasketStore } from '@/store/useBasketStore';
 import '@/utils/polyfills';
 import { Basket } from '@/types';
-import { config } from '@/config/env';
 
 export const ServiceWorkerProvider = () => {
   const swRegistration = useRef<ServiceWorkerRegistration | null>(null);
@@ -13,7 +12,7 @@ export const ServiceWorkerProvider = () => {
   useEffect(() => {
     const registerServiceWorker = async () => {
       // 개발 모드에서는 Service Worker 비활성화
-      if (config.isDevelopment) {
+      if (process.env.NODE_ENV === 'development') {
         console.log('[SW] 개발 모드 - Service Worker 비활성화');
         return;
       }
@@ -97,7 +96,7 @@ export const ServiceWorkerProvider = () => {
     if (typeof window !== 'undefined') {
       (window as { sendBasketUpdateToSW?: (basketData: Basket) => void }).sendBasketUpdateToSW = (basketData: Basket) => {
         // 개발 모드에서는 Service Worker 기능 비활성화
-        if (config.isDevelopment) {
+        if (process.env.NODE_ENV === 'development') {
           console.log('[SW] 개발 모드 - Service Worker 기능 비활성화');
           return;
         }

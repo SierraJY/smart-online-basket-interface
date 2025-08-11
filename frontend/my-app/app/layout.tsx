@@ -88,12 +88,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <GuestTimeOut />
           {/* BackButton */}
-          <div className="fixed bottom-9 right-4 z-50">
+          <div className="fixed bottom-9 right-5 z-50">
             <BackButton />
           </div>
           <Footer />
           {/* MenuButton */}
-          <div className="fixed bottom-9 left-4 z-50">
+          <div className="fixed bottom-9 left-5 z-50">
             <MenuButton />
           </div>
           

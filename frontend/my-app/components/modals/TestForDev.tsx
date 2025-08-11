@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { X } from 'lucide-react';
-import { config } from '@/config/env';
 
 export default function TestForDev() {
   const [isVisible, setIsVisible] = useState(true);
@@ -33,7 +32,7 @@ export default function TestForDev() {
         <div className="mb-3 text-xs text-gray-600">
           <p>프로토콜: {typeof window !== 'undefined' ? window.location.protocol : 'unknown'}</p>
           <p>호스트: {typeof window !== 'undefined' ? window.location.host : 'unknown'}</p>
-          <p>환경: {config.NODE_ENV}</p>
+          <p>환경: {process.env.NODE_ENV}</p>
         </div>
 
 

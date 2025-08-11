@@ -7,7 +7,6 @@ import { useInView } from 'react-intersection-observer'
 import { useProducts } from '@/utils/hooks/useProducts'
 import { FaExclamationTriangle } from "react-icons/fa";
 import { getPerformanceMonitor, logPerformanceInDev } from '@/utils/performance'
-import { config } from '@/config/env'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
@@ -89,7 +88,7 @@ export default function Home() {
 
   // 성능 모니터링 시작 (개발 환경에서만)
   useEffect(() => {
-    if (config.isDevelopment) {
+    if (process.env.NODE_ENV === 'development') {
       const monitor = getPerformanceMonitor();
       if (monitor) {
         monitor.startMeasure('HomePage-Mount');

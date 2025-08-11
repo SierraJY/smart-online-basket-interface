@@ -80,7 +80,7 @@ export default function LogoutButton({
         size={iconSize} 
         className={
           isBasketInUse() 
-            ? 'opacity-20' 
+            ? 'opacity-30' 
             : 'text-[var(--foreground)]'
         } 
       />
