@@ -226,6 +226,58 @@ export default function BasketsPage() {
     }
   }, [token, basket, clearBasketId, clearBasketData, setBasketId, router, basketId, resetIntroSeen]);
 
+  // 7. 장바구니 취소 함수
+  const handleBasketCancel = useCallback(async () => {
+    if (!token) {
+      ToastManager.basketLoginRequired();
+      return;
+    }
+
+    // 장바구니에 상품이 있을 때는 취소 불가
+    if (basket && basket.items && basket.items.length > 0) {
+      ToastManager.basketDisconnectRequiresEmpty();
+      return;
+    }
+
+    try {
+      ToastManager.basketCancelProcessing();
+      
+      const response = await apiClient.post(config.API_ENDPOINTS.BASKET_CANCEL, {}, true);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('장바구니 취소 결과:', result);
+        
+        // 장바구니 취소 후 완전 초기화
+        try {
+          await basketStorage.clearComplete();
+        } catch (e) {
+          console.warn('[BasketsPage] 장바구니 취소 후 정리 중 경고:', e);
+        }
+        
+        ToastManager.basketCancelSuccess();
+        
+        // 버튼 초기화 (다음 사용 시 다시 노출)
+        if (basketId) resetIntroSeen(basketId);
+        
+        // 스캔 페이지로 이동
+        router.push('/scan');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('장바구니 취소 실패:', errorData);
+        
+        if (errorData.error) {
+          ToastManager.basketCancelFailed(errorData.error);
+        } else {
+          ToastManager.basketCancelFailed('알 수 없는 오류가 발생했습니다.');
+        }
+      }
+    } catch (error) {
+      console.error('장바구니 취소 요청 오류:', error);
+      ToastManager.basketCancelNetworkError();
+    }
+  }, [token, basket, basketId, resetIntroSeen, router]);
+
   // 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {
     return (
@@ -572,34 +624,7 @@ export default function BasketsPage() {
           {/* 연결 해제 및 결제 완료 버튼 */}
           <div className="text-center flex flex-row gap-2 justify-center">
             <button
-              onClick={() => {
-                // 장바구니에 상품이 있을 때 토스트 메시지 표시
-                if (basket && basket.items && basket.items.length > 0) {
-                  ToastManager.basketDisconnectRequiresEmpty();
-                  return;
-                }
-                
-                // TODO: 백엔드 연결 해제 API 구현 후 아래 로직으로 교체
-                // 예상 API: BASKET_DISCONNECT: `${baseUrl}/api/baskets/my/disconnect`
-                // 
-                // const handleDisconnect = async () => {
-                //   try {
-                //     toast.loading('연결을 해제하는 중...', { id: 'disconnect' });
-                //     const response = await apiClient.post(config.API_ENDPOINTS.BASKET_DISCONNECT, {}, true);
-                //     if (response.ok) {
-                //       await basketStorage.clearComplete();
-                //       toast.success('연결이 해제되었습니다.', { id: 'disconnect' });
-                //       router.replace('/scan');
-                //     }
-                //   } catch (error) {
-                //     toast.error('연결 해제 실패', { id: 'disconnect' });
-                //   }
-                // };
-                
-                // 현재는 토스트 메시지만 표시
-                ToastManager.basketDisconnectPreparing();
-                if (basketId) resetIntroSeen(basketId);
-              }}
+              onClick={handleBasketCancel}
               className={`inline-flex items-center gap-3 py-4 px-8 text-lg font-semibold rounded-full shadow-lg transition-all duration-300 ${
                 basket && basket.items && basket.items.length > 0 
                   ? 'opacity-30 cursor-not-allowed' 

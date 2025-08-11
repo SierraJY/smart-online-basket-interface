@@ -236,6 +236,27 @@ class ToastManager {
     return toast.error('연결 해제를 위해선 장바구니를 비워주세요', { ...finalConfig, duration: 3000 });
   }
 
+  // 장바구니 취소 관련
+  static basketCancelProcessing(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.loading('장바구니 연결을 해제하는 중...', { ...finalConfig, id: 'basket-cancel' });
+  }
+
+  static basketCancelSuccess(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.success('장바구니 연결이 해제되었습니다.', { ...finalConfig, id: 'basket-cancel' });
+  }
+
+  static basketCancelFailed(message: string, config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error(`장바구니 연결 해제 실패: ${message}`, { ...finalConfig, id: 'basket-cancel' });
+  }
+
+  static basketCancelNetworkError(config?: ToastConfig) {
+    const finalConfig = { ...defaultConfig, ...config };
+    return toast.error('연결 해제 요청 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', { ...finalConfig, id: 'basket-cancel' });
+  }
+
   // SSE 에러 관련 toast들
   static sseAuthError(message: string, config?: ToastConfig) {
     const finalConfig = { ...defaultConfig, ...config };
