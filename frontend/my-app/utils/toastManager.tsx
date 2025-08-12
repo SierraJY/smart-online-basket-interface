@@ -442,24 +442,40 @@ class ToastManager {
         justifyContent: 'flex-start',
         width: '100%'
       }}>
-        <Image 
-          src={productImageUrl || '/placeholder-product.png'} 
-          alt={productName}
-          width={36}
-          height={36}
-          style={{
+        {productImageUrl ? (
+          <Image 
+            src={productImageUrl} 
+            alt={productName}
+            width={36}
+            height={36}
+            unoptimized
+            style={{
+              borderRadius: '6px',
+              objectFit: 'cover',
+              border: '1px solid rgba(255,255,255,0.2)',
+              flexShrink: 0
+            }}
+            onError={(e) => {
+              console.error("[ToastManager] 이미지 로딩 실패:", productImageUrl);
+              // 이미지 로딩 실패 시 숨김 처리
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        ) : (
+          <div style={{
+            width: '36px',
+            height: '36px',
             borderRadius: '6px',
-            objectFit: 'cover',
-            border: '1px solid rgba(255,255,255,0.2)',
-            flexShrink: 0
-          }}
-          onError={() => {
-            console.error("[ToastManager] 이미지 로딩 실패:", productImageUrl);
-          }}
-          onLoad={() => {
-            console.log("[ToastManager] 이미지 로딩 성공:", productImageUrl);
-          }}
-        />
+            backgroundColor: 'var(--sobi-green)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            fontSize: '16px'
+          }}>
+            🛒
+          </div>
+        )}
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
@@ -467,8 +483,11 @@ class ToastManager {
           flex: 1,
           textAlign: 'left'
         }}>
-          <div style={{ fontWeight: '600', fontSize: '14px' }}>
+          <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '2px' }}>
             장바구니에 추가되었습니다
+          </div>
+          <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400' }}>
+            {productName}
           </div>
         </div>
       </div>

@@ -281,58 +281,109 @@ export default function BasketsPage() {
   // 8. UI 분기 (로그인/QR 미스 등)
   if (!token) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+        style={{ color: 'var(--foreground)' }}
       >
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
-        <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>장바구니를 사용하려면 먼저 로그인해주세요.</p>
-        <button 
-          className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
-          style={{
-            border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
-            color: 'var(--foreground)',
-          }}
-          onClick={() => router.push('/login')}
-        >
-          로그인 하러가기
-        </button>
+        {/* AI 특별 배경 - 로그인 필요 상태 */}
+        <div className="absolute inset-0 -z-10">
+          <div 
+            className="absolute inset-0 opacity-90"
+            style={{
+              background: `
+                radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 50%, rgba(5, 150, 105, 0.1) 100%)
+              `,
+            }}
+          />
+        </div>
+        
+        <div className="relative z-10">
+          <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+          <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
+          <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>장바구니를 사용하려면 먼저 로그인해주세요.</p>
+          <button 
+            className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
+            style={{
+              border: '1px solid var(--input-border)',
+              backgroundColor: 'var(--input-background)',
+              color: 'var(--foreground)',
+            }}
+            onClick={() => router.push('/login')}
+          >
+            로그인 하러가기
+          </button>
+        </div>
       </main>
     );
   }
   
   if (isPending) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+        style={{ color: 'var(--foreground)' }}
       >
-        <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
-        <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
+        {/* AI 특별 배경 - 로딩 상태 */}
+        <div className="absolute inset-0 -z-10">
+          <div 
+            className="absolute inset-0 opacity-90"
+            style={{
+              background: `
+                radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 50%, rgba(5, 150, 105, 0.1) 100%)
+              `,
+            }}
+          />
+        </div>
+        
+        <div className="relative z-10">
+          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
+        </div>
       </main>
     );
   }
   
   if (activateError) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center p-4"
-        style={{ backgroundColor: 'var(--input-background)', color: 'var(--foreground)' }}
+      <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+        style={{ color: 'var(--foreground)' }}
       >
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-lg font-semibold mb-2">활성화 실패</h2>
-        <p className="text-red-500 text-sm mb-6 text-center">{activateError}</p>
-        <button 
-          className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
-          style={{
-            border: '1px solid var(--input-border)',
-            backgroundColor: 'var(--input-background)',
-            color: 'var(--foreground)',
-          }}
-          onClick={() => router.push('/scan')}
-        >
-          다시 스캔하기
-        </button>
+        {/* AI 특별 배경 - 에러 상태 */}
+        <div className="absolute inset-0 -z-10">
+          <div 
+            className="absolute inset-0 opacity-90"
+            style={{
+              background: `
+                radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
+                linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 50%, rgba(5, 150, 105, 0.1) 100%)
+              `,
+            }}
+          />
+        </div>
+        
+        <div className="relative z-10">
+          <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+          <h2 className="text-lg font-semibold mb-2">활성화 실패</h2>
+          <p className="text-red-500 text-sm mb-6 text-center">{activateError}</p>
+          <button 
+            className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
+            style={{
+              border: '1px solid var(--input-border)',
+              backgroundColor: 'var(--input-background)',
+              color: 'var(--foreground)',
+            }}
+            onClick={() => router.push('/scan')}
+          >
+            다시 스캔하기
+          </button>
+        </div>
       </main>
     );
   }
@@ -341,26 +392,252 @@ export default function BasketsPage() {
 
   // 실제 장바구니 UI
   return (
-    <main className="min-h-screen py-8 pb-24 flex flex-col items-center"
+    <main className="min-h-screen py-8 pb-24 flex flex-col items-center relative overflow-hidden"
       style={{ 
         color: 'var(--foreground)',
         transition: 'background-color 1.6s, color 1.6s',
-        backgroundColor: 'var(--background)'
       }}
     >
-      <div className="w-full max-w-3xl pt-8">
-        {/* 헤더 */}
+      {/* AI 특별 배경 - 울렁거리는 움직이는 그라데이션 */}
+      <div className="absolute inset-0 -z-10">
+        {/* 메인 그라데이션 배경 */}
+        <div 
+          className="absolute inset-0 opacity-90"
+          style={{
+            background: `
+              radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.4) 0%, transparent 50%),
+              radial-gradient(circle at 40% 40%, rgba(5, 150, 105, 0.2) 0%, transparent 50%),
+              linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.1) 50%, rgba(5, 150, 105, 0.1) 100%)
+            `,
+          }}
+        />
+        
+        {/* 움직이는 그라데이션 오브젝트들 */}
+        <motion.div
+          className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-25"
+          style={{
+            background: 'radial-gradient(circle, rgba(34, 197, 94, 0.5) 0%, transparent 70%)',
+          }}
+          animate={{
+            x: [0, 150, -100, 50, -80, 0],
+            y: [0, -120, 80, -60, 100, 0],
+            scale: [1, 1.4, 0.6, 1.2, 0.8, 1],
+            rotate: [0, 180, 360, 180, 0],
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        
+        <motion.div
+          className="absolute top-3/4 right-1/4 w-80 h-80 rounded-full opacity-20"
+          style={{
+            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, transparent 70%)',
+          }}
+          animate={{
+            x: [0, -180, 120, -60, 90, 0],
+            y: [0, 150, -90, 70, -120, 0],
+            scale: [1, 0.5, 1.5, 0.8, 1.3, 1],
+            rotate: [0, -180, 360, -90, 180, 0],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2,
+          }}
+        />
+        
+        <motion.div
+          className="absolute top-1/2 left-1/2 w-72 h-72 rounded-full opacity-15"
+          style={{
+            background: 'radial-gradient(circle, rgba(5, 150, 105, 0.35) 0%, transparent 70%)',
+          }}
+          animate={{
+            x: [0, 100, -150, 80, -120, 0],
+            y: [0, -180, 60, -100, 80, 0],
+            scale: [1, 1.3, 0.7, 1.1, 0.9, 1],
+            rotate: [0, 90, 270, 180, 360, 0],
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 4,
+          }}
+        />
+        
+        {/* 추가 움직이는 오브젝트들 */}
+        <motion.div
+          className="absolute top-1/6 right-1/6 w-64 h-64 rounded-full opacity-18"
+          style={{
+            background: 'radial-gradient(circle, rgba(34, 197, 94, 0.3) 0%, transparent 70%)',
+          }}
+          animate={{
+            x: [0, 80, -120, 60, -90, 0],
+            y: [0, -100, 70, -80, 120, 0],
+            scale: [1, 1.2, 0.6, 1.4, 0.8, 1],
+            rotate: [0, 270, 90, 180, 360, 0],
+          }}
+          transition={{
+            duration: 14,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+        />
+        
+        <motion.div
+          className="absolute bottom-1/6 left-1/6 w-56 h-56 rounded-full opacity-12"
+          style={{
+            background: 'radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%)',
+          }}
+          animate={{
+            x: [0, -140, 90, -70, 110, 0],
+            y: [0, 80, -120, 60, -90, 0],
+            scale: [1, 0.8, 1.3, 0.7, 1.1, 1],
+            rotate: [0, 180, 360, 90, 270, 0],
+          }}
+          transition={{
+            duration: 16,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 3,
+          }}
+        />
+        
+        {/* 작은 움직이는 점들 */}
+        <motion.div
+          className="absolute top-1/3 right-1/3 w-4 h-4 rounded-full opacity-40"
+          style={{
+            background: 'rgba(34, 197, 94, 0.7)',
+          }}
+          animate={{
+            x: [0, 80, -50, 30, -70, 0],
+            y: [0, -60, 40, -30, 50, 0],
+            scale: [1, 2, 0.3, 1.8, 0.5, 1],
+          }}
+          transition={{
+            duration: 6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        
+        <motion.div
+          className="absolute bottom-1/3 left-1/3 w-3 h-3 rounded-full opacity-35"
+          style={{
+            background: 'rgba(16, 185, 129, 0.6)',
+          }}
+          animate={{
+            x: [0, -90, 60, -40, 70, 0],
+            y: [0, 50, -80, 40, -60, 0],
+            scale: [1, 0.2, 2.5, 0.4, 1.6, 1],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2,
+          }}
+        />
+        
+        <motion.div
+          className="absolute top-2/3 left-2/3 w-5 h-5 rounded-full opacity-30"
+          style={{
+            background: 'rgba(5, 150, 105, 0.5)',
+          }}
+          animate={{
+            x: [0, 70, -40, 50, -60, 0],
+            y: [0, -50, 30, -40, 60, 0],
+            scale: [1, 1.7, 0.4, 1.9, 0.6, 1],
+          }}
+          transition={{
+            duration: 7,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+        />
+        
+        {/* 파도 효과 - 더 역동적으로 */}
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 h-40 opacity-25"
+          style={{
+            background: `
+              linear-gradient(45deg, 
+                transparent 20%, 
+                rgba(34, 197, 94, 0.15) 40%, 
+                rgba(16, 185, 129, 0.1) 60%, 
+                transparent 80%
+              )
+            `,
+          }}
+          animate={{
+            x: [0, 200, -150, 100, 0],
+            scaleX: [1, 1.2, 0.8, 1.1, 1],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 h-32 opacity-20"
+          style={{
+            background: `
+              linear-gradient(-45deg, 
+                transparent 25%, 
+                rgba(16, 185, 129, 0.12) 45%, 
+                rgba(5, 150, 105, 0.08) 65%, 
+                transparent 85%
+              )
+            `,
+          }}
+          animate={{
+            x: [0, -150, 120, -80, 0],
+            scaleX: [1, 0.9, 1.3, 0.7, 1],
+          }}
+          transition={{
+            duration: 12,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 3,
+          }}
+        />
+        
+        {/* 추가 파도 효과 */}
+        <motion.div
+          className="absolute bottom-0 left-0 right-0 h-24 opacity-15"
+          style={{
+            background: `
+              linear-gradient(90deg, 
+                transparent 30%, 
+                rgba(34, 197, 94, 0.08) 50%, 
+                transparent 70%
+              )
+            `,
+          }}
+          animate={{
+            x: [0, 100, -80, 60, 0],
+            scaleY: [1, 1.5, 0.6, 1.2, 1],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1,
+          }}
+        />
+      </div>
+      
+      <div className="w-full max-w-3xl pt-8 relative z-10">
         <div className="text-center mb-8">
-          <div className="text-sm px-3 py-1.5 rounded-full inline-block font-medium"
-            style={{
-              backgroundColor: 'var(--sobi-green-light)',
-              border: '1px solid var(--sobi-green-border)',
-              color: 'var(--sobi-green)',
-            }}
-          >
-            장바구니 번호: {basketId}
-          </div>
-          
           {/* SSE 연결 상태 표시 */}
           <div className="mt-3">
             {sseStatus === 'connecting' && (
@@ -739,8 +1016,8 @@ export default function BasketsPage() {
                 AI가 당신의 장바구니를 분석해서 추천하는 상품들입니다! 실시간으로 업데이트됩니다
               </p>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {recommendations.map((product: Product) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+                {recommendations.slice(0, 4).map((product: Product) => (
                   <Link key={product.id} href={`/products/${product.id}`}>
                     <div className="group cursor-pointer">
                       <div className="relative overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-all duration-300 group-hover:scale-105">
@@ -816,6 +1093,23 @@ export default function BasketsPage() {
                   </Link>
                 ))}
               </div>
+              
+              {recommendations.length > 4 && (
+                <div className="text-center">
+                  <Link 
+                    href="/ai"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105"
+                    style={{
+                      backgroundColor: 'var(--sobi-green)',
+                      color: 'white',
+                      boxShadow: '0 4px 12px rgba(66, 184, 131, 0.3)'
+                    }}
+                  >
+                    <span>더 많은 AI 추천 상품 보기</span>
+                    <span className="text-sm opacity-90">({recommendations.length}개)</span>
+                  </Link>
+                </div>
+              )}
             </>
                       ) : (
               <div className="text-center py-8">
