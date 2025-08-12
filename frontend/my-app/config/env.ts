@@ -54,6 +54,7 @@ export const config = {
       CUSTOMERS_SIGNUP: `${this.API_BASE_URL}/api/customers/signup`,
       CUSTOMERS_PROFILE: `${this.API_BASE_URL}/api/customers/profile`,
       CUSTOMERS_LOGOUT: `${this.API_BASE_URL}/api/customers/logout`,
+      CUSTOMERS_WITHDRAWAI: `${this.API_BASE_URL}/api/customers/withdrawal`,
       
       // 푸시 알림
       PUSH_REGISTER: `${this.API_BASE_URL}/api/push/register`,

@@ -81,7 +81,7 @@ export default function SignupPage() {
                 placeholder="아이디"
                 value={userId}
                 onChange={e => setUserId(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
                 required
               />
@@ -92,7 +92,7 @@ export default function SignupPage() {
                 placeholder="비밀번호"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
                 required
               />
@@ -103,7 +103,7 @@ export default function SignupPage() {
                 placeholder="비밀번호 확인"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
                 required
               />

@@ -53,6 +53,26 @@ export default function ProductsPage() {
   const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
   const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
 
+  // 카테고리 스크롤을 위한 상태
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeft, setScrollLeft] = useState(0)
+  const categoryScrollRef = useRef<HTMLDivElement>(null)
+
+  // 카테고리 배열 정의
+  const categories: CategoryName[] = useMemo(() => [
+    '전체', '과일', '채소', '쌀_잡곡_견과', '정육_계란류', 
+    '수산물_건해산', '우유_유제품', '김치_반찬_델리', '생수_음료_주류', '커피_원두_차',
+    '면류_통조림', '양념_오일', '과자_간식', '베이커리_잼', '건강식품'
+  ], [])
+
+  // 카테고리 배경색 배열
+  const categoryColors = useMemo(() => [
+    '#21ce80', '#4ECDC4', '#edb482', '#fab1a2', '#82E0AA',
+    '#f6b0cd', '#a5ed82', '#b2eafa', '#BB8FCE', '#DDA0DD',
+    '#96CEB4', '#F7DC6F', '#98D8C8', '#85C1E9', '#87c873'
+  ], [])
+
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
     setKeyword(keywordFromURL)
@@ -83,6 +103,29 @@ export default function ProductsPage() {
       params.delete('excludeOutOfStock')
     }
     router.replace(`?${params.toString()}`)
+  }
+
+  // 마우스 드래그 스크롤 핸들러들
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    setIsDragging(true)
+    setStartX(e.pageX - e.currentTarget.offsetLeft)
+    setScrollLeft(e.currentTarget.scrollLeft)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return
+    e.preventDefault()
+    const x = e.pageX - e.currentTarget.offsetLeft
+    const walk = (x - startX) * 1.2 // 스크롤 속도 조절
+    e.currentTarget.scrollLeft = scrollLeft - walk
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
   }
 
   // 필터링
@@ -221,6 +264,75 @@ export default function ProductsPage() {
         showCategorySelect={true}
         showResultButton={false}
       />
+      
+      {/* 카테고리 필터 섹션 */}
+      <div className="w-full max-w-4xl mb-2 mt-4">
+        <div 
+          ref={categoryScrollRef}
+          className="flex overflow-x-auto gap-3 pt-2 pb-4 scrollbar-none cursor-grab"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            overflowY: 'visible',
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+        >
+          {categories.map((cat, index) => {
+            const categoryName = cat.replace(/_/g, '/')
+            const backgroundColor = categoryColors[index]
+            const isSelected = category === cat
+            
+            const handleCategoryClick = () => {
+              if (cat === '전체') {
+                // 전체 카테고리 선택 시 상품 전체 목록 페이지로 이동
+                router.push('/products')
+              } else {
+                onCategoryChange(cat)
+              }
+            }
+            
+            return (
+              <button
+                key={cat}
+                onClick={handleCategoryClick}
+                className={`flex flex-col items-center group min-w-[60px] transition-all duration-200 ${
+                  isSelected ? 'scale-110' : 'hover:scale-105'
+                }`}
+                style={{ userSelect: 'none' }}
+              >
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-lg transition-all duration-300 ${
+                    isSelected 
+                      ? 'shadow-xl ring-2 ring-white ring-opacity-50' 
+                      : 'hover:shadow-xl'
+                  }`}
+                  style={{ 
+                    backgroundColor: isSelected ? backgroundColor : backgroundColor + '80',
+                    transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                >
+                  <div className="text-white">
+                    {CATEGORY_ICONS[cat]}
+                  </div>
+                </div>
+                <span 
+                  className={`text-[11px] font-medium text-center transition-colors whitespace-nowrap ${
+                    isSelected 
+                      ? 'text-[var(--sobi-green)] font-bold' 
+                      : 'text-[var(--foreground)] group-hover:text-[var(--sobi-green)]'
+                  }`}
+                >
+                  {categoryName}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
       <div className="flex items-center gap-3 mb-4 mt-3 select-none">
         <label htmlFor="excludeOutOfStock" className="flex items-center gap-2 cursor-pointer group" style={{ userSelect: "none" }}>
           <div className="relative">

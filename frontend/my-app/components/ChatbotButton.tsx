@@ -1,18 +1,18 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { MessageCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
-import SearchModal from '../modals/SearchModal'
-import { PiMagnifyingGlassLight  } from "react-icons/pi";
+import ChatbotModal from '@/components/modals/ChatbotModal'
 
-export default function SearchButton() {
-  const [isOpen, setIsOpen] = useState(false)
+export default function ChatbotButton() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  const openModal = () => setIsOpen(true)
-  const closeModal = () => setIsOpen(false)
+  const openModal = () => setIsModalOpen(true)
+  const closeModal = () => setIsModalOpen(false)
 
-  // esc 키 처리
+  // ESC 키 처리
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal()
@@ -30,31 +30,36 @@ export default function SearchButton() {
 
   return (
     <>
-      {/* 돋보기 버튼 */}
+      {/* 챗봇 버튼 */}
       <motion.button
         onClick={openModal}
-        className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
+        className="fixed top-4 left-4 z-40 p-3 rounded-full shadow-lg"
+        style={{
+          backgroundColor: 'var(--sobi-green)',
+          color: 'white'
+        }}
         whileHover={{ 
           scale: 1.1,
           boxShadow: "0 8px 25px rgba(0,0,0,0.15)"
         }}
         whileTap={{ scale: 0.95 }}
+        aria-label="챗봇 열기"
       >
-        <PiMagnifyingGlassLight  size={24} color="var(--foreground)" strokeWidth={1} />
+        <MessageCircle size={24} />
       </motion.button>
 
-      {/* 모달 */}
+      {/* 챗봇 모달 */}
       <AnimatePresence>
-        {isOpen && (
+        {isModalOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-72"
+            className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 px-4"
             onClick={handleBackdropClick}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* 배경 */}
+            {/* 배경 흐림 효과 */}
             <motion.div
               className="absolute inset-0 bg-black/20 backdrop-blur-sm"
               initial={{ opacity: 0 }}
@@ -87,7 +92,9 @@ export default function SearchButton() {
                 ease: [0.25, 0.46, 0.45, 0.94]
               }}
             >
-              <SearchModal onClose={closeModal} />
+              <ChatbotModal 
+                onClose={closeModal}
+              />
             </motion.div>
           </motion.div>
         )}
