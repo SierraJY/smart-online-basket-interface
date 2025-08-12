@@ -130,6 +130,54 @@ public class CustomerController {
     // 로그아웃 메서드 제거 - SecurityConfig의 CustomLogoutHandler에서 처리
     // POST /api/customers/logout 요청은 이제 Spring Security의 로그아웃 필터에서 자동 처리
 
+    // 회원탈퇴 처리 (POST /api/customers/withdrawal)
+    @PostMapping("/withdrawal")
+    public ResponseEntity<?> deleteAccount(Authentication authentication, @RequestHeader("Authorization") String authorizationHeader) {
+        try {
+            System.out.println("회원탈퇴 요청");
+
+            // 인증된 사용자 정보 가져오기
+            if (authentication == null || !authentication.isAuthenticated()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "로그인이 필요합니다");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            JwtAuthenticationFilter.JwtUserPrincipal principal =
+                    (JwtAuthenticationFilter.JwtUserPrincipal) authentication.getPrincipal();
+            Integer customerId = principal.getId();
+
+            // Authorization 헤더에서 토큰 추출
+            if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "유효하지 않은 토큰입니다");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            String token = authorizationHeader.substring(7);
+
+            // 회원탈퇴 처리
+            customerService.deleteCustomer(customerId, token);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "회원탈퇴가 완료되었습니다");
+            response.put("customerId", customerId);
+
+            System.out.println("회원탈퇴 완료: customerId=" + customerId);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            System.err.println("회원탈퇴 중 오류: " + e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "회원탈퇴 처리 중 오류가 발생했습니다: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     // 현재 로그인한 사용자 정보 조회 (GET /api/customers/profile)
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(Authentication authentication) {

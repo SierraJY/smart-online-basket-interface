@@ -2,9 +2,11 @@ package com.sobi.sobi_backend.service;
 
 import com.sobi.sobi_backend.entity.Customer;
 import com.sobi.sobi_backend.repository.CustomerRepository;
+import com.sobi.sobi_backend.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +20,11 @@ public class CustomerService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    @Autowired
+    private TokenBlackListService tokenBlackListService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
 
     // 회원가입
     public Customer registerCustomer(String userId, String password, Integer gender, Integer age) {
@@ -38,12 +44,33 @@ public class CustomerService {
 
     // 로그인 (아이디로 조회)
     public Optional<Customer> loginCustomer(String userId) {
-        return customerRepository.findByUserId(userId);
+        return customerRepository.findByUserId(userId)
+                .filter(c -> !c.getDeleted());
     }
 
     // ID로 고객 조회 (프로필 조회용)
     public Optional<Customer> getCustomerById(Integer id) {
         return customerRepository.findById(id);
+    }
+
+    // 회원탈퇴
+    @Transactional
+    public void deleteCustomer(Integer customerId, String token) {
+        Optional<Customer> customerOpt = customerRepository.findById(customerId);
+        if (customerOpt.isEmpty()) {
+            throw new IllegalArgumentException("존재하지 않는 고객입니다: " + customerId);
+        }
+
+        Customer customer = customerOpt.get();
+        if (customer.getDeleted()) {
+            throw new IllegalArgumentException("이미 탈퇴한 계정입니다");
+        }
+
+        customer.setDeleted(true);
+        customerRepository.save(customer);
+
+        long expirationTime = jwtUtil.getExpirationFromToken(token);
+        tokenBlackListService.addTokenToBlacklist(token, expirationTime);
     }
 
     // 비회원 계정 생성 (패스워드는 외부에서 암호화된 것을 받음)
