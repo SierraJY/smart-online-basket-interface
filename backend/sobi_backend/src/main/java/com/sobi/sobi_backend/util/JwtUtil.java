@@ -115,6 +115,17 @@ public class JwtUtil {
         return claims.get("customerId", Integer.class);
     }
 
+    // JWT 토큰에서 만료시간 추출 (Unix timestamp 초 단위)
+    public long getExpirationFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        return claims.getExpiration().getTime() / 1000; // 밀리초를 초로 변환
+    }
+
     // JWT 액세스 토큰이 유효한지 검증 (만료, 서명, 형식 등 체크)
     public boolean validateToken(String token) {
         try {
