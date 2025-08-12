@@ -15,7 +15,8 @@ CREATE TABLE customer (
     user_id VARCHAR(255) NOT NULL,
     user_passwd VARCHAR(255) NOT NULL,
     gender INTEGER DEFAULT NULL, -- 0 for man, 1 for female
-    age INTEGER DEFAULT NULL
+    age INTEGER DEFAULT NULL,
+    deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Create product table (상품 정보)
