@@ -484,7 +484,7 @@ export default function FavoritePage() {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           className="absolute inset-0 rounded-full backdrop-blur-sm border-2 border-[var(--sobi-green)]"
-                          style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                          style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
                         />
                       )}
                     </div>

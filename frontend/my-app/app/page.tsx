@@ -12,6 +12,8 @@ import Image from 'next/image'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import ProfileButton from '@/components/buttons/ProfileButton'
+import ChatbotButton from '@/components/buttons/ChatbotButton'
+import SearchBar from '@/components/SearchBar'
 import { CATEGORY_ICONS } from '@/components/categoryIcons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Product } from '@/types'
@@ -19,6 +21,9 @@ import { CategoryName } from '@/components/categoryIcons'
 
 export default function Home() {
   const { products, loading, error } = useProducts()
+  
+  // 검색 관련 상태
+  const [searchKeyword, setSearchKeyword] = useState('')
   
   // 광고 배너 관련 상태
   const [currentAdIndex, setCurrentAdIndex] = useState(0)
@@ -265,16 +270,14 @@ export default function Home() {
     }
   }, [products])
 
-  // 검색 로직 구현 예정
-  // const handleSearch = () => {
-  //   if (!keyword.trim()) return
-  //   const query = new URLSearchParams()
-  //   query.set('keyword', keyword)
-  //   if (category && category !== '전체') {
-  //     query.set('category', category)
-  //   }
-  //   router.push(`/products?${query.toString()}`)
-  // }
+  // 검색 로직 구현
+  const handleSearch = () => {
+    if (!searchKeyword.trim()) return
+    const query = new URLSearchParams()
+    query.set('keyword', searchKeyword)
+    // 검색 페이지로 이동
+    window.location.href = `/products?${query.toString()}`
+  }
 
   // 마우스 드래그 스크롤 핸들러들
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -332,7 +335,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen py-16 pb-24 flex flex-col items-center"
+    <main className="min-h-screen py-6 flex flex-col items-center"
       style={{ 
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
@@ -385,8 +388,23 @@ export default function Home() {
       `}</style>
       <div className="pt-4 w-full max-w-4xl">
         {/* 상단 헤더 */}
-        <div className="flex justify-between items-center mb-6 px-5">
-          <ProfileButton />
+        <div className="flex justify-between items-center mb-6 px-6 relative">
+          {/* 왼쪽: 검색바 */}
+          <div className="flex-1 max-w-md mr-4">
+            <SearchBar
+              keyword={searchKeyword}
+              setKeyword={setSearchKeyword}
+              onSearch={handleSearch}
+              showCategorySelect={false}
+              showResultButton={false}
+            />
+          </div>
+          
+          {/* 오른쪽: 버튼들 */}
+          <div className="flex items-center gap-2">
+            <ChatbotButton inline />
+            <ProfileButton inline />
+          </div>
         </div>
 
         {/* 카테고리 섹션 */}
@@ -610,7 +628,7 @@ export default function Home() {
                 rotate: -15,
                 color: '#1d783e',
                 transition: {
-                  duration: 1,
+                  duration: 0.7,
                   ease: "easeOut"
                 }
               }}
@@ -702,7 +720,7 @@ export default function Home() {
                 rotate: 10,
                 color: '#1d783e',
                 transition: {
-                  duration: 1.2,
+                  duration: 0.6,
                   ease: "easeOut"
                 }
               }}

@@ -10,14 +10,15 @@ import { useSSEConnectionStatus } from '@/utils/hooks/useGlobalBasketSSE'
 import LogoutButton from '@/components/buttons/LogoutButton'
 import { 
   User, 
-  ShoppingBag, 
-  Sparkles, 
-  Trash2
+  Sparkles
 } from 'lucide-react'
+import { FcSurvey } from "react-icons/fc"
+import { FiUserX } from "react-icons/fi"
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import ToastManager from '@/utils/toastManager'
+import WithdrawalModal from '@/components/modals/WithdrawalModal'
 
 interface ProfileData {
   gender: number
@@ -28,10 +29,12 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { isLoggedIn, mounted, isGuestUser } = useAuth()
+  const { isLoggedIn, mounted, isGuestUser, accessToken } = useAuth()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false)
   
   // 바구니 상태 확인 (상태 표시용)
   const basketId = useBasketId()
@@ -82,13 +85,48 @@ export default function ProfilePage() {
     router.push('/login')
   }
 
+  // 회원 탈퇴 처리
+  const handleWithdrawal = () => {
+    setShowWithdrawalModal(true)
+  }
+
+  // 회원 탈퇴 확인 처리
+  const confirmWithdrawal = async () => {
+    if (!accessToken) {
+      ToastManager.error('인증 정보가 없습니다.')
+      return
+    }
+
+    setWithdrawalLoading(true)
+
+    try {
+      const response = await apiClient.post(config.API_ENDPOINTS.CUSTOMERS_WITHDRAWAI)
+      
+      if (response.ok) {
+        // 탈퇴 완료 페이지로 이동 (접근 권한 부여)
+        sessionStorage.setItem('withdrawalAccess', 'true')
+        router.push('/withdrawal')
+      } else {
+        throw new Error('회원 탈퇴에 실패했습니다.')
+      }
+    } catch (err) {
+      console.error('회원 탈퇴 오류:', err)
+      ToastManager.error('회원 탈퇴 중 오류가 발생했습니다.')
+    } finally {
+      setWithdrawalLoading(false)
+      setShowWithdrawalModal(false)
+    }
+  }
+
   // mounted 상태 확인 (Hydration 오류 방지)
   if (!mounted) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">로딩 중...</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">로딩 중...</p>
         </div>
       </div>
     )
@@ -97,10 +135,12 @@ export default function ProfilePage() {
   // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
   if (!isLoggedIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">로그인 페이지로 이동 중...</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">로그인 페이지로 이동 중...</p>
         </div>
       </div>
     )
@@ -109,10 +149,12 @@ export default function ProfilePage() {
   // 로딩 중
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">프로필 정보를 불러오는 중...</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">프로필 정보를 불러오는 중...</p>
         </div>
       </div>
     )
@@ -121,7 +163,9 @@ export default function ProfilePage() {
   // 오류 발생
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button 
@@ -196,7 +240,7 @@ export default function ProfilePage() {
           <Link href="/favorite">
             <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-green-900/30 transition-colors">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
                   <Image
                     src="/icon/favorite.png"
                     alt="찜목록"
@@ -217,8 +261,8 @@ export default function ProfilePage() {
           <Link href={"/receipts"}>
             <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
               <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-green-900/30 transition-colors">
-                  <ShoppingBag size={24} className="text-blue-500" />
+              <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
+                  <FcSurvey size={24} />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-[var(--foreground)]">구매내역</h3>
@@ -247,23 +291,32 @@ export default function ProfilePage() {
           {/* 구분선 */}
           <div className="border-t border-[var(--footer-border)] my-4"></div>
 
-          {/* 회원 탈퇴 */}
-          <div className="bg-[var(--background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-xl p-4 shadow-sm opacity-60">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                <Trash2 size={24} className="text-red-500" />
+          {/* 회원 탈퇴 - 게스트 사용자에게는 표시하지 않음 */}
+          {!isGuestUser && (
+            <button onClick={handleWithdrawal} className="w-full">
+              <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 group hover:scale-[1.02] hover:bg-red-50 dark:hover:bg-red-900/10 opacity-50">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center transition-colors">
+                    <FiUserX size={24} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold text-[var(--foreground)]">회원 탈퇴</h3>
+                    <p className="text-sm text-[var(--text-secondary)]">계정을 영구적으로 삭제합니다</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-[var(--foreground)]">회원 탈퇴</h3>
-                <p className="text-sm text-[var(--text-secondary)]">계정을 영구적으로 삭제합니다</p>
-              </div>
-              <div className="text-[var(--text-secondary)]">
-                <span className="text-xs bg-[var(--footer-border)] px-2 py-1 rounded-full">준비중</span>
-              </div>
-            </div>
-          </div>
+            </button>
+          )}
         </motion.div>
       </div>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      <WithdrawalModal
+        open={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        onConfirm={confirmWithdrawal}
+        loading={withdrawalLoading}
+      />
     </div>
   )
 } 

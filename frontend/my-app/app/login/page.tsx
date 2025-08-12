@@ -7,11 +7,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/utils/hooks/useAuth'
 import ToastManager from '@/utils/toastManager'
+import CheckGuestLogin from '@/components/modals/CheckGuestLogin'
 
 export default function LoginPage() {
   const [userId, setUserId] = useState('')
   const [userPasswd, setUserPasswd] = useState('')
   const [message, setMessage] = useState('')
+  const [showGuestModal, setShowGuestModal] = useState(false)
   const { login, loginLoading, loginError, guestLogin, guestLoginLoading, guestLoginError } = useAuth()
   const router = useRouter()
 
@@ -38,9 +40,15 @@ const handleLogin = async (e: React.FormEvent) => {
   }
 }
 
-// 게스트 로그인 처리
+// 게스트 로그인 모달 열기
+const handleGuestLoginClick = () => {
+  setShowGuestModal(true)
+}
+
+// 실제 게스트 로그인 처리
 const handleGuestLogin = async () => {
   setMessage('')
+  setShowGuestModal(false)
   try {
     await guestLogin()
     
@@ -58,6 +66,12 @@ const handleGuestLogin = async () => {
                         '게스트 로그인 실패';
     setMessage(errorMessage);
   }
+}
+
+// 모달에서 회원가입 버튼 클릭
+const handleModalSignup = () => {
+  setShowGuestModal(false)
+  router.push('/signup')
 }
 
   return (
@@ -94,7 +108,7 @@ const handleGuestLogin = async () => {
                 placeholder="아이디"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
                 required
               />
@@ -105,7 +119,7 @@ const handleGuestLogin = async () => {
                 placeholder="비밀번호"
                 value={userPasswd}
                 onChange={(e) => setUserPasswd(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-green-500 focus:outline-none transition-colors"
+                className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
                 required
               />
@@ -127,37 +141,6 @@ const handleGuestLogin = async () => {
               ) : "로그인"}
             </button>
 
-            {/* 구분선 */}
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500" style={{ backgroundColor: 'var(--search-modal-bg)' }}>
-                  또는
-                </span>
-              </div>
-            </div>
-
-            {/* 게스트 로그인 버튼 */}
-            <button
-              type="button"
-              onClick={handleGuestLogin}
-              className="w-full rounded-xl py-3 text-base font-bold transition-all shadow-lg active:scale-95 border-2"
-              style={{ 
-                backgroundColor: 'transparent',
-                color: 'var(--sobi-green)',
-                borderColor: 'var(--sobi-green)'
-              }}
-              disabled={guestLoginLoading}
-            >
-              {guestLoginLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-                  게스트 로그인 중...
-                </div>
-              ) : "게스트로 시작하기"}
-            </button>
           </form>
 
           {/* 에러 메시지 */}
@@ -169,21 +152,58 @@ const handleGuestLogin = async () => {
             </div>
           )}
 
-          {/* 회원가입 링크 */}
-          <div className="mt-6 text-center">
+          {/* 회원가입 버튼 */}
+          <Link href="/signup">
+            <button
+              type="button"
+              className="w-full rounded-xl py-3 text-base font-bold transition-all shadow-lg active:scale-95 border-2 mt-6"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: 'var(--sobi-green)',
+                borderColor: 'var(--sobi-green)'
+              }}
+            >
+              회원가입
+            </button>
+          </Link>
+
+          {/* 구분선 */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500" style={{ backgroundColor: 'var(--search-modal-bg)' }}>
+                또는
+              </span>
+            </div>
+          </div>
+
+          {/* 게스트 로그인 링크 */}
+          <div className="text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              아직 회원이 아니신가요?{' '}
-              <Link 
-                href="/signup" 
-                className="font-semibold hover:opacity-80 transition-opacity"
+              서비스 이용이 처음이신가요?{' '}
+              <button
+                type="button"
+                onClick={handleGuestLoginClick}
+                className="font-semibold hover:opacity-80 transition-opacity bg-transparent border-none p-0 cursor-pointer"
                 style={{ color: 'var(--sobi-green)' }}
               >
-                회원가입 하기
-              </Link>
+                게스트로 로그인
+              </button>
             </p>
           </div>
         </div>
       </div>
+
+      {/* 게스트 로그인 확인 모달 */}
+      <CheckGuestLogin
+        open={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        onGuestLogin={handleGuestLogin}
+        onSignup={handleModalSignup}
+        guestLoginLoading={guestLoginLoading}
+      />
     </main>
   )
 }
