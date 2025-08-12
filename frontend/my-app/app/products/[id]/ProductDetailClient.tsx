@@ -144,22 +144,26 @@ export default function ProductDetailClient({ id }: { id: string }) {
           {/* 상품 정보 요약 */}
           <div className="mb-6 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">브랜드</span>
-              <span className="font-semibold text-[var(--foreground)]">{product.brand}</span>
+              <span className="text-base text-[var(--text-secondary)]">브랜드</span>
+              <span className="font-semibold text-[var(--foreground)] text-base">{product.brand}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">카테고리</span>
+              <span className="text-base text-[var(--text-secondary)]">장소</span>
+              <span className="font-semibold text-[var(--foreground)] text-base">{product.location || '정보 없음'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-base text-[var(--text-secondary)]">카테고리</span>
               <Link 
                 href={`/products/category?category=${encodeURIComponent(product.category)}`}
-                className="font-medium hover:scale-105 transition-transform cursor-pointer"
+                className="font-medium hover:scale-105 transition-transform cursor-pointer text-base"
                 style={{ color: 'var(--sobi-green)' }}
               >
                 {replaceCategoryName(product.category)}
               </Link>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[var(--text-secondary)]">재고</span>
-              <span className={`font-semibold ${product.stock === 0 ? 'text-red-500' : 'text-[var(--foreground)]'}`}>
+              <span className="text-base text-[var(--text-secondary)]">재고</span>
+              <span className={`font-semibold text-base ${product.stock === 0 ? 'text-red-500' : 'text-[var(--foreground)]'}`}>
                 {product.stock === 0 ? '재고없음' : `${product.stock}개`}
               </span>
             </div>
@@ -167,22 +171,33 @@ export default function ProductDetailClient({ id }: { id: string }) {
 
           {/* 상품 설명 */}
           {product.description && product.description !== '(NULL)' ? (
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-3">상품 설명</h3>
-              <p className="text-base leading-relaxed text-[var(--text-secondary)]">
+            <div className="mt-8">
+              <h3 className="text-xl font-bold text-[var(--foreground)] mb-4 flex items-center gap-2">
+                <div className="w-1 h-6 rounded-full" style={{ backgroundColor: 'var(--sobi-green)' }}></div>
+                상품 설명
+              </h3>
+              <div className="text-base leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap">
                 {product.description}
-              </p>
+              </div>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <span className="text-lg text-[var(--text-secondary)]">
-                상세설명 준비 중
-                <span className="inline-block ml-1">
-                  <span className="animate-dots">.</span>
-                  <span className="animate-dots" style={{ animationDelay: '0.2s' }}>.</span>
-                  <span className="animate-dots" style={{ animationDelay: '0.4s' }}>.</span>
-                </span>
-              </span>
+            <div className="mt-8">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--sobi-green)]/10 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-[var(--sobi-green)]/30 border-t-[var(--sobi-green)] animate-spin"></div>
+                </div>
+                <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
+                  상세설명 준비 중
+                  <span className="inline-block ml-1">
+                    <span className="animate-dots">.</span>
+                    <span className="animate-dots" style={{ animationDelay: '0.2s' }}>.</span>
+                    <span className="animate-dots" style={{ animationDelay: '0.4s' }}>.</span>
+                  </span>
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  곧 더 자세한 정보를 제공해드릴게요
+                </p>
+              </div>
             </div>
           )}
         </div>
