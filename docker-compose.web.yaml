@@ -42,7 +42,6 @@ services:
     restart: unless-stopped
     networks:
       - sobi-net
-
 networks:
   sobi-net:
     external: true
