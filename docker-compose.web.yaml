@@ -27,11 +27,18 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/sobi
-      - SPRING_DATASOURCE_USERNAME=sobiuser
-      - SPRING_DATASOURCE_PASSWORD=sobipass
-      - SPRING_DATA_REDIS_HOST=redis
-      - APP_MQTT_BROKER_URL=tcp://172.26.6.236:1883
+      - DATABASE_URL=jdbc:postgresql://db:5432/sobi
+      - DATABASE_USERNAME=sobiuser
+      - DATABASE_PASSWORD=sobipass
+      - JPA_SHOW_SQL=true
+      - JPA_DDL_AUTO=update
+      - JPA_OPEN_IN_VIEW=false
+      - JWT_SECRET=sobi_b103_103b_park_yang_yang_hwang_kim_jjang_jjang
+      - MQTT_BROKER_URL=tcp://172.26.6.236:1883
+      - BASKET_CACHE_TTL_SECONDS=7200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_RECOMMENDATION_URL=http://172.26.6.236:9000/recommend
     restart: unless-stopped
     networks:
       - sobi-net
