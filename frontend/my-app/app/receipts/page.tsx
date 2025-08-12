@@ -315,7 +315,7 @@ export default function ReceiptsPage() {
                    left: '50%',
                    transform: 'translateX(-50%) translateY(-50%)'
                  }}>
-              <h2 className="text-lg font-semibold text-center text-black">
+              <h2 className="text-lg font-semibold text-center text-[var(--foreground)]">
                 구매 통계
               </h2>
             </div>

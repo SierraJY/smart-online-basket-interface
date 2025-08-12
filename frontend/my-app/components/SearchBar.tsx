@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { BiSearchAlt2 } from "react-icons/bi"
 import { CategoryName, isValidCategory } from "./categoryIcons"
 
 // 검색바 Props 타입 정의
@@ -23,9 +24,9 @@ export default function SearchBar({
   categories = [],
   onSearch,
   showCategorySelect = true,
-  showResultButton = true,
 }: SearchBarProps) {
   const [open, setOpen] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const selectRef = useRef<HTMLDivElement>(null)
 
   // 카테고리 변경 핸들러
@@ -73,7 +74,9 @@ export default function SearchBar({
         style={{
           borderRadius: '999px',
           background: 'var(--modal-glass-bg,rgba(255,255,255,0.36))',
-          border: '1.8px solid var(--modal-glass-border,rgba(85, 64, 64, 0.35))',
+          border: isFocused 
+            ? '1.8px solid var(--sobi-green)' 
+            : '1.8px solid var(--modal-glass-border,rgba(85, 64, 64, 0.35))',
           boxShadow: '0 1.5px 10px 0 rgba(0,0,0,0.06)',
           backdropFilter: 'blur(9px)',
           WebkitBackdropFilter: 'blur(9px)',
@@ -88,13 +91,23 @@ export default function SearchBar({
             placeholder="상품명을 입력하세요"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            className="w-full px-5 py-3 text-sm bg-transparent focus:outline-none"
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            className="w-full px-5 py-3 pr-12 text-sm bg-transparent focus:outline-none"
             style={{
               color: 'var(--foreground)',
               border: 'none',
             }}
             autoComplete="on"
           />
+          {/* 검색 버튼 */}
+          <button
+            type="submit"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-black/10 transition-colors"
+            style={{ color: 'var(--sobi-green)' }}
+          >
+            <BiSearchAlt2 size={18} />
+          </button>
           {/* 점 애니메이션 - ProductDetailClient와 동일한 방식 */}
           {!keyword && (
             <div className="absolute left-28 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -185,22 +198,6 @@ export default function SearchBar({
           </>
         )}
       </div>
-      {showResultButton && (
-         <button
-        type="submit"
-        className="rounded-xl py-3 text-sm font-semibold mt-1"
-        style={{
-          backgroundColor: 'var(--sobi-green)',
-          color: 'var(--background)',
-          boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
-          transition: 'background 0.4s, color 0.4s',
-        }}
-      >
-        검색
-      </button>
-
-      )}
-     
     </form>
   )
 }
