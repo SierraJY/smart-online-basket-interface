@@ -28,16 +28,20 @@ public class Customer implements UserDetails {
     @Column(name = "age")
     private Integer age;
 
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted = false;
+
     // Default constructor
     public Customer() {}
 
     // All args constructor
-    public Customer(Integer id, String userId, String userPasswd, Integer gender, Integer age) {
+    public Customer(Integer id, String userId, String userPasswd, Integer gender, Integer age, Boolean deleted) {
         this.id = id;
         this.userId = userId;
         this.userPasswd = userPasswd;
         this.gender = gender;
         this.age = age;
+        this.deleted = deleted;
     }
 
     // UserDetails 구현 메소드들
@@ -73,7 +77,7 @@ public class Customer implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true; // 항상 활성화
+        return !deleted;
     }
 
     // 기존 Getters and Setters
@@ -115,5 +119,13 @@ public class Customer implements UserDetails {
 
     public void setAge(Integer age) {
         this.age = age;
+    }
+
+    public Boolean getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(Boolean deleted) {
+        this.deleted = deleted;
     }
 }

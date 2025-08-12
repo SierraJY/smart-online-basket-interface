@@ -58,8 +58,7 @@ public class CustomLogoutHandler implements LogoutHandler {
                 if (!tokenBlackListService.isTokenBlacklisted(token)) {
 
                     // 토큰에서 만료 시간 추출
-                    // JwtUtil에 getExpirationFromToken 메서드 필요 (추가 구현 필요)
-                    long expirationTime = getTokenExpiration(token);
+                    long expirationTime = jwtUtil.getExpirationFromToken(token);
 
                     // 블랙리스트에 토큰 추가 (TTL 자동 설정)
                     tokenBlackListService.addTokenToBlacklist(token, expirationTime);
@@ -84,25 +83,6 @@ public class CustomLogoutHandler implements LogoutHandler {
         }
 
         System.out.println("=== 로그아웃 처리 완료 ===");
-    }
-
-    /**
-     * 토큰에서 만료 시간 추출
-     * JwtUtil에 해당 메서드가 없으므로 임시로 구현
-     *
-     * @param token JWT 토큰
-     * @return Unix timestamp (초 단위)
-     */
-    private long getTokenExpiration(String token) {
-        try {
-            // TODO: JwtUtil에 getExpirationFromToken 메서드 추가 필요
-            // 임시로 현재 시간 + 1시간으로 설정 (Access Token 기본 만료 시간)
-            return System.currentTimeMillis() / 1000 + 3600; // 1시간 후
-        } catch (Exception e) {
-            // 토큰 파싱 실패 시 1시간 후로 설정
-            System.err.println("토큰 만료 시간 추출 실패, 기본값 사용: " + e.getMessage());
-            return System.currentTimeMillis() / 1000 + 3600;
-        }
     }
 
     /**
