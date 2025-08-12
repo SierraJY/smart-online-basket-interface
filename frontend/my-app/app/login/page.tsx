@@ -17,6 +17,50 @@ export default function LoginPage() {
   const { login, loginLoading, loginError, guestLogin, guestLoginLoading, guestLoginError } = useAuth()
   const router = useRouter()
 
+// 백엔드 에러 메시지 기반 세분화 함수
+const getLoginErrorMessage = (error: any): string => {
+  // 에러 메시지 추출
+  let errorMsg = ''
+  if (error instanceof Error) {
+    errorMsg = error.message
+  } else if (error?.message) {
+    errorMsg = error.message
+  } else if (loginError?.message) {
+    errorMsg = loginError.message
+  }
+
+  // 디버깅용 로그
+  console.log('Login error message:', errorMsg)
+
+  // 백엔드에서 실제로 보내는 메시지 기반 분류
+  const lowerMsg = errorMsg.toLowerCase()
+  
+  // 1. 회원가입 시 중복 아이디 (CustomerService.java:27)
+  if (lowerMsg.includes('이미 존재하는 사용자') || lowerMsg.includes('already exists') || lowerMsg.includes('duplicate')) {
+    return '이미 등록된 아이디입니다.'
+  }
+  
+  // 2. 존재하지 않는 아이디 (SecurityConfig.java:55, CustomAuthenticationFilter.java:62)
+  else if (lowerMsg.includes('사용자를 찾을 수 없습니다') || lowerMsg.includes('usernamenotfoundexception') || lowerMsg.includes('user not found')) {
+    return '존재하지 않는 아이디입니다.'
+  }
+  
+  // 3. 비밀번호 불일치 (Spring Security에서 BadCredentialsException 발생)
+  else if (lowerMsg.includes('bad credentials') || lowerMsg.includes('비밀번호') || lowerMsg.includes('password') || lowerMsg.includes('credentials')) {
+    return '비밀번호를 확인해주세요.'
+  }
+  
+  // 4. 일반적인 인증 실패 (SecurityConfig.java:124-125)
+  else if (lowerMsg.includes('로그인 실패') || lowerMsg.includes('authentication failed') || lowerMsg.includes('unauthorized')) {
+    return '아이디 또는 비밀번호를 확인해주세요.'
+  }
+  
+  // 5. 기본값
+  else {
+    return '로그인에 실패했습니다. 다시 시도해주세요.'
+  }
+}
+
 // page(login).tsx 중 handleLogin 부분만 수정!
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault()
@@ -32,11 +76,8 @@ const handleLogin = async (e: React.FormEvent) => {
       router.push('/')
     }, 0)
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 
-                        (err as { message?: string })?.message || 
-                        loginError?.message || 
-                        '로그인 실패';
-    setMessage(errorMessage);
+    const errorMessage = getLoginErrorMessage(err)
+    setMessage(errorMessage)
   }
 }
 
