@@ -34,7 +34,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 1,
       question: 'SOBI가 뭐야?',
-      answer: 'SOBI는 Smart Online Basket Interface의 약자로, 보다 편리한 오프라인 쇼핑을 위한 서비스입니다'
+      answer: ' Smart Online Basket Interface의 약자로, 보다 편리한 오프라인 쇼핑을 위한 AIoT 서비스입니다'
     },
     {
       id: 2,
@@ -44,7 +44,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 3,
       question: '에낙은 안 팔아?',
-      answer: '죽어'
+      answer: '안 팔아'
     },
     {
       id: 4,
@@ -54,7 +54,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 5,
       question: '환불은 어떻게 해야 돼?',
-      answer: '구매내역에 있는 영수증을 통해 지정된 기간 내에 환불을 신청할 수 있어요!'
+      answer: '구매내역에 있는 영수증을 통해 지정된 기간 내에 환불신청을 할 수 있어요!'
     }
   ]
 
