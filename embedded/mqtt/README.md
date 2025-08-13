@@ -18,7 +18,7 @@ cp config.example.py config.py
 ```python
 MQTT_HOST = "your.broker.ip"  # EC2 instance IP or hostname
 MQTT_PORT = 1883
-MQTT_TOPIC = "basket/unit0001"  # Default topic, can be overridden
+MQTT_TOPIC = "basket/1"  # Base topic; controller listens on `${MQTT_TOPIC}/status` and publishes to `${MQTT_TOPIC}/update`
 
 # For anonymous brokers (no authentication required):
 MQTT_USER = ""  # Leave empty for anonymous access
@@ -33,38 +33,44 @@ MQTT_PASS = ""  # Leave empty for anonymous access
 
 ### Sending Messages
 
-Use the `mqtt_publisher.py` module to send messages:
+Use the publisher module directly or run the example script:
 
 ```python
-from mqtt_publisher import publish_message
+from mqtt.src.mqtt_publisher import publish_message
 
-# Basic usage
+# Basic usage (defaults to f"{MQTT_TOPIC}/update")
 publish_message(message="Hello from Smart Basket!")
 
 # Send to specific topic
-publish_message(topic="basket/unit0001", message="Smart basket unit 1 is active")
+publish_message(topic="basket/1/update", message="Smart basket unit 1 is active")
 
 # Send JSON data
 import json
 data = {"event": "add_item", "item_id": "product123"}
-publish_message(topic="basket/unit0001", message=json.dumps(data))
+publish_message(topic="basket/1/update", message=json.dumps(data))
+```
+
+Or:
+
+```bash
+python examples/mqtt_publish_examples.py
 ```
 
 ### Receiving Messages
 
-Run the subscriber to listen for messages:
+Run the subscriber example to listen for messages:
 
 ```bash
-python src/mqtt_subscriber.py
+python examples/mqtt_subscriber.py
 ```
 
-## Topic Naming Convention
+## Topics
 
-Follow these guidelines for topic naming:
+- Base topic: `MQTT_TOPIC` (e.g., `basket/1`)
+- Controller command topic: `${MQTT_TOPIC}/status` (expects `start`, `end`, or JSON with `{ "msg": "total", "payload": { "basketid": <int>, "totalprice": <int> } }`)
+- Update/publish topic: `${MQTT_TOPIC}/update`
 
-- Use `basket/unit{ID}` format for basket topics
-- Example: `basket/unit0001`, `basket/unit0002`
-- For store-specific topics: `basket/store{STORE_ID}/unit{ID}`
+For broader naming guidelines, see docs.
 
 ## Message Format
 
@@ -81,7 +87,7 @@ JSON is recommended for message payloads:
 
 ## Examples
 
-See `src/main.py` for complete usage examples.
+See `examples/mqtt_publish_examples.py` and `examples/mqtt_subscriber.py` for runnable samples.
 
 ## Documentation
 

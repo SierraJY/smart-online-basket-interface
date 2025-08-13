@@ -1,19 +1,19 @@
-#!/usr/bin/env python3
+# DEV-ONLY SAMPLE SCRIPT
+# Purpose: Direct RFID polling runner for bench/hardware testing
+# Not used by production runtime (`python -m mqtt_controller`).
+# Intended for local testing/smoke checks only.
+
 """
 RFID Minimal - Main Application
-
-This is the single entry point for the RFID Minimal system.
-It directly runs the RFID system and handles MQTT communication.
 """
 
-import sys
 import logging
 import argparse
+import sys
 import time
 import importlib.util
 from typing import Dict, Set, List, Any
 
-# Import from rfid_minimal package
 from rfid_minimal.managers.sensor_manager import MultiSensorManager
 from rfid_minimal.core.models import TagInfo
 from rfid_minimal.managers.cart_manager import CartManager
@@ -69,6 +69,35 @@ def parse_arguments():
     )
     
     parser.add_argument(
+        "--work-area", 
+        type=int, 
+        default=6, 
+        help="Work area code (1: China 900MHz, 2: US, 3: EU, 4: China 800MHz, 6: Korea) (default: 6)"
+    )
+    
+    parser.add_argument(
+        "--channel", 
+        type=int, 
+        default=1, 
+        help="Working channel index (1-50, only used when freq-hopping=0) (default: 1)"
+    )
+    
+    parser.add_argument(
+        "--freq-hopping", 
+        type=int, 
+        choices=[0, 1], 
+        default=1, 
+        help="Frequency hopping mode (0: disable, 1: enable) (default: 1)"
+    )
+    
+    parser.add_argument(
+        "--power", 
+        type=int, 
+        default=26, 
+        help="Transmitting power in dBm (0-30) (default: 26)"
+    )
+    
+    parser.add_argument(
         "--presence-threshold", 
         type=int, 
         default=2, 
@@ -93,8 +122,8 @@ def parse_arguments():
     parser.add_argument(
         "--timeout", 
         type=float, 
-        default=0.5, 
-        help="Polling timeout in seconds (default: 0.5)"
+        default=5.0, 
+        help="Polling timeout in seconds (default: 5.0)"
     )
     
     parser.add_argument(
@@ -123,9 +152,13 @@ def run_rfid_system(
     rssi_threshold: int = -60,
     presence_threshold: int = 2,
     absence_threshold: int = 2,
-    timeout: float = 0.5,
+    timeout: float = 5.0,
     mqtt_enabled: bool = None,
-    basket_id: str = None
+    basket_id: str = None,
+    work_area: int = 6,
+    freq_hopping: int = 1,
+    power_dbm: int = 26,
+    channel_index: int = 1
 ) -> Dict[str, Any]:
     """Run the RFID system with specified parameters"""
     logger = logging.getLogger("rfid_minimal")
@@ -138,33 +171,15 @@ def run_rfid_system(
             rssi_threshold=rssi_threshold
         )
         
+        # Configure readers with specified settings
+        manager.configure_readers(work_area=work_area, freq_hopping=freq_hopping, power_dbm=power_dbm, channel_index=channel_index)
+        
         # Create cart manager
         cart_manager = CartManager(
             presence_threshold=presence_threshold,
             absence_threshold=absence_threshold,
             rssi_threshold=rssi_threshold
         )
-        
-        # Set up MQTT publishing callback if MQTT is available
-        if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
-            def on_cart_change(cart_data: Dict[str, Any]) -> None:
-                """Callback function for cart changes that publishes to MQTT"""
-                try:
-                    import json
-                    # Convert dictionary to JSON string for MQTT
-                    cart_json = json.dumps(cart_data)
-                    logger.info(f"Cart changed - Publishing to MQTT: {cart_json}")
-                    publish_result = publish_message(message=cart_json)
-                    
-                    if publish_result:
-                        logger.info("MQTT publish successful")
-                    else:
-                        logger.error("MQTT publish failed")
-                except Exception as e:
-                    logger.error(f"Error publishing to MQTT: {e}")
-            
-            # Register the callback
-            cart_manager.set_cart_change_callback(on_cart_change)
         
         # Set tag detection callback
         def tag_callback(manager_id: str, reader_id: str, tag_info: TagInfo) -> None:
@@ -184,7 +199,7 @@ def run_rfid_system(
             
             # Run polling cycle
             cycle_start_time = time.time()
-            results = manager.run_polling_cycle(timeout)
+            results = manager.run_polling_cycle(timeout) # results 딕셔너리 생성
             cycle_duration = time.time() - cycle_start_time
 
             # Send results to CartManager for processing
@@ -208,11 +223,7 @@ def run_rfid_system(
                 logger.info(f"{reader_id}: {len(tags)} tags")
                 if logger.level <= logging.DEBUG:
                     for tag_id in sorted(tags):
-                        tag_info = None
-                        for reader in manager.readers:
-                            if reader.reader_id == reader_id:
-                                tag_info = reader.get_tag_info(tag_id)
-                                break
+                        tag_info = manager.readers[0].get_tag_info(tag_id)
                         rssi = tag_info.rssi if tag_info else "Unknown"
                         logger.debug(f"  - {tag_id} (RSSI: {rssi})")
 
@@ -242,25 +253,29 @@ def run_rfid_system(
             )
             logger.debug(f"Cart data formatted for potential MQTT: {cart_data}")
             
-            # Publish cart data to MQTT if enabled and it's a scheduled cycle
-            # Note: Real-time updates are now handled by the cart_change_callback
+            # Publish cart data to MQTT if enabled
             if mqtt_available and (mqtt_enabled if mqtt_enabled is not None else MQTT_ENABLED):
-                # Check if we should publish this cycle based on the cycle number
-                should_publish = (MQTT_PUBLISH_CYCLE > 0 and 
-                                 (cycle % MQTT_PUBLISH_CYCLE == 0 or 
-                                 cycle == cycles))
+                # Check if we should publish this cycle
+                should_publish = (MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle % MQTT_PUBLISH_CYCLE == 0 or 
+                                 cycle == cycles)
                 
                 if should_publish:
                     try:
-                        # Publish to MQTT (scheduled update)
-                        # Note: cart_data is already a JSON string from format_cart_for_mqtt
-                        logger.info(f"Scheduled cycle update - Publishing to MQTT: {cart_data}")
-                        publish_result = publish_message(message=cart_data)
-                        
-                        if publish_result:
-                            logger.info("MQTT publish successful")
-                        else:
-                            logger.error("MQTT publish failed")
+                        # Import MQTT publisher dynamically to avoid circular imports
+                        import importlib.util
+                        mqtt_spec = importlib.util.find_spec('mqtt.src.mqtt_publisher')
+                        if mqtt_spec:
+                            from mqtt.src.mqtt_publisher import publish_message
+                            
+                            # Publish to MQTT
+                            logger.info(f"Publishing cart data to MQTT: {cart_data}")
+                            publish_result = publish_message(message=cart_data)
+                            
+                            if publish_result:
+                                logger.info("MQTT publish successful")
+                            else:
+                                logger.error("MQTT publish failed")
                     except Exception as e:
                         logger.error(f"Error publishing to MQTT: {e}")
             
@@ -302,7 +317,8 @@ def run_rfid_system(
             pid = parsed_info.get('pid', 'Unknown')
             logger.info(f"  - {item} (PID: {pid})")
             
-        # Format final cart data for MQTT publishing
+        # Format final cart data for potential MQTT publishing
+        basket_id_to_use = basket_id if basket_id else BASKET_ID
         final_cart_data = format_cart_for_mqtt(
             confirmed_items, 
             basket_id_to_use
@@ -337,21 +353,8 @@ if __name__ == "__main__":
     # Parse command line arguments
     args = parse_arguments()
     
-    # Set up logging with the level specified in command line arguments
+    # Set up logging
     setup_logging(args.log_level)
-    
-    logger = logging.getLogger("rfid_minimal")
-    logger.info("Starting RFID Minimal System")
-    
-    # Determine MQTT status
-    mqtt_status = None
-    if args.mqtt_enabled:
-        mqtt_status = True
-    elif args.mqtt_disabled:
-        mqtt_status = False
-    
-    # Get basket ID from args or config
-    basket_id = args.basket_id if args.basket_id else BASKET_ID
     
     # Run the RFID system
     result = run_rfid_system(
@@ -361,25 +364,14 @@ if __name__ == "__main__":
         presence_threshold=args.presence_threshold,
         absence_threshold=args.absence_threshold,
         timeout=args.timeout,
-        mqtt_enabled=mqtt_status,
-        basket_id=basket_id
+        mqtt_enabled=args.mqtt_enabled,
+        basket_id=args.basket_id,
+        work_area=args.work_area,
+        freq_hopping=args.freq_hopping,
+        power_dbm=args.power,
+        channel_index=args.channel
     )
     
-    # Handle final MQTT publishing if needed
-    if not "error" in result and mqtt_available and (mqtt_status if mqtt_status is not None else MQTT_ENABLED):
-        try:
-            final_cart_data = result["final_cart_data"]
-            # final_cart_data is already a JSON string from format_cart_for_mqtt
-            logger.info(f"Publishing final cart data to MQTT: {final_cart_data}")
-            publish_result = publish_message(message=final_cart_data)
-            
-            if publish_result:
-                logger.info("MQTT publish successful")
-            else:
-                logger.error("MQTT publish failed")
-        except Exception as e:
-            logger.error(f"Error publishing to MQTT: {e}")
-    
-    # Print final status
+    # Print result summary
     if "error" not in result:
-        logger.info(f"RFID system completed successfully with {len(result['confirmed_items'])} items in cart")
+        print(f"RFID system completed successfully with {len(result['confirmed_items'])} items in cart")

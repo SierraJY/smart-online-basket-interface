@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
+# DEV-ONLY SAMPLE SCRIPT
+# Purpose: MQTT publisher usage examples for local testing
+# Not used by production runtime (`python -m mqtt_controller`).
+# Intended for local testing/smoke checks only.
+
 """
 Example main.py showing how to use the MQTT publisher
 Works with both anonymous and authenticated brokers
 """
 import time
 import json
-from .mqtt_publisher import publish_message
+from mqtt.src.mqtt_publisher import publish_message
 
 def main():
     # Example 1: Basic message publishing
