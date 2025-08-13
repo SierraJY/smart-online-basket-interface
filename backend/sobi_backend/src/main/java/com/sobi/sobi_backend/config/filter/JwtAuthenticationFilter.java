@@ -36,6 +36,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/products",
             "/api/epc-maps/scan",
             "/api/auth/refresh"
+            "/api/auth/refresh",
+            "/actuator/health",
+            "/actuator/info",
+            "/actuator/prometheus",
+            "/swagger-ui",
+            "/api-docs"
     );
 
     // 모든 HTTP 요청이 올 때마다 실행되는 필터 메서드
