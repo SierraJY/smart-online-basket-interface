@@ -7,6 +7,14 @@ import com.sobi.sobi_backend.service.BasketCacheService;
 import com.sobi.sobi_backend.service.BasketSseService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +31,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/baskets") // /api/baskets로 시작하는 모든 요청 처리
+@Tag(name = "4. Basket", description = "바구니 관리 API - 바구니 사용 시작/종료, 내용 조회, 결제 처리")
 public class BasketController {
 
     @Autowired
@@ -54,7 +63,81 @@ public class BasketController {
 
     // 바구니 사용 시작 (POST /api/baskets/start/{basketId})
     @PostMapping("/start/{basketId}")
-    public ResponseEntity<?> startBasket(@PathVariable Integer basketId, Authentication authentication) {
+    @Operation(
+            summary = "바구니 사용 시작",
+            description = "지정된 바구니를 사용하기 시작합니다. MQTT를 통해 라즈베리파이에 시작 신호를 보내고, Redis에 사용자-바구니 매핑을 저장합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "바구니 사용 시작 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "바구니 사용을 시작했습니다",
+                      "basket": {
+                        "id": 1,
+                        "boardMac": "2c:cf:67:11:93:6b",
+                        "usable": false
+                      },
+                      "customerId": 1,
+                      "basketId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "바구니 사용 시작 실패 - 잘못된 요청",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "이미 사용 중인 바구니가 있습니다: 2"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "503",
+                    description = "서비스 일시 불가 - MQTT 통신 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "바구니 시작 신호 전송에 실패했습니다. 다시 시도해주세요.",
+                      "detail": "MQTT connection failed"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<?> startBasket(
+            @Parameter(description = "사용할 바구니 ID", example = "1", required = true)
+            @PathVariable Integer basketId,
+            Authentication authentication) {
         try {
             System.out.println("바구니 사용 시작 요청: basketId=" + basketId);
 
@@ -150,6 +233,76 @@ public class BasketController {
 
     // 내 바구니 내용 조회 (GET /api/baskets/my/items)
     @GetMapping("/my/items")
+    @Operation(
+            summary = "내 바구니 내용 조회",
+            description = "현재 사용 중인 바구니의 상품 목록과 총 가격을 조회합니다. RFID로 추가된 모든 상품 정보가 포함됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "바구니 내용 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "바구니 내용 조회 완료",
+                      "basket": {
+                        "id": 1,
+                        "boardMac": "2c:cf:67:11:93:6b",
+                        "usable": false
+                      },
+                      "items": [
+                        {
+                          "epcPattern": "PCH4",
+                          "quantity": 2,
+                          "product": {
+                            "id": 1,
+                            "name": "[12brix 당도선별] 고당도 프리미엄 복숭아 4kg 8-12과",
+                            "price": 15000,
+                            "discountRate": 10
+                          },
+                          "totalPrice": 27000
+                        }
+                      ],
+                      "totalCount": 2,
+                      "totalPrice": 27000,
+                      "basketId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "바구니 없음 - 사용 중인 바구니가 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "사용 중인 바구니가 없습니다"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> getMyBasketItems(Authentication authentication) {
         try {
             System.out.println("내 바구니 내용 조회 요청");
@@ -197,6 +350,65 @@ public class BasketController {
 
     // 내 바구니 결제 + 바구니 반납 (POST /api/baskets/my/checkout)
     @PostMapping("/my/checkout")
+    @Operation(
+            summary = "바구니 결제",
+            description = "현재 바구니의 모든 상품을 결제하고 영수증을 생성합니다. 결제 완료 후 바구니는 자동으로 반납되고 MQTT 종료 신호를 전송합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "결제 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "결제가 완료되었습니다",
+                      "receipt": {
+                        "id": 123,
+                        "userId": 1,
+                        "productList": "{\\"1\\": 2, \\"3\\": 1}",
+                        "purchasedAt": "2024-12-30T10:30:00"
+                      },
+                      "basketReturned": true,
+                      "epcPatterns": ["PCH4", "PCH4", "BLUE"],
+                      "totalItems": 3,
+                      "basketId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "결제 실패 - 바구니가 비어있음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "구매할 상품이 없습니다"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> checkoutMyBasket(Authentication authentication) {
         try {
             System.out.println("내 바구니 결제 요청");
@@ -248,6 +460,58 @@ public class BasketController {
 
     // 내 바구니 사용 취소 (POST /api/baskets/my/cancel)
     @PostMapping("/my/cancel")
+    @Operation(
+            summary = "바구니 사용 취소",
+            description = "현재 사용 중인 바구니 사용을 취소합니다. 바구니가 비어있을 때만 취소 가능하며, MQTT 종료 신호를 전송합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "바구니 사용 취소 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "바구니 사용이 취소되었습니다",
+                      "basketReturned": true,
+                      "basketId": 1,
+                      "customerId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "취소 실패 - 바구니에 상품이 있음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "바구니에 상품이 있어 취소할 수 없습니다. 결제를 진행하거나 상품을 모두 제거해주세요"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> cancelMyBasket(Authentication authentication) {
         try {
             System.out.println("내 바구니 사용 취소 요청");

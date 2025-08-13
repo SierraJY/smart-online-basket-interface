@@ -1,6 +1,14 @@
 package com.sobi.sobi_backend.controller;
 
 import com.sobi.sobi_backend.util.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "2. Authentication", description = "인증 관리 API")
 public class AuthController {
 
     @Autowired
@@ -18,6 +27,61 @@ public class AuthController {
 
     // 리프레시 토큰으로 새로운 액세스 토큰 발급
     @PostMapping("/refresh")
+    @Operation(
+            summary = "액세스 토큰 갱신",
+            description = "유효한 리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다. 액세스 토큰 만료 시 사용합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 갱신 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "액세스 토큰 갱신 성공",
+                      "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0dXNlcjEyMyIsImN1c3RvbWVySWQiOjEsImlhdCI6MTcwMzkyMzIwMCwiZXhwIjoxNzAzOTQ0ODAwfQ...",
+                      "userId": "testuser123",
+                      "customerId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "토큰 갱신 실패 - 유효하지 않은 리프레시 토큰",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "유효하지 않은 리프레시 토큰입니다.",
+                      "error": "INVALID_REFRESH_TOKEN"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "토큰 갱신 처리 중 오류가 발생했습니다.",
+                      "error": "Internal server error"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @SecurityRequirement(name = "")
     public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody RefreshTokenRequest request) {
         Map<String, Object> response = new HashMap<>();
 

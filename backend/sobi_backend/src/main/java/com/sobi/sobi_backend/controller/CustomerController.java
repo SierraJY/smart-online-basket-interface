@@ -4,6 +4,15 @@ import com.sobi.sobi_backend.entity.Customer;
 import com.sobi.sobi_backend.service.CustomerService;
 import com.sobi.sobi_backend.util.JwtUtil;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +28,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers") // /api/customers로 시작하는 모든 요청 처리
+@Tag(name = "1. Customer", description = "고객 관리 API - 회원가입, 로그인, 프로필 관리")
 public class CustomerController {
 
     @Autowired
@@ -35,6 +45,43 @@ public class CustomerController {
 
     // 회원가입 처리 (POST /api/customers/register)
     @PostMapping("/signup")
+    @Operation(
+            summary = "회원가입",
+            description = "새로운 고객 계정을 생성합니다. 사용자 ID 중복 확인 후 비밀번호를 암호화하여 저장합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "회원가입 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "회원가입이 완료되었습니다.",
+                      "userId": "testuser123"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "회원가입 실패 - 중복된 사용자 ID",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "이미 존재하는 사용자 ID입니다: testuser123"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @SecurityRequirement(name = "")
     public ResponseEntity<?> register(@RequestBody CustomerRegisterRequest request) {
         try {
             // 평문 비밀번호를 암호화
@@ -63,11 +110,51 @@ public class CustomerController {
 
     // 로그인 처리 (POST /api/customers/login)
     @PostMapping("/login")
+    @Operation(
+            summary = "로그인",
+            description = "사용자 ID와 비밀번호로 인증 후 JWT 액세스 토큰과 리프레시 토큰을 발급합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "로그인 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "로그인 성공",
+                      "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                      "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+                      "userId": "testuser123",
+                      "customerId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "로그인 실패 - 잘못된 인증 정보",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인 실패: 아이디 또는 비밀번호를 확인해주세요."
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @SecurityRequirement(name = "")
     public ResponseEntity<?> login(@RequestBody CustomerLoginRequest request) {
         try {
             // Spring Security를 통한 아이디/비밀번호 검증
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUserId(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.getUserId(), request.getUserPasswd())
             );
 
             // 인증 성공 시 고객 정보 가져오기
@@ -92,6 +179,47 @@ public class CustomerController {
 
     // 비회원 로그인 처리 (POST /api/customers/guest-login)
     @PostMapping("/guest-login")
+    @Operation(
+            summary = "비회원 로그인",
+            description = "임시 게스트 계정을 생성하고 JWT 액세스 토큰을 발급합니다. 리프레시 토큰은 제공되지 않습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "비회원 로그인 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "비회원 로그인 성공",
+                      "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+                      "userId": "guest1a2b3c4d5e",
+                      "customerId": 42,
+                      "gender": 0,
+                      "age": 0
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "비회원 로그인 실패 - 서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "비회원 로그인 처리 중 오류가 발생했습니다: Internal server error"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @SecurityRequirement(name = "")
     public ResponseEntity<?> guestLogin() {
         try {
             System.out.println("비회원 로그인 요청 받음");
@@ -132,6 +260,56 @@ public class CustomerController {
 
     // 회원탈퇴 처리 (POST /api/customers/withdrawal)
     @PostMapping("/withdrawal")
+    @Operation(
+            summary = "회원탈퇴",
+            description = "현재 로그인한 사용자의 계정을 삭제하고 JWT 토큰을 블랙리스트에 추가합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "회원탈퇴 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "회원탈퇴가 완료되었습니다",
+                      "customerId": 1
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "회원탈퇴 실패 - 잘못된 요청",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "이미 탈퇴한 계정입니다"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 유효하지 않은 토큰",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "유효하지 않은 토큰입니다"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> deleteAccount(Authentication authentication, @RequestHeader("Authorization") String authorizationHeader) {
         try {
             System.out.println("회원탈퇴 요청");
@@ -180,6 +358,44 @@ public class CustomerController {
 
     // 현재 로그인한 사용자 정보 조회 (GET /api/customers/profile)
     @GetMapping("/profile")
+    @Operation(
+            summary = "프로필 조회",
+            description = "현재 로그인한 사용자의 프로필 정보를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "프로필 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "id": 1,
+                      "userId": "testuser123",
+                      "gender": 1,
+                      "age": 25
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다."
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> getProfile(Authentication authentication) {
         System.out.println("프로필 조회 요청 - Authentication: " + authentication);
 
@@ -260,11 +476,11 @@ public class CustomerController {
     // 로그인 요청 데이터 구조
     public static class CustomerLoginRequest {
         private String userId;      // 사용자 ID
-        private String password;    // 비밀번호
+        private String userPasswd;  // 비밀번호
 
         public String getUserId() { return userId; }
         public void setUserId(String userId) { this.userId = userId; }
-        public String getPassword() { return password; }
-        public void setPassword(String password) { this.password = password; }
+        public String getUserPasswd() { return userPasswd; }
+        public void setUserPasswd(String userPasswd) { this.userPasswd = userPasswd; }
     }
 }
