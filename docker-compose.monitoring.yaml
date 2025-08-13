@@ -28,6 +28,8 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: monitor-alertmanager
+    env_file:
+      - ./monitoring/.env                
     volumes:
       - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     ports:
