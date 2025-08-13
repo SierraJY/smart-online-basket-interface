@@ -77,16 +77,16 @@ def run_rfid_system(stop_event):
     try:
         # Create sensor manager
         sensor_manager = MultiSensorManager(
-            polling_count=30,
+            polling_count=15,
             rssi_threshold=-70
         )
         
         # Configure readers with default settings
-        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=26, channel_index=1)
+        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=10, channel_index=1)
         
         # Create cart manager
         cart_manager = CartManager(
-            presence_threshold=2,
+            presence_threshold=1,
             absence_threshold=2,
             rssi_threshold=-70
         )
@@ -147,7 +147,7 @@ def run_rfid_system(stop_event):
                 logger.debug("Cart data unchanged - skipping MQTT publish")
             
             # Short delay between cycles
-            time.sleep(0.5)
+            time.sleep(0.1)
             
     except Exception as e:
         logger.error(f"Error in RFID system: {e}", exc_info=True)

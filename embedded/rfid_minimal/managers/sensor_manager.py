@@ -75,8 +75,7 @@ class MultiSensorManager:
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
         
-        # Configure all readers
-        self.configure_readers()
+        # Do not auto-configure here; controller should call configure_readers()
 
     def _get_available_sensor_ports(self) -> List[str]:
         """Return a list of device paths for connected RFID readers by VID."""
@@ -119,9 +118,26 @@ class MultiSensorManager:
             except Exception as e:
                 self.logger.error(f"Failed to add reader for port {port}: {e}")
         
-        # Reconfigure if the set changed
-        if new_ports or (existing_ports - current_ports):
-            self.configure_readers()
+        # Apply last known config only to newly added readers
+        # (Controller is the source of truth; avoid resetting power_dbm to defaults)
+        if new_ports:
+            try:
+                from typing import cast
+                last = getattr(self, '_last_config', None)
+            except Exception:
+                last = None
+            if last:
+                for reader in self.readers:
+                    if reader.port in new_ports:
+                        try:
+                            reader.configure_reader(
+                                work_area=last.get("work_area", 6),
+                                freq_hopping=last.get("freq_hopping", 1),
+                                power_dbm=last.get("power_dbm", 26),
+                                channel_index=last.get("channel_index", 1)
+                            )
+                        except Exception as e:
+                            self.logger.error(f"Error configuring new reader {reader.reader_id}: {e}")
         
     def configure_readers(self, work_area: int = 6, freq_hopping: int = 1, power_dbm: int = 26, channel_index: int = 1) -> None:
         """
@@ -163,6 +179,14 @@ class MultiSensorManager:
             except Exception as e:
                 self.logger.error(f"Error configuring reader {reader.reader_id}: {e}")
                 
+        # Save last applied config for reuse (e.g., when readers hotplug)
+        self._last_config = {
+            "work_area": work_area,
+            "freq_hopping": freq_hopping,
+            "power_dbm": power_dbm,
+            "channel_index": channel_index,
+        }
+        
         # Wait a moment for all readers to apply settings
         time.sleep(0.5)
     
