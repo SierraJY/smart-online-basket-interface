@@ -20,9 +20,24 @@ export default function ReceiptDetailPage() {
   const receiptId = params.id as string;
 
   useEffect(() => {
-    if (data?.receipts) {
-      const foundReceipt = data.receipts.find((r: Receipt) => r.id.toString() === receiptId);
+    if (data?.receipts && receiptId) {
+      console.log('=== Receipt Detail Debug ===');
+      console.log('receiptId:', receiptId, 'type:', typeof receiptId);
+      console.log('available receipts:', data.receipts.map(r => ({ id: r.id, type: typeof r.id })));
+      
+      // 여러 방법으로 receipt 찾기 시도
+      let foundReceipt = data.receipts.find((r: Receipt) => r.id.toString() === receiptId);
+      
+      if (!foundReceipt) {
+        // 숫자로 변환해서 다시 시도
+        const numericId = parseInt(receiptId, 10);
+        if (!isNaN(numericId)) {
+          foundReceipt = data.receipts.find((r: Receipt) => r.id === numericId);
+        }
+      }
+      
       if (foundReceipt) {
+        console.log('Found receipt:', foundReceipt);
         // 데이터 변환
         const items = foundReceipt.purchasedProducts?.map((purchasedProduct) => ({
           productId: purchasedProduct.product.id,
@@ -44,7 +59,11 @@ export default function ReceiptDetailPage() {
           totalCount,
           totalProductTypes
         });
+      } else {
+        console.log('Receipt not found for ID:', receiptId);
+        setReceipt(null);
       }
+      console.log('=== End Debug ===');
     }
   }, [data, receiptId]);
 
@@ -77,6 +96,7 @@ export default function ReceiptDetailPage() {
       >
         <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
         <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
+        <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
       </div>
     );
   }
@@ -105,7 +125,7 @@ export default function ReceiptDetailPage() {
   }
 
   // 구매내역을 찾을 수 없음
-  if (!isLoading && !receipt) {
+  if (!isLoading && data && !receipt) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center py-10 text-center bg-white"
         style={{ 
@@ -117,7 +137,10 @@ export default function ReceiptDetailPage() {
           구매내역을 찾을 수 없습니다
         </div>
         <div className="text-gray-400 text-base mb-4">
-          요청하신 구매내역이 존재하지 않습니다.
+          요청하신 구매내역(ID: {receiptId})이 존재하지 않습니다.
+        </div>
+        <div className="text-sm text-gray-400 mb-4">
+          총 {data.receipts?.length || 0}개의 구매내역이 있습니다.
         </div>
         <Link
           href="/receipts"
@@ -129,8 +152,23 @@ export default function ReceiptDetailPage() {
     );
   }
 
-  // receipt가 null인 경우 처리
+  // receipt가 null인 경우 처리 - 데이터가 아직 로드되지 않았을 수 있음
   if (!receipt) {
+    // 데이터가 로드되었지만 receipt를 찾을 수 없는 경우는 이미 위에서 처리됨
+    // 여기서는 데이터가 아직 로드되지 않은 경우를 처리
+    if (!data) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center py-12 bg-white"
+          style={{ 
+            color: 'var(--foreground)' 
+          }}
+        >
+          <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
+          <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
+        </div>
+      );
+    }
     return null;
   }
 

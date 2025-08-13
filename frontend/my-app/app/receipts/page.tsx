@@ -72,7 +72,7 @@ const ReceiptCard = React.memo(function ReceiptCard({ receipt, index }: { receip
       transition={{ delay: index * 0.1 }}
       className="mb-3"
     >
-      <Link href={`/receipts/${receipt.id}`}>
+      <Link href={`/receipts/${receipt.id}`} prefetch={true}>
         <div 
           className="p-4 cursor-pointertransition-all"
         >

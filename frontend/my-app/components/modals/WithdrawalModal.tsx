@@ -68,8 +68,8 @@ export default function WithdrawalModal({
 
         {/* 아이콘 */}
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-            <FiUserX size={32} className="text-red-500" />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center">
+            <FiUserX size={32} />
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function WithdrawalModal({
             정말로 탈퇴하시겠습니까?
           </div>
           <div className="text-sm mt-2">
-            <span className="text-red-500 font-semibold">탈퇴 시 구매내역이 삭제되며 학습된 AI 추천 서비스를 더 이상 제공받을 수 없습니다.</span>
+            <span className="text-red-500 font-semibold">탈퇴 시 구매내역이 삭제되며 학습된 AI 추천 서비스를<br /> 더 이상 제공받을 수 없습니다.</span>
           </div>
         </div>
 
