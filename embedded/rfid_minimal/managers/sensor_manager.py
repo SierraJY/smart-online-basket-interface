@@ -64,13 +64,7 @@ class MultiSensorManager:
         """Initialize RFID readers from available ports"""
         self.readers.clear()
         
-        # Find all available ports
-        all_ports = serial.tools.list_ports.comports()
-        
-        # Select only ports with VID 11CA or 10C4 (common for RFID readers)
-        sensor_ports = [
-            port.device for port in all_ports if port.vid == 0x11CA or port.vid == 0x10C4
-        ]
+        sensor_ports = self._get_available_sensor_ports()
         
         # Create readers
         for i, port in enumerate(sensor_ports):
@@ -81,8 +75,69 @@ class MultiSensorManager:
         
         self.logger.info(f"{len(self.readers)} sensors initialized")
         
-        # Configure all readers
-        self.configure_readers()
+        # Do not auto-configure here; controller should call configure_readers()
+
+    def _get_available_sensor_ports(self) -> List[str]:
+        """Return a list of device paths for connected RFID readers by VID."""
+        all_ports = serial.tools.list_ports.comports()
+        sensor_ports = []
+        for port in all_ports:
+            try:
+                if port.vid in (0x11CA, 0x10C4):
+                    sensor_ports.append(port.device)
+            except Exception:
+                # Some platforms may not expose VID
+                continue
+        return sensor_ports
+
+    def refresh_readers(self) -> None:
+        """Rescan available ports and update readers accordingly (add/remove)."""
+        current_ports = set(self._get_available_sensor_ports())
+        existing_ports = set(reader.port for reader in self.readers) if self.readers else set()
+
+        # Remove readers whose ports disappeared
+        if existing_ports - current_ports:
+            for reader in list(self.readers):
+                if reader.port not in current_ports:
+                    try:
+                        reader.close()
+                    except Exception:
+                        pass
+                    self.readers.remove(reader)
+            self.logger.warning(f"Removed readers for disconnected ports: {sorted(existing_ports - current_ports)}")
+
+        # Add readers for new ports
+        new_ports = current_ports - existing_ports
+        for port in new_ports:
+            try:
+                reader_id = f"Sensor-{len(self.readers)+1}"
+                reader = RFIDReader(port, reader_id=reader_id)
+                reader.set_tag_callback(lambda reader_id, tag_info: self._on_tag_detected(reader_id, tag_info))
+                self.readers.append(reader)
+                self.logger.info(f"Added reader for new port: {port}")
+            except Exception as e:
+                self.logger.error(f"Failed to add reader for port {port}: {e}")
+        
+        # Apply last known config only to newly added readers
+        # (Controller is the source of truth; avoid resetting power_dbm to defaults)
+        if new_ports:
+            try:
+                from typing import cast
+                last = getattr(self, '_last_config', None)
+            except Exception:
+                last = None
+            if last:
+                for reader in self.readers:
+                    if reader.port in new_ports:
+                        try:
+                            reader.configure_reader(
+                                work_area=last.get("work_area", 6),
+                                freq_hopping=last.get("freq_hopping", 1),
+                                power_dbm=last.get("power_dbm", 26),
+                                channel_index=last.get("channel_index", 1)
+                            )
+                        except Exception as e:
+                            self.logger.error(f"Error configuring new reader {reader.reader_id}: {e}")
         
     def configure_readers(self, work_area: int = 6, freq_hopping: int = 1, power_dbm: int = 26, channel_index: int = 1) -> None:
         """
@@ -124,6 +179,14 @@ class MultiSensorManager:
             except Exception as e:
                 self.logger.error(f"Error configuring reader {reader.reader_id}: {e}")
                 
+        # Save last applied config for reuse (e.g., when readers hotplug)
+        self._last_config = {
+            "work_area": work_area,
+            "freq_hopping": freq_hopping,
+            "power_dbm": power_dbm,
+            "channel_index": channel_index,
+        }
+        
         # Wait a moment for all readers to apply settings
         time.sleep(0.5)
     
@@ -141,6 +204,12 @@ class MultiSensorManager:
         
         self.logger.info(f"Starting polling cycle with {len(self.readers)} readers")
         
+        # Refresh readers before starting the cycle to reflect hotplug changes
+        try:
+            self.refresh_readers()
+        except Exception as e:
+            self.logger.debug(f"Reader refresh skipped/failed: {e}")
+
         # Start all readers simultaneously for faster operation
         active_readers = []
         for reader in self.readers:
@@ -176,7 +245,7 @@ class MultiSensorManager:
                 # Check each active reader
                 for reader in list(active_readers):  # Use a copy of the list for safe removal
                     # Check if reader is still polling
-                    if not reader.is_polling:
+                    if not reader.is_polling():
                         self.logger.debug(f"{reader.reader_id} polling completed naturally")
                         active_readers.remove(reader)
                         continue
@@ -191,23 +260,37 @@ class MultiSensorManager:
             
             # Stop any readers that are still active
             for reader in active_readers:
-                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
-                reader.stop_multiple_polling()
+                try:
+                    self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
+                    reader.stop_multiple_polling()
+                except Exception as e:
+                    self.logger.debug(f"Error stopping {reader.reader_id}: {e}")
         
-        # Collect results from all readers
+        # Collect results from all readers and build best TagInfo map
+        best_tag_info_map: Dict[str, TagInfo] = {}
         for reader in self.readers:
             detected_tags = set(reader.get_detected_tags())
             results[reader.reader_id] = detected_tags
-            
-            # Log more details about detected tags
+
+            # Log per-reader counts at INFO, per-tag details at DEBUG
             if detected_tags:
-                self.logger.info(f"{reader.reader_id}: {len(detected_tags)} tags detected")
+                self.logger.info("%s: %d tags detected", reader.reader_id, len(detected_tags))
                 for tag_id in detected_tags:
                     tag_info = reader.get_tag_info(tag_id)
                     if tag_info:
-                        self.logger.info(f"  - Tag: {tag_id} (RSSI: {tag_info.rssi})")
+                        # Keep strongest RSSI per tag across readers
+                        prev = best_tag_info_map.get(tag_id)
+                        if prev is None or tag_info.rssi > prev.rssi:
+                            best_tag_info_map[tag_id] = tag_info
+                        self.logger.debug("  - Tag: %s (RSSI: %s)", tag_id, tag_info.rssi)
             else:
-                self.logger.info(f"{reader.reader_id}: No tags detected")
+                self.logger.info("%s: No tags detected", reader.reader_id)
+
+        # Expose last cycle's best tag map for downstream consumers (e.g., CartManager)
+        try:
+            self.last_tag_info_map = best_tag_info_map  # type: ignore[attr-defined]
+        except Exception:
+            pass
         
         return results
     

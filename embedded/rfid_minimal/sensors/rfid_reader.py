@@ -177,10 +177,11 @@ class RFIDReader:
         
         # Reconnect if needed
         if not self.connection.is_connected():
+            # Attempt a reconnect; if it fails, caller will handle failure paths
             self.connection.connect()
             
         # Add a small delay after connecting to ensure device is ready
-        time.sleep(0.1)
+        time.sleep(0.05)
         
     def configure_reader(self, work_area: int = 6, freq_hopping: int = 1, power_dbm: int = 26, channel_index: int = 1) -> bool:
         """

@@ -1,10 +1,44 @@
 import paho.mqtt.client as mqtt
 import logging
+import threading
 from mqtt import config
+
+# Maintain a persistent client for faster repeated publishes
+_client_lock = threading.Lock()
+_client = None  # type: ignore[var-annotated]
+
+
+def _get_client():
+    global _client
+    with _client_lock:
+        try:
+            if _client is not None:
+                # Reuse existing client if connected
+                try:
+                    if _client.is_connected():  # type: ignore[attr-defined]
+                        return _client
+                except Exception:
+                    pass
+            # Create new client
+            client = mqtt.Client()
+            if hasattr(config, 'MQTT_USER') and hasattr(config, 'MQTT_PASS'):
+                if getattr(config, 'MQTT_USER', None) and getattr(config, 'MQTT_PASS', None):
+                    client.username_pw_set(config.MQTT_USER, config.MQTT_PASS)
+            # Connect and start background network loop
+            client.connect(config.MQTT_HOST, config.MQTT_PORT, 60)
+            client.loop_start()
+            _client = client
+            return _client
+        except Exception as e:
+            logger = logging.getLogger("rfid_minimal")
+            logger.error(f"[MQTT] Failed to establish client: {e}")
+            _client = None
+            return None
+
 
 def publish_message(topic=None, message=None, qos=0, retain=False):
     """
-    Publish a message to the MQTT broker
+    Publish a message to the MQTT broker using a persistent client.
     
     Args:
         topic (str): Topic to publish to. If None, uses config.MQTT_TOPIC + "/update"
@@ -17,41 +51,39 @@ def publish_message(topic=None, message=None, qos=0, retain=False):
     """
     if topic is None:
         topic = config.MQTT_TOPIC + "/update"
-        
     if message is None:
         return False
-        
+
+    logger = logging.getLogger("rfid_minimal")
     try:
-        # Create client
-        client = mqtt.Client()
-        
-        # Set credentials if needed
-        if hasattr(config, 'MQTT_USER') and hasattr(config, 'MQTT_PASS'):
-            if config.MQTT_USER and config.MQTT_PASS:
-                client.username_pw_set(config.MQTT_USER, config.MQTT_PASS)
-        
-        # Connect to broker
-        client.connect(config.MQTT_HOST, config.MQTT_PORT, 60)
-        
-        # Publish message
+        client = _get_client()
+        if client is None:
+            return False
+
         result = client.publish(topic, message, qos=qos, retain=retain)
-        
-        # Check if publish was successful
-        logger = logging.getLogger("rfid_minimal")
         if result.rc == mqtt.MQTT_ERR_SUCCESS:
-            logger.info(f"[MQTT] SENT Topic: {topic} / Message: {message}")
-            success = True
+            logger.info("[MQTT] SENT Topic: %s / Message: %s", topic, message)
+            return True
         else:
-            logger.error(f"[MQTT] Failed to publish message. Return code: {result.rc}")
-            success = False
-            
-        # Disconnect
-        client.disconnect()
-        return success
-        
+            logger.error("[MQTT] Failed to publish message. Return code: %s", result.rc)
+            return False
     except Exception as e:
-        logger = logging.getLogger("rfid_minimal")
-        logger.error(f"[MQTT] Exception while publishing: {str(e)}")
+        logger.error("[MQTT] Exception while publishing: %s", str(e))
+        # Attempt one reconnect on failure
+        with _client_lock:
+            try:
+                if _client is not None:
+                    try:
+                        _client.loop_stop()
+                    except Exception:
+                        pass
+                    try:
+                        _client.disconnect()
+                    except Exception:
+                        pass
+                    globals()['_client'] = None
+            except Exception:
+                pass
         return False
 
 if __name__ == "__main__":

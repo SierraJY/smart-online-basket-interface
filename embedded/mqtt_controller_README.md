@@ -11,11 +11,16 @@ This script provides MQTT-based control for the RFID Minimal system, allowing re
 
 ## Commands
 
-The controller listens for the following commands on the MQTT topic `{MQTT_TOPIC}/control`:
+The controller listens for commands on the topic `{MQTT_TOPIC}/status`:
 
 - `start` - Start the RFID scanning system
 - `end` - Stop the RFID scanning system
-- `total` - Display the total items on the LCD screen
+- `total` - Display the total price on the LCD screen
+
+Notes:
+- For `start` and `end`, you can publish a plain string (e.g., `start`).
+- For `total`, publish JSON so the payload can include the amount and basket id:
+  - Example: `{"msg":"total","payload":{"basketid": 1, "totalprice": 12345}}`
 
 ## Setup
 
@@ -24,19 +29,23 @@ The controller listens for the following commands on the MQTT topic `{MQTT_TOPIC
 
 ## Usage
 
-Run the controller:
+Run the controller module:
 
 ```bash
-python mqtt_controller.py
+python -m mqtt_controller
 ```
 
 Send commands via MQTT to control the system:
 
 ```bash
-# Using mosquitto_pub to send commands (example)
-mosquitto_pub -h <broker_ip> -t <topic>/control -m "start"
-mosquitto_pub -h <broker_ip> -t <topic>/control -m "end"
-mosquitto_pub -h <broker_ip> -t <topic>/control -m "total"
+# Using mosquitto_pub to send commands (examples)
+
+# Start/End can be plain strings
+mosquitto_pub -h <broker_ip> -t <topic>/status -m "start"
+mosquitto_pub -h <broker_ip> -t <topic>/status -m "end"
+
+# Total should be JSON so the amount can be provided
+mosquitto_pub -h <broker_ip> -t <topic>/status -m '{"msg":"total","payload":{"basketid": 1, "totalprice": 12345}}'
 ```
 
 ## System Workflow

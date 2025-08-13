@@ -62,14 +62,24 @@ v
     - 포트: 1883
     - 사용자/비밀번호: 브로커에 등록한 값
     - 토픽: 바구니 고유 토픽(`basket/unit0001` 등)
-3. **예시 코드**
+3. **컨트롤러 엔트리포인트와 토픽**
+
+   - 프로덕션 실행 엔트리포인트: `python -m mqtt_controller`
+   - 기본 토픽(`MQTT_TOPIC` 예: `basket/1`) 하위에서 사용되는 서브토픽
+     - 명령 수신: `${MQTT_TOPIC}/status` (메시지: `start`, `end`, 또는 `{"msg":"total","payload":{"basketid": <int>, "totalprice": <int>}}`)
+     - 상태/장바구니 업데이트 발행: `${MQTT_TOPIC}/update`
+
+4. **예시 코드 (퍼블리셔)**
     ```python
     import paho.mqtt.client as mqtt
 
     client = mqtt.Client()
     client.username_pw_set("youruser", "yourpassword")
     client.connect("EC2_PUBLIC_IP", 1883)
-    client.publish("basket/unit0001", '{"event": "add", "uid": "..."}')
+    # 컨트롤러가 수신하는 명령 토픽
+    client.publish("basket/1/status", 'start')
+    # 컨트롤러가 발행하는 업데이트 토픽 (예시 발행)
+    client.publish("basket/1/update", '{"id":1, "list": {"MLON":2}}')
     client.disconnect()
     ```
 4. **파이 부팅시 자동 실행 (systemd 등 활용)**
@@ -114,7 +124,7 @@ v
 [ Raspberry Pi ] --(basket/unit0001, MQTT)--> [EC2: Mosquitto Broker] --(basket/#, MQTT)--> [EC2: Spring Boot 서비스]
 ```
 
-
-
-- **각 바구니가 개별 토픽으로 서버에 이벤트 전송**
-- **Spring은 모든 바구니 메시지 실시간 수신/처리**
+추가 참고
+- 예제 스크립트 위치: `examples/mqtt_subscriber.py`, `examples/mqtt_publish_examples.py`
+- 프로덕션 엔트리포인트: `python -m mqtt_controller`
+- 컨트롤러 토픽: `${MQTT_TOPIC}/status`(명령), `${MQTT_TOPIC}/update`(발행)
