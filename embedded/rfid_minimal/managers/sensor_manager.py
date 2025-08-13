@@ -236,8 +236,11 @@ class MultiSensorManager:
             
             # Stop any readers that are still active
             for reader in active_readers:
-                self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
-                reader.stop_multiple_polling()
+                try:
+                    self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
+                    reader.stop_multiple_polling()
+                except Exception as e:
+                    self.logger.debug(f"Error stopping {reader.reader_id}: {e}")
         
         # Collect results from all readers and build best TagInfo map
         best_tag_info_map: Dict[str, TagInfo] = {}
