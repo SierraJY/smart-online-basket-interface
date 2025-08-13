@@ -1,0 +1,91 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    container_name: monitor-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom_data:/prometheus
+    command:
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - sobi-net
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: monitor-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "change-me"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - sobi-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: monitor-alertmanager
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - sobi-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: monitor-cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - sobi-net
+
+  node_exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: monitor-node-exporter
+    pid: "host"
+    network_mode: "host"
+    command:
+      - "--path.rootfs=/host"
+    volumes:
+      - /:/host:ro,rslave
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: monitor-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: postgresql://sobiuser:sobipass@sobi-db:5432/sobi?sslmode=disable
+    networks:
+      - sobi-net
+
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: monitor-redis-exporter
+    environment:
+      REDIS_ADDR: sobi-redis:6379
+    networks:
+      - sobi-net
+
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    container_name: monitor-nginx-exporter
+    command:
+      - "-nginx.scrape-uri"
+      - "http://sobi-nginx:80/stub_status"
+    networks:
+      - sobi-net
+
+volumes:
+  prom_data: {}
+  grafana_data: {}
+
+networks:
+  sobi-net:
+    external: true
