@@ -54,11 +54,13 @@ services:
     image: prom/node-exporter:v1.8.2
     container_name: monitor-node-exporter
     pid: "host"
-    network_mode: "host"
     command:
       - "--path.rootfs=/host"
+      - "--web.listen-address=0.0.0.0:9100"
     volumes:
       - /:/host:ro,rslave
+    networks:
+      - sobi-net
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
@@ -83,8 +85,6 @@ services:
     container_name: monitor-nginx-exporter
     command:
       - "-nginx.scrape-uri=http://sobi-nginx/stub_status"
-    depends_on:
-      - sobi-nginx
     networks:
       - sobi-net
 
