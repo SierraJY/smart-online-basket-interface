@@ -69,6 +69,19 @@ class CommandHandler:
             else:
                 self.logger.error("Failed to send multiple polling command")
             
+            if not success:
+                # Attempt one reconnect + resend in case the port bounced
+                try:
+                    if not self.connection.is_connected():
+                        self.connection.connect()
+                    time.sleep(0.05)
+                    success = self.connection.write_data(command)
+                    if success:
+                        time.sleep(0.1)
+                        self.last_response_time = time.time()
+                        self.logger.info(f"Multiple polling command re-sent after reconnect (count: {count})")
+                except Exception:
+                    pass
             return success
             
         except Exception as e:

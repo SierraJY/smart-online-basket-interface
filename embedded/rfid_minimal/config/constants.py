@@ -14,9 +14,10 @@ class TagStatus(Enum):
     NOT_DETECTED = auto()
 
 # YRM100 Constants
-NO_RESPONSE_TIMEOUT = 2.0  # Consider polling complete if no response for 2.0 seconds (balanced for responsiveness)
+# Align with manager's default polling timeout (0.5s) so reader threads end naturally
+NO_RESPONSE_TIMEOUT = 0.3  # Consider polling complete if no response for 0.5 seconds
 THREAD_JOIN_TIMEOUT = 2.0  # Wait up to 2 seconds for thread to join
-RECONNECT_DELAY = 1.0      # Wait 1 second before reconnection attempt
+RECONNECT_DELAY = 0.5      # Wait 1 second before reconnection attempt
 
 # Frame constants - YRM100 protocol
 FRAME_HEADER = 0xBB  # Frame header byte

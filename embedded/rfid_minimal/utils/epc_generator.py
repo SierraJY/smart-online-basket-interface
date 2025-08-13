@@ -229,122 +229,6 @@ class StandardEPCGenerator:
             self._last_counter = 0
 
 
-def demo():
-    """
-    표준 EPC 생성기 사용 예시 및 테스트
-    """
-    print("=" * 60)
-    print("96비트 UHF RFID 표준 EPC 생성기 데모")
-    print("=" * 60)
-    print()
-
-    # EPC 생성기 인스턴스 생성
-    generator = StandardEPCGenerator()
-
-    # 1. 기본 EPC 생성
-    print("1. 기본 EPC 생성")
-    print("-" * 30)
-    product_code = "A1B2"
-    epc1 = generator.generate_epc(product_code)
-    print(f"상품 분류 코드: {product_code}")
-    print(f"생성된 EPC: {epc1}")
-    print()
-
-    # 2. 명세서 예시와 동일한 형태
-    print("2. 명세서 예시 형태 (16진수 상품 코드)")
-    print("-" * 40)
-    hex_product_code = "A1B2C3D4"
-    epc2 = generator.generate_epc(hex_product_code)
-    decoded2 = generator.decode_epc(epc2)
-    print(f"상품 분류 코드: {hex_product_code}")
-    print(f"생성된 EPC: {epc2}")
-    print(f"구조 분석:")
-    print(f"  - 상품 코드: {decoded2['product_bytes_hex']}")
-    print(f"  - 타임스탬프: {decoded2['timestamp_ms']} ms")
-    print(f"  - 생성 시간: {decoded2['generation_time']}")
-    print(f"  - 순차 번호: {decoded2['counter']}")
-    print()
-
-    # 3. 동일 밀리초 내 연속 생성 (카운터 증가 확인)
-    print("3. 동일 밀리초 내 연속 생성 테스트")
-    print("-" * 35)
-    print("목표: 같은 밀리초에서 카운터가 순차적으로 증가하는지 확인")
-
-    # 빠른 연속 생성으로 같은 밀리초에 여러 개 생성
-    consecutive_epcs = []
-    for i in range(5):
-        epc = generator.generate_epc("TEST")
-        consecutive_epcs.append(epc)
-
-    print(f"\n연속 생성 결과:")
-    prev_timestamp = None
-    for i, epc in enumerate(consecutive_epcs, 1):
-        decoded = generator.decode_epc(epc)
-        timestamp_ms = decoded["timestamp_ms"]
-        counter = decoded["counter"]
-
-        same_ms = "✓" if timestamp_ms == prev_timestamp else " "
-        print(f"  {i}. {epc} (시간: {timestamp_ms}, 카운터: {counter:2d}) {same_ms}")
-        prev_timestamp = timestamp_ms
-    print()
-
-    # 4. 대량 생성 성능 및 고유성 테스트
-    print("4. 대량 생성 성능 및 고유성 테스트")
-    print("-" * 35)
-
-    test_count = 10000
-    print(f"테스트 개수: {test_count:,}개")
-
-    start_time = time.time()
-    batch_epcs = generator.generate_batch("BATCH001", test_count)
-    end_time = time.time()
-
-    # 고유성 검증
-    unique_epcs = set(batch_epcs)
-    generation_time = end_time - start_time
-    speed = test_count / generation_time
-
-    print(f"생성 시간: {generation_time:.4f}초")
-    print(f"생성 속도: {speed:.0f}개/초")
-    print(f"총 생성: {len(batch_epcs):,}개")
-    print(f"고유 개수: {len(unique_epcs):,}개")
-    print(f"중복 여부: {'없음 ✓' if len(batch_epcs) == len(unique_epcs) else '있음 ✗'}")
-    print()
-
-    # 5. 다양한 상품 코드 테스트
-    print("5. 다양한 상품 코드 테스트")
-    print("-" * 25)
-
-    test_products = [
-        "ABCD",  # 4자리 영문
-        "1234",  # 4자리 숫자
-        "한글",  # 한글 (2자리)
-        "PRODUCT123",  # 긴 코드 (잘림)
-        "AB",  # 짧은 코드 (패딩)
-        "A1B2C3D4",  # 16진수 형태
-    ]
-
-    for product in test_products:
-        epc = generator.generate_epc(product)
-        decoded = generator.decode_epc(epc)
-        print(f"입력: '{product}' -> 복원: '{decoded['product_code']}' -> EPC: {epc}")
-    print()
-
-    # 6. 현재 상태 확인
-    print("6. 생성기 현재 상태")
-    print("-" * 20)
-    state = generator.get_current_state()
-    print(f"마지막 타임스탬프: {state['last_timestamp_ms']} ms")
-    print(f"마지막 생성 시간: {state['last_generation_time']}")
-    print(f"마지막 카운터: {state['last_counter']}")
-    print(f"밀리초당 최대 용량: {state['max_capacity_per_ms']:,}개")
-    print()
-
-    print("=" * 60)
-    print("데모 완료")
-    print("=" * 60)
-
-
 def generate_single_epc():
     """
     사용자로부터 상품 코드를 입력받아 EPC 하나 생성
@@ -390,5 +274,53 @@ def generate_single_epc():
         print(f"\n❌ 오류 발생: {e}")
 
 
+def generate_batch_epc():
+    """
+    사용자로부터 상품 코드와 개수를 입력받아 여러 EPC 생성
+    """
+    generator = StandardEPCGenerator()
+
+    try:
+        # 상품 코드와 개수 입력받기
+        product_code = input("상품 분류 코드를 입력하세요: ").strip()
+        count = int(input("생성할 EPC 수를 입력하세요: ").strip())
+
+        if not product_code:
+            print("❌ 상품 코드를 입력해주세요.")
+            return
+
+        if count <= 0:
+            print("❌ 생성할 EPC 수는 1 이상이어야 합니다.")
+            return
+
+        # EPC 생성
+        epcs = generator.generate_batch(product_code, count)
+
+        # 결과 출력
+        print("\n✅ EPC 생성 완료!")
+        print(f"상품 코드: {product_code}")
+        print(f"생성된 EPC 수: {len(epcs)}")
+        for epc in epcs:
+            # epc 두개씩 끊어서 출력
+            formatted_epc = " ".join(epc[i : i + 2] for i in range(0, len(epc), 2))
+            print(f" - {formatted_epc}")
+
+        # EPC 분석 정보 출력
+        for epc in epcs:
+            decoded = generator.decode_epc(epc)
+            print("\n📊 EPC 구조 분석:")
+            print(
+                f"  - 상품 코드 (4바이트): {decoded['product_bytes_hex']} ({decoded['product_code']})"
+            )
+            print(f"  - 타임스탬프 (6바이트): {decoded['timestamp_ms']} ms")
+            print(f"  - 생성 시간: {decoded['generation_time']}")
+            print(f"  - 순차 번호 (2바이트): {decoded['counter']}")
+
+    except KeyboardInterrupt:
+        print("\n\n👋 프로그램을 종료합니다.")
+    except Exception as e:
+        print(f"\n❌ 오류 발생: {e}")
+
+
 if __name__ == "__main__":
-    generate_single_epc()
+    generate_batch_epc()

@@ -11,7 +11,7 @@
 - **prefix**는 `basket/` (또는 환경에 따라 확장: `basket/store01/`)
 - **unit ID**는 숫자 네이밍(0001, 0002, ...) 또는 바코드/QR코드와 매핑된 값
 - **슬래시(`/`)**로 구분, **한글/띄어쓰기/특수문자** 금지  
-    - 예시: `basket/unit0123` (O), `basket/001 23` (X)
+- 예시: `basket/1` 또는 `basket/unit0123` (O), `basket/001 23` (X)
 - 필요시, 매장/구역 정보도 추가 가능  
     - 예: `basket/store02/unit015`
 
@@ -28,8 +28,8 @@
 
 ## 3. MQTT Pub/Sub Best Practice
 
-- **각 바구니 → 자신의 고유 토픽에 publish**
-    - 예: `basket/unit0001`
+- **컨트롤러 명령 수신**: `${MQTT_TOPIC}/status` (예: `basket/1/status`)
+- **장바구니 업데이트 발행**: `${MQTT_TOPIC}/update` (예: `basket/1/update`)
 - **서버(Spring 등)에서는 `basket/#`로 전체 메시지 subscribe**
 - 바구니 분실/고장/교체시에도 고유ID 관리가 용이
 - 데이터 관리, 트래픽 분산, 실시간 모니터링 등 다양한 확장에 유리
@@ -48,20 +48,18 @@
 
 ## 5. 예시
 
-| 바구니번호 | 토픽 예시             |
-|:----------:|:----------------------|
-|      1     | basket/unit0001       |
-|    123     | basket/unit0123       |
-|   매장2-15 | basket/store02/unit015|
-|  999개 한정| basket/unit0999       |
+| 바구니번호 | 기본 토픽 (MQTT_TOPIC) | 명령 토픽 (status)   | 발행 토픽 (update)   |
+|:----------:|:----------------------|:----------------------|:----------------------|
+|      1     | basket/1              | basket/1/status       | basket/1/update       |
+|    123     | basket/123            | basket/123/status     | basket/123/update     |
+|   매장2-15 | basket/store02/unit015| basket/store02/unit015/status | basket/store02/unit015/update |
 
 ---
 
 ## 6. 결론
 
-- **고유ID 기반 토픽 네이밍은 관리와 확장에 매우 유리**
-- **001~999** 또는 **0001~9999** 범위면 실무/확장 모두 커버 가능
-- **모든 바구니는 유일한 토픽으로 메시지 전송**  
-- 서버는 전체 바구니 이벤트를 효율적으로 수집, 분석 가능
+- **고유ID 기반 토픽 네이밍**은 관리와 확장에 유리하고,
+- 컨트롤러는 `${MQTT_TOPIC}/status` 명령을 수신하고 `${MQTT_TOPIC}/update`로 발행합니다.
+- 예제 스크립트는 `examples/` 아래에서 실행할 수 있습니다.
 
 ---
