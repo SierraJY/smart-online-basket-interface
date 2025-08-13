@@ -156,6 +156,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/refresh").permitAll()
                         .requestMatchers("/api/baskets/my/stream").permitAll()
                         .requestMatchers("/api/admin/hikari-status").permitAll()
+                        // Actuator 엔드포인트 허용 (모니터링용)
+                        .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                         // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
