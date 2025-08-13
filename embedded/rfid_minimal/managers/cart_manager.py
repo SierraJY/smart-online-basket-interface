@@ -55,7 +55,7 @@ class CartManager:
     
     def __init__(
         self,
-        presence_threshold: int = 2,
+        presence_threshold: int = 1,
         absence_threshold: int = 2,
         rssi_threshold: Optional[int] = None
     ):
@@ -125,19 +125,24 @@ class CartManager:
         for reader_tags in cycle_results.values():
             all_tags_in_cycle.update(reader_tags)
         
-        # 2. 집계된 태그 목록을 `register_tag`를 통해 등록합니다.
-        for tag_id in all_tags_in_cycle:
-            tag_info = None
-            # 여러 리더에서 동일 태그가 감지되었을 경우, 가장 신호가 강한(RSSI가 높은) 정보 사용
-            for reader in sensor_manager.readers:
-                info = reader.get_tag_info(tag_id)
-                if info:
-                    if tag_info is None or info.rssi > tag_info.rssi:
+        # 2. 태그 상세 정보 매핑 최적화: 센서 매니저가 제공하는 best TagInfo 맵을 우선 사용
+        best_info_map = getattr(sensor_manager, 'last_tag_info_map', None)
+        if isinstance(best_info_map, dict) and best_info_map:
+            for tag_id in all_tags_in_cycle:
+                tag_info = best_info_map.get(tag_id)
+                if tag_info:
+                    self._register_detected_tag(tag_id, tag_info)
+        else:
+            for tag_id in all_tags_in_cycle:
+                tag_info = None
+                # 여러 리더에서 동일 태그가 감지되었을 경우, 가장 신호가 강한(RSSI가 높은) 정보 사용
+                for reader in sensor_manager.readers:
+                    info = reader.get_tag_info(tag_id)
+                    if info and (tag_info is None or info.rssi > tag_info.rssi):
                         tag_info = info
-            
-            if tag_info:
-                # 3. 태그를 등록합니다.
-                self._register_detected_tag(tag_id, tag_info)
+                if tag_info:
+                    # 3. 태그를 등록합니다.
+                    self._register_detected_tag(tag_id, tag_info)
     
     def _register_detected_tag(self, tag_id: str, tag_info: TagInfo) -> None:
         """

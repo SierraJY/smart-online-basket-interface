@@ -68,16 +68,33 @@ class ConnectionHandler:
                 self.logger.debug(f"{self.reader_id}: Trying alternative settings...")
                 
                 # Try with different flow control settings
-                self.serial_conn = serial.Serial(
-                    port=self.port,
-                    baudrate=self.baudrate,
-                    bytesize=serial.EIGHTBITS,
-                    parity=serial.PARITY_NONE,
-                    stopbits=serial.STOPBITS_ONE,
-                    timeout=NO_RESPONSE_TIMEOUT,
-                    dsrdtr=True,        # Enable hardware flow control
-                    rtscts=True         # Enable hardware flow control
-                )
+                try:
+                    self.serial_conn = serial.Serial(
+                        port=self.port,
+                        baudrate=self.baudrate,
+                        bytesize=serial.EIGHTBITS,
+                        parity=serial.PARITY_NONE,
+                        stopbits=serial.STOPBITS_ONE,
+                        timeout=NO_RESPONSE_TIMEOUT,
+                        dsrdtr=True,        # Enable hardware flow control
+                        rtscts=True         # Enable hardware flow control
+                    )
+                except Exception as second_attempt_error:
+                    # As a last resort, retry default settings once more (ports may bounce)
+                    time.sleep(0.2)
+                    self.logger.debug(f"{self.reader_id}: Second attempt failed: {second_attempt_error}; retrying default settings")
+                    self.serial_conn = serial.Serial(
+                        port=self.port,
+                        baudrate=self.baudrate,
+                        bytesize=serial.EIGHTBITS,
+                        parity=serial.PARITY_NONE,
+                        stopbits=serial.STOPBITS_ONE,
+                        timeout=NO_RESPONSE_TIMEOUT,
+                        write_timeout=1.0,
+                        dsrdtr=False,
+                        rtscts=False,
+                        xonxoff=False
+                    )
                 
                 self.logger.info(f"Connected to {self.port} with alternative settings")
                 return True
@@ -118,7 +135,7 @@ class ConnectionHandler:
             
         try:
             # Add a small delay before reading to allow data to arrive
-            time.sleep(0.01)
+            time.sleep(0.005)
             
             if size is None:
                 # Read all available data
@@ -132,7 +149,10 @@ class ConnectionHandler:
                 except Exception as e:
                     self.logger.warning(f"{self.reader_id}: Error checking in_waiting: {e}")
                     # Fall back to read with timeout
-                    return self.serial_conn.read(1)
+                    try:
+                        return self.serial_conn.read(1)
+                    except Exception:
+                        return b''
             else:
                 # Read specific number of bytes with timeout
                 self.logger.debug(f"{self.reader_id}: Reading {size} bytes")

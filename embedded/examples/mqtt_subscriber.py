@@ -1,5 +1,10 @@
+# DEV-ONLY SAMPLE SCRIPT
+# Purpose: MQTT subscriber smoke test (prints received messages)
+# Not used by production runtime (`python -m mqtt_controller`).
+# Intended for local testing/smoke checks only.
+
 import paho.mqtt.client as mqtt
-import config
+from mqtt import config
 
 def on_connect(client, userdata, flags, rc):
     print("[INFO] Connected with result code", rc)
