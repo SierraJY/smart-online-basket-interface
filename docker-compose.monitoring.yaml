@@ -2,6 +2,10 @@ services:
   prometheus:
     image: prom/prometheus:v2.53.1
     container_name: monitor-prometheus
+    environment:
+      JENKINS_USER: ${JENKINS_USER}
+      JENKINS_PASSWORD: ${JENKINS_PASSWORD}
+      TZ: Asia/Seoul
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prom_data:/prometheus
@@ -18,7 +22,10 @@ services:
     image: grafana/grafana:11.0.0
     container_name: monitor-grafana
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: "change-me"
+      TZ: Asia/Seoul
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_DATE_FORMATS_DEFAULT_TIMEZONE: "Asia/Seoul"
     volumes:
       - grafana_data:/var/lib/grafana
     ports:
