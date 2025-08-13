@@ -440,22 +440,22 @@ export default function ProductsPage() {
                                   target.style.opacity = '1';
                                 }}
                               />
-                              {/* 그라데이션 오버레이 - 페이드아웃 효과 */}
-                              <div 
-                                className="absolute inset-0 rounded-2xl pointer-events-none"
-                                style={{
-                                  background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
-                                  opacity: 0.8
-                                }}
-                              />
-                              {/* 테두리 그라데이션 효과 */}
-                              <div 
-                                className="absolute inset-0 rounded-2xl pointer-events-none"
-                                style={{
-                                  background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
-                                  opacity: 0.6
-                                }}
-                              />
+                                                             {/* 그라데이션 오버레이 - 페이드아웃 효과 */}
+                               <div 
+                                 className="absolute inset-0 rounded-2xl pointer-events-none"
+                                 style={{
+                                   background: 'radial-gradient(circle at center, transparent 60%, var(--gradient-overlay-dark) 100%)',
+                                   opacity: 0.8
+                                 }}
+                               />
+                               {/* 테두리 그라데이션 효과 */}
+                               <div 
+                                 className="absolute inset-0 rounded-2xl pointer-events-none"
+                                 style={{
+                                   background: 'linear-gradient(135deg, var(--gradient-shadow-light) 0%, transparent 50%, var(--gradient-shadow-dark) 100%)',
+                                   opacity: 0.6
+                                 }}
+                               />
                             </div>
                           </Link>
                           {/* 할인 배지 */}

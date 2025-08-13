@@ -558,7 +558,7 @@ export default function CategoryPage() {
                   <div 
                     className="absolute inset-0 rounded-xl pointer-events-none"
                     style={{
-                      background: 'radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.1) 100%)',
+                      background: 'radial-gradient(circle at center, transparent 60%, var(--gradient-overlay-dark) 100%)',
                       opacity: 0.8
                     }}
                   />
@@ -566,7 +566,7 @@ export default function CategoryPage() {
                   <div 
                     className="absolute inset-0 rounded-xl pointer-events-none"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+                      background: 'linear-gradient(135deg, var(--gradient-shadow-light) 0%, transparent 50%, var(--gradient-shadow-dark) 100%)',
                       opacity: 0.6
                     }}
                   />

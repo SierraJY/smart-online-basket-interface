@@ -164,6 +164,22 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
     return 0;
   }, [currentPosition, scrollOffset]);
 
+  // 그라데이션 마스크 적용 여부 확인
+  const shouldApplyGradientMask = useCallback((index: number) => {
+    const diff = Math.abs(currentPosition - index + scrollOffset);
+    // 중심에서 2개 이상 떨어진 카드들에 그라데이션 적용
+    return diff >= 2.5;
+  }, [currentPosition, scrollOffset]);
+
+  // 그라데이션 강도 계산
+  const getGradientIntensity = useCallback((index: number) => {
+    const diff = Math.abs(currentPosition - index + scrollOffset);
+    if (diff < 2.5) return 0;
+    if (diff >= 3.5) return 1;
+    // 2.5 ~ 3.5 사이에서 점진적으로 강화
+    return Math.min(1, (diff - 2.5) / 1);
+  }, [currentPosition, scrollOffset]);
+
   const handleCardClick = useCallback((index: number) => {
     if (Math.abs(currentPosition - Math.floor(currentPosition)) <= 0.15) {
       const product = products[index];
@@ -299,6 +315,20 @@ const VerticalCardPager: React.FC<VerticalCardPagerProps> = ({
               >
                 <Image src={product.imageUrl} alt={product.name} fill className="object-cover" />
 
+                {/* 그라데이션 마스크 - 가장 먼 카드들에 적용 */}
+                {shouldApplyGradientMask(index) && (
+                  <div 
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: `linear-gradient(${
+                        currentPosition - index + scrollOffset > 0 ? 'to bottom' : 'to top'
+                      }, transparent 0%, rgba(0,0,0,${0.2 + getGradientIntensity(index) * 0.3}) 30%, rgba(0,0,0,${0.5 + getGradientIntensity(index) * 0.4}) 70%, rgba(0,0,0,${0.7 + getGradientIntensity(index) * 0.3}) 100%)`,
+                      zIndex: 1,
+                      transition: 'background 0.3s ease-out',
+                    }}
+                  />
+                )}
+
                 {/* 상품 정보 오버레이 표시 */}
                 <AnimatePresence>
                   {selectedProduct === product.id && (
@@ -324,7 +354,13 @@ export default function AIPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
 
-
+  // AI 페이지 진입 시 다크모드 강제 해제
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, []);
 
   // 장바구니 추천 상품 우선 사용
   const basketRecommendations = useMemo(() => {
@@ -807,27 +843,67 @@ export default function AIPage() {
       
       <div className="w-full max-w-4xl pt-16 relative z-10">
 
+        {/* 헤더 */}
+        <motion.div 
+          className="text-center mb-8"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ 
+            duration: 0.6, 
+            ease: "easeOut"
+          }}
+        >
+          <h1 className="text-3xl font-bold mb-2">
+            {basketRecommendations.length > 0 ? '장바구니 맞춤 추천' : 'AI 추천 상품'}
+          </h1>
+          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+            {basketRecommendations.length > 0 
+              ? 'AI가 분석한 맞춤 상품을 확인해보세요' 
+              : '인기 상품들을 둘러보세요'
+            }
+          </p>
+        </motion.div>
+
         {/* 수직 카드 페이저 */}
-        {products.length > 0 ? (
-          <VerticalCardPager
-            products={products}
-            selectedProduct={selectedProduct}
-            onProductClick={handleProductClick}
-            onSelectedProductChange={setSelectedProduct}
-            ProductOverlay={ProductOverlay}
-            initialPage={2}
-          />
-        ) : (
-          <div className="text-center py-12">
-            <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-              추천할 상품이 없습니다.
-            </p>
-            <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
-              장바구니에 상품을 담아보세요!
-            </p>
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ 
+            duration: 0.8, 
+            ease: "easeOut",
+            delay: 0.2
+          }}
+        >
+          {products.length > 0 ? (
+            <VerticalCardPager
+              products={products}
+              selectedProduct={selectedProduct}
+              onProductClick={handleProductClick}
+              onSelectedProductChange={setSelectedProduct}
+              ProductOverlay={ProductOverlay}
+              initialPage={2}
+            />
+          ) : (
+            <motion.div 
+              className="text-center py-12"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 0.6, 
+                ease: "easeOut",
+                delay: 0.3
+              }}
+            >
+              <Sparkles className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+                추천할 상품이 없습니다.
+              </p>
+              <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
+                장바구니에 상품을 담아보세요!
+              </p>
+            </motion.div>
+          )}
+        </motion.div>
 
 
       </div>

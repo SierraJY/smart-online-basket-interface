@@ -6,7 +6,7 @@ import { useAuth } from '@/utils/hooks/useAuth'
 import { apiClient } from '@/utils/api/apiClient'
 import { config } from '@/config/env'
 import { useBasketId, useActivatedBasketId } from '@/store/useBasketStore'
-import { useSSEConnectionStatus } from '@/utils/hooks/useGlobalBasketSSE'
+
 import LogoutButton from '@/components/buttons/LogoutButton'
 import { 
   User, 
@@ -39,11 +39,10 @@ export default function ProfilePage() {
   // 바구니 상태 확인 (상태 표시용)
   const basketId = useBasketId()
   const activatedBasketId = useActivatedBasketId()
-  const sseStatus = useSSEConnectionStatus()
   
   // 바구니 사용 중인지 확인하는 함수 (상태 표시용)
   const isBasketInUse = () => {
-    return !!(basketId && activatedBasketId && sseStatus === 'connected')
+    return !!(basketId && activatedBasketId)
   }
 
   // 프로필 데이터 가져오기
