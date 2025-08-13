@@ -3,7 +3,6 @@
 import { LogOut } from 'lucide-react'
 import { useAuth } from '@/utils/hooks/useAuth'
 import { useBasketId, useActivatedBasketId } from '@/store/useBasketStore'
-import { useSSEConnectionStatus } from '@/utils/hooks/useGlobalBasketSSE'
 import ToastManager from '@/utils/toastManager'
 
 interface LogoutButtonProps {
@@ -31,11 +30,10 @@ export default function LogoutButton({
   // 바구니 상태 확인
   const basketId = useBasketId()
   const activatedBasketId = useActivatedBasketId()
-  const sseStatus = useSSEConnectionStatus()
   
   // 바구니 사용 중인지 확인하는 함수
   const isBasketInUse = () => {
-    return !!(basketId && activatedBasketId && sseStatus === 'connected')
+    return !!(basketId && activatedBasketId)
   }
 
   // 로그아웃 처리
@@ -78,6 +76,7 @@ export default function LogoutButton({
     >
       <LogOut 
         size={iconSize} 
+        strokeWidth={1}
         className={
           isBasketInUse() 
             ? 'opacity-30' 
