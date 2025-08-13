@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +54,13 @@ public class BasketSseService {
     private final Map<Integer, SseEmitter> customerEmitters = new ConcurrentHashMap<>();
 
     /**
+     * 고객별 하트비트 스레드 참조 관리
+     * Key: customerId (고객 ID)
+     * Value: Thread (하트비트 스레드)
+     */
+    private final Map<Integer, Thread> heartbeatThreads = new ConcurrentHashMap<>();
+
+    /**
      * SSE 연결 추가
      *
      * @param customerId 고객 ID
@@ -68,18 +77,24 @@ public class BasketSseService {
             // 연결 종료 시 정리 작업 등록
             emitter.onCompletion(() -> {
                 System.out.println("SSE 연결 정상 종료: 고객ID=" + customerId);
-                customerEmitters.remove(customerId);
+                cleanupHeartbeatThread(customerId);
             });
 
             emitter.onTimeout(() -> {
                 System.out.println("SSE 연결 타임아웃으로 종료: 고객ID=" + customerId);
-                customerEmitters.remove(customerId);
+                cleanupHeartbeatThread(customerId);
             });
 
             emitter.onError((ex) -> {
                 System.err.println("SSE 연결 오류로 종료: 고객ID=" + customerId + ", 오류=" + ex.getMessage());
-                customerEmitters.remove(customerId);
+                cleanupHeartbeatThread(customerId);
             });
+
+            // 하트비트 스케줄러 시작
+            startHeartbeat(customerId, emitter);
+
+            // 연결 즉시 1초 후 하트비트 전송 (연결 확인용)
+            sendImmediateHeartbeat(customerId, emitter);
 
             System.out.println("SSE 연결 추가 완료: 고객ID=" + customerId);
             logConnectionStatus();
@@ -88,6 +103,74 @@ public class BasketSseService {
             System.err.println("SSE 연결 추가 실패: " + e.getMessage());
             throw new RuntimeException("SSE 연결 등록 중 오류 발생", e);
         }
+    }
+
+    /**
+     * 연결 1초 후 하트비트 전송 (연결 확인용) - 1초 지연으로 안정화
+     */
+    private void sendImmediateHeartbeat(Integer customerId, SseEmitter emitter) {
+        // 1초 후에 하트비트 전송 (연결 안정화 대기)
+        CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS).execute(() -> {
+            try {
+                if (customerEmitters.containsKey(customerId)) {
+                    Map<String, Object> heartbeatData = new HashMap<>();
+                    heartbeatData.put("type", "heartbeat");
+                    heartbeatData.put("timestamp", System.currentTimeMillis());
+                    heartbeatData.put("connection", "established");
+
+                    emitter.send(SseEmitter.event()
+                            .name("heartbeat")
+                            .data(heartbeatData));
+
+                    System.out.println("연결 즉시 하트비트 전송: 고객ID=" + customerId);
+                }
+            } catch (Exception e) {
+                System.err.println("연결 즉시 하트비트 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
+                // 즉시 하트비트 전송 실패 시 연결 제거
+                cleanupHeartbeatThread(customerId);
+            }
+        });
+    }
+
+    /**
+     * 하트비트 메시지 전송 스케줄러
+     */
+    private void startHeartbeat(Integer customerId, SseEmitter emitter) {
+        Thread heartbeatThread = new Thread(() -> {
+            try {
+                while (!Thread.currentThread().isInterrupted() && customerEmitters.containsKey(customerId)) {
+                    Thread.sleep(60000); // 1분마다 하트비트 전송
+
+                    if (customerEmitters.containsKey(customerId)) {
+                        try {
+                            Map<String, Object> heartbeatData = new HashMap<>();
+                            heartbeatData.put("type", "heartbeat");
+                            heartbeatData.put("timestamp", System.currentTimeMillis());
+
+                            emitter.send(SseEmitter.event()
+                                    .name("heartbeat")
+                                    .data(heartbeatData));
+
+                            System.out.println("하트비트 전송: 고객ID=" + customerId);
+                        } catch (Exception e) {
+                            System.err.println("하트비트 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
+                            // 하트비트 전송 실패 시 연결 제거
+                            cleanupHeartbeatThread(customerId);
+                            break;
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
+                System.out.println("하트비트 스레드 중단: 고객ID=" + customerId);
+            }
+        });
+        heartbeatThread.setDaemon(true);
+        heartbeatThread.setName("SSE-Heartbeat-" + customerId);
+
+        // 스레드 참조 저장 (핵심 변경사항)
+        heartbeatThreads.put(customerId, heartbeatThread);
+
+        heartbeatThread.start();
     }
 
     /**
@@ -143,7 +226,7 @@ public class BasketSseService {
                     System.err.println("[SSE] 알림 전송 실패: 고객ID=" + customerId + ", 오류=" + e.getMessage());
 
                     // 전송 실패한 연결 제거
-                    customerEmitters.remove(customerId);
+                    cleanupHeartbeatThread(customerId);
 
                     try {
                         emitter.completeWithError(e);
@@ -161,8 +244,6 @@ public class BasketSseService {
     }
 
     /**
-     * AI 서버에서 추천 상품 조회
-     *
      * @param customerId 고객 ID
      * @param basketItems 현재 바구니 아이템들
      * @return 추천 상품 리스트
@@ -226,15 +307,41 @@ public class BasketSseService {
             SseEmitter previousEmitter = customerEmitters.remove(customerId);
             if (previousEmitter != null) {
                 try {
-                    previousEmitter.complete();
+                    previousEmitter.completeWithError(new RuntimeException("Connection replaced"));
                     System.out.println("기존 SSE 연결 정리 완료: 고객ID=" + customerId);
                 } catch (Exception e) {
                     System.err.println("기존 SSE 연결 종료 실패: " + e.getMessage());
                 }
             }
+
+            // 하트비트 스레드 중단
+            Thread heartbeatThread = heartbeatThreads.remove(customerId);
+            if (heartbeatThread != null) {
+                heartbeatThread.interrupt();
+                System.out.println("하트비트 스레드 중단: 고객ID=" + customerId);
+            }
         } catch (Exception e) {
             System.err.println("고객 연결 제거 실패: " + e.getMessage());
         }
+    }
+
+    /**
+     * 하트비트 스레드 정리 (중복 코드 제거용 헬퍼 메서드)
+     */
+    private void cleanupHeartbeatThread(Integer customerId) {
+        customerEmitters.remove(customerId);
+        Thread heartbeatThread = heartbeatThreads.remove(customerId);
+        if (heartbeatThread != null) {
+            heartbeatThread.interrupt();
+        }
+    }
+
+    /**
+     * 고객 연결 강제 해제 (결제 완료 시 호출)
+     */
+    public void removeCustomerConnection(Integer customerId) {
+        cleanupHeartbeatThread(customerId);
+        System.out.println("고객 연결 강제 해제 완료: 고객ID=" + customerId);
     }
 
     /**
@@ -262,5 +369,28 @@ public class BasketSseService {
      */
     private void logConnectionStatus() {
         System.out.println("현재 SSE 연결 상태: " + customerEmitters.size() + "명 연결");
+
+        // 연결된 고객 ID 목록 출력
+        if (!customerEmitters.isEmpty()) {
+            System.out.println("연결된 고객 ID: " + customerEmitters.keySet());
+        }
+    }
+
+    /**
+     * 연결 상태 상세 정보 조회
+     */
+    public Map<String, Object> getConnectionStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("totalConnections", customerEmitters.size());
+        status.put("connectedCustomerIds", new ArrayList<>(customerEmitters.keySet()));
+        status.put("timestamp", System.currentTimeMillis());
+        return status;
+    }
+
+    /**
+     * 특정 고객의 연결 상태 확인
+     */
+    public boolean isCustomerConnected(Integer customerId) {
+        return customerEmitters.containsKey(customerId);
     }
 }

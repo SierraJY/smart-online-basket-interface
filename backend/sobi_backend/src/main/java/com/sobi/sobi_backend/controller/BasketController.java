@@ -4,6 +4,7 @@ import com.sobi.sobi_backend.entity.Basket;
 import com.sobi.sobi_backend.service.BasketService;
 import com.sobi.sobi_backend.service.ReceiptService;
 import com.sobi.sobi_backend.service.BasketCacheService;
+import com.sobi.sobi_backend.service.BasketSseService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
 import com.sobi.sobi_backend.config.handler.BasketMqttHandler;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class BasketController {
 
     @Autowired
     private BasketMqttHandler basketMqttHandler; // MQTT 메시지 발행 핸들러 추가
+
+    @Autowired
+    private BasketSseService basketSseService; // SSE 서비스
 
     // application.properties에서 바구니 캐시 TTL 주입 (BasketCacheService와 동일)
     @Value("${app.basket.cache-ttl-seconds}")
@@ -358,6 +362,9 @@ public class BasketController {
 
         // MQTT 종료 메시지 발행
         basketMqttHandler.publishEndMessage(basketId);
+
+        // SSE 연결 해제
+        basketSseService.removeCustomerConnection(customerId);
     }
 
     // 바구니 정보를 담는 내부 클래스
