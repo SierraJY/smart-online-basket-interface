@@ -7,10 +7,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useClearBasketId, useClearBasketData, useSetHasNewItems } from '@/store/useBasketStore';
+import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useSetHasNewItems } from '@/store/useBasketStore';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useActivateBasket } from '@/utils/hooks/useActivateBasket';
-import { reconnectGlobalSSE, useSSEConnectionStatus, useSSEErrorInfo } from '@/utils/hooks/useGlobalBasketSSE';
+import { useSSEConnectionStatus, useSSEErrorInfo } from '@/utils/hooks/useGlobalBasketSSE';
 import { basketStorage } from '@/utils/storage';
 import { ShoppingBasket, AlertCircle } from 'lucide-react';
 import ToastManager from '@/utils/toastManager';
@@ -25,8 +25,6 @@ export default function BasketsPage() {
   const { accessToken: token } = useAuth();
   const basketId = useBasketId();
   const setBasketId = useBasketStore(state => state.setBasketId);
-  const clearBasketId = useClearBasketId();
-  const clearBasketData = useClearBasketData();
   const resetIntroSeen = useBasketStore(s => s.resetIntroSeen);
   const setHasNewItems = useSetHasNewItems();
   
@@ -138,7 +136,7 @@ export default function BasketsPage() {
   }, [sseError]);
   const handleStartBasket = useCallback(async () => {
     try {
-      console.log('[BasketsPage] 장바구니 시작/재연결 요청');
+      console.log('[BasketsPage] UI 전환 요청');
       
       // 활성화 상태 확인
       if (activatedBasketId !== basketId) {
@@ -147,25 +145,21 @@ export default function BasketsPage() {
         return;
       }
       
-      console.log('[BasketsPage] 활성화 확인 완료 - SSE 연결 시작');
+      console.log('[BasketsPage] 활성화 확인 완료 - UI 전환 시작');
       
-      // SSE 연결 - 첫 연결과 재연결을 동일하게 처리
-      console.log('[BasketsPage] SSE 연결 시작 (첫 연결과 재연결 동일 조건)');
-      reconnectGlobalSSE();
-      
-      // UI 시작 처리
+      // UI 시작 처리만 수행 (SSE 연결은 이미 완료됨)
       if (!uiStarted) {
         if (basketId) markIntroSeen(basketId);
         setLaunching(true);
+        console.log('[BasketsPage] UI 전환 시작 - 애니메이션 실행');
       } else {
-        // 재연결 피드백
-        ToastManager.basketReconnecting();
+        // 이미 UI가 시작된 상태에서는 아무것도 하지 않음
+        console.log('[BasketsPage] 이미 UI가 시작된 상태');
       }
     } catch (error) {
-      console.error('[BasketsPage] 장바구니 시작/재연결 실패:', error);
-      ToastManager.basketConnectionFailed();
+      console.error('[BasketsPage] UI 전환 실패:', error);
     }
-  }, [uiStarted, basketId, activatedBasketId, markIntroSeen, sseStatus]);
+  }, [uiStarted, basketId, activatedBasketId, markIntroSeen]);
 
   // 결제 완료 함수
   const handleCheckout = useCallback(async () => {
@@ -219,7 +213,7 @@ export default function BasketsPage() {
       console.error('결제 요청 오류:', error);
       ToastManager.basketCheckoutNetworkError();
     }
-  }, [token, basket, clearBasketId, clearBasketData, setBasketId, router, basketId, resetIntroSeen]);
+  }, [token, basket, router, basketId, resetIntroSeen]);
 
   // 7. 장바구니 취소 함수
   const handleBasketCancel = useCallback(async () => {
@@ -335,7 +329,7 @@ export default function BasketsPage() {
         </div>
         
         <div className="relative z-10">
-          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 rounded-full animate-spin mb-4"></div>
           <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
         </div>
@@ -837,7 +831,7 @@ export default function BasketsPage() {
               className="mt-4 text-center"
             >
               <p className="text-base font-medium" style={{ color: 'var(--text-secondary)' }}>
-                버튼을 눌러 스마트 장바구니와 함께<br /> 편리한 쇼핑을 시작하세요!
+                버튼을 눌러 장바구니 화면으로<br /> 전환하세요!
               </p>
             </motion.div>
           </div>
@@ -871,19 +865,19 @@ export default function BasketsPage() {
         )}
 
         {uiStarted && (
-        <div className="mb-3 p-3 rounded-lg">
-          <div className="flex justify-center items-center gap-8 mb-1">
-            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{basket?.totalCount || 0}</span>개 품목
-            </span>
-            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
-              총 상품 <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{validItems.reduce((sum, item) => sum + item.quantity, 0)}개</span>
-            </span>
-          </div>
-          <div className="flex justify-center items-center gap-8 p-2 rounded-lg">
-            <span className="text-[24px]" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
-            <span className="text-[28px] font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket?.totalPrice || 0).toLocaleString()}원</span>
-          </div>
+          <div className="mb-3 p-3 rounded-lg">
+            <div className="flex justify-center items-center p-2 rounded-lg">
+              <div className="flex items-center gap-8">
+                <span className="text-[20px] w-32 text-left" style={{ color: 'var(--text-secondary)' }}>담겨있는 상품</span>
+                <span className="text-[24px] font-bold" style={{ color: 'var(--sobi-green)' }}>{validItems.reduce((sum, item) => sum + item.quantity, 0)}개</span>
+              </div>
+            </div>
+            <div className="flex justify-center items-center p-2 rounded-lg">
+              <div className="flex items-center gap-8">
+                <span className="text-[20px] w-32 text-left" style={{ color: 'var(--text-secondary)' }}>현재 결제금액</span>
+                <span className="text-[24px] font-bold" style={{ color: 'var(--sobi-green)' }}>{(basket?.totalPrice || 0).toLocaleString()}원</span>
+              </div>
+            </div>
           
           {/* 연결 해제 및 결제 완료 버튼 */}
           <div className="text-center flex flex-row gap-2 justify-center">

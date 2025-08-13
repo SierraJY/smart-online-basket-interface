@@ -43,18 +43,21 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
   try {
     const url = `${config.API_BASE_URL}/api/baskets/my/stream`;
     console.log('[Global SSE] 연결 URL:', url);
+    console.log('[Global SSE] JWT 토큰 확인:', token ? `${token.substring(0, 20)}...` : '토큰 없음');
     
     // EventSourcePolyfill 사용
     globalEventSource = new EventSourcePolyfill(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
       },
       heartbeatTimeout: 300000, // 5분 heartbeat 타임아웃
       connectionTimeout: 30000, // 30초 연결 타임아웃
       retryInterval: 5000, // 재연결 간격 5초
       maxRetries: 10, // 최대 재연결 시도 횟수
-      withCredentials: false,
+      withCredentials: true, // 쿠키 포함
     });
 
     // EventSource 이벤트 리스너 설정
@@ -198,10 +201,12 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
       });
 
           globalEventSource.onerror = (error: Event) => {
-      console.log("[Global SSE] 연결 에러:", error);
+      console.error("[Global SSE] 연결 에러:", error);
       isConnecting = false;
       
       if (globalEventSource) {
+        const readyState = globalEventSource.readyState;
+        console.log("[Global SSE] EventSource 상태:", readyState);
         globalEventSource.close();
         globalEventSource = null;
       }
