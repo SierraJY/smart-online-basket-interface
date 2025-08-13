@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import { BiSearchAlt2 } from "react-icons/bi"
 import { CategoryName, isValidCategory } from "./categoryIcons"
@@ -28,6 +29,7 @@ export default function SearchBar({
   const [open, setOpen] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
   const selectRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   // 카테고리 변경 핸들러
   const handleCategoryChange = (newCategory: string) => {
@@ -61,6 +63,11 @@ export default function SearchBar({
   // 폼 제출 핸들러
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (keyword.trim()) {
+      const searchUrl = `/products/search?keyword=${encodeURIComponent(keyword.trim())}`
+      router.push(searchUrl)
+      return
+    }
     onSearch()
   }
 

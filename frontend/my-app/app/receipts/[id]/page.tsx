@@ -94,7 +94,7 @@ export default function ReceiptDetailPage() {
           color: 'var(--foreground)' 
         }}
       >
-        <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
         <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
         <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
       </div>
@@ -163,7 +163,7 @@ export default function ReceiptDetailPage() {
             color: 'var(--foreground)' 
           }}
         >
-          <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
           <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
           <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
         </div>

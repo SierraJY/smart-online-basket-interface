@@ -132,13 +132,16 @@ const nextConfig = {
     
     // 프로덕션에서만 최적화 적용
     if (!dev && !isServer) {
-      // 번들 분석기 추가 (선택사항)
+      // 번들 분석기 추가 (ANALYZE=true로 활성화)
       if (process.env.ANALYZE === 'true') {
         const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
         config.plugins.push(
           new BundleAnalyzerPlugin({
             analyzerMode: 'static',
+            reportFilename: 'bundle-report.html',
             openAnalyzer: false,
+            generateStatsFile: true,
+            statsFilename: 'bundle-stats.json',
           })
         );
       }

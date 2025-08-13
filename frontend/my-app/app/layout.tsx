@@ -4,8 +4,7 @@ import Footer from '@/components/Footer'
 import { metadata } from '@/metadata'
 import TransitionWrapper from './transition-wrapper'
 import { ReactNode, Suspense } from 'react'
-import MenuButton from '@/components/buttons/MenuButton'
-import BackButton from '@/components/buttons/BackButton'
+import BottomButtons from '@/components/BottomButtons'
 import ReactQueryProvider from "@/components/ReactQueryProvider"
 import GlobalBasketSSE from '@/components/GlobalBasketSSE'
 import { ServiceWorkerProvider } from '@/components/ServiceWorkerProvider'
@@ -87,15 +86,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <GuestTimeOut />
-          {/* BackButton */}
-          <div className="fixed bottom-9 right-5 z-50">
-            <BackButton />
-          </div>
+          <BottomButtons />
           <Footer />
-          {/* MenuButton */}
-          <div className="fixed bottom-9 left-5 z-50">
-            <MenuButton />
-          </div>
           
           <Toaster 
             position="top-center"

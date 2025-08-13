@@ -58,7 +58,7 @@ export default function LogoutButton({
   // 동적 클래스명 생성
   const buttonClassName = `${className} ${
     isBasketInUse() 
-      ? 'opacity-30 cursor-not-allowed' 
+      ? 'opacity-30' 
       : 'hover:bg-[var(--footer-border)]'
   }`
 

@@ -34,12 +34,12 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 1,
       question: 'SOBI가 뭐야?',
-      answer: ' Smart Online Basket Interface의 약자로, 보다 편리한 오프라인 쇼핑을 위한 AIoT 서비스입니다'
+      answer: 'Smart Online Basket Interface의\n약자로, 보다 편리한 오프라인 쇼핑을 위한 AIoT 서비스입니다'
     },
     {
       id: 2,
       question: 'SOBI AI?',
-      answer: 'SOBI AI는 고객님의 정보와 소비패턴, 찜 상품 등을 분석하며 추천 상품을 제공하는 AI 서비스입니다'
+      answer: 'SOBI AI는 고객님의 정보와 소비패턴,\n찜 상품 등을 분석하며 추천 상품을 제공하는 취향 분석 AI 서비스입니다'
     },
     {
       id: 3,
@@ -49,12 +49,12 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 4,
       question: '다른 어플처럼 사용할 수는 없어?',
-      answer: '가능합니다! 사용 중인 브라우저의 설정에서 홈 화면에 추가를 하면 실제 어플과 같은 환경에서 서비스를 이용할 수 있어요'
+      answer: '가능합니다! 사용 중인 브라우저의 설정에서\n홈 화면에 추가를 하면 실제 어플과 같은 환경에서 서비스를 이용할 수 있어요'
     },
     {
       id: 5,
       question: 'SOBI는 어떻게 사용해?',
-      answer: 'SOBI에 있는 QR코드를 스캔하면 앱과 연동되며 구매할 상품을 담으면 자동으로 상품이 추가됩니다'
+      answer: '초록색 장바구니 버튼을 클릭한 뒤 SOBI에 있는 QR코드를 스캔하면 앱과 연동되며 구매할 상품을 담으면 자동으로 상품이 추가됩니다'
     },
     {
       id: 6,
@@ -63,8 +63,8 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     },
     {
       id: 7,
-      question: '회원만 이용할 수 있어??',
-      answer: '게스트 로그인으로도 충분히 SOBI 서비스를 이용할 수 있습니다! 다만, 회원 전용 기능은 이용할 수 없어요 ㅠㅠ'
+      question: '회원만 이용할 수 있어?',
+      answer: '게스트 로그인으로도 충분히 SOBI 서비스를 이용할 수 있습니다! 다만, 일부 회원 전용 서비스는 이용할 수 없어요 ㅠㅠ'
     }
   ]
 
@@ -149,7 +149,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-full"
           >
             <X size={20} className="text-[var(--text-secondary)]" />
           </button>
@@ -233,10 +233,13 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
                       ? 'rounded-tr-md bg-[var(--sobi-green)] text-white' 
                       : 'rounded-tl-md'
                   }`}
-                  style={message.type === 'bot' ? { 
-                    backgroundColor: 'var(--input-background)',
-                    color: 'var(--foreground)'
-                  } : {}}
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    ...(message.type === 'bot' ? {
+                      backgroundColor: 'var(--input-background)',
+                      color: 'var(--foreground)'
+                    } : {})
+                  }}
                 >
                   {message.content}
                 </div>
