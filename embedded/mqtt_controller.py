@@ -97,7 +97,7 @@ def run_rfid_system(stop_event):
             cart_manager.start_cycle()
             
             # Run polling cycle
-            results = sensor_manager.run_polling_cycle(1.0)  # 5 second timeout
+            results = sensor_manager.run_polling_cycle()  # 0.5 second timeout
             
             # Send results to CartManager for processing
             cart_manager.process_cycle_results(results, sensor_manager)
