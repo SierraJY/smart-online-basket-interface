@@ -87,8 +87,8 @@ export function useReceipts(token: string | null) {
     queryFn: fetchReceipts,
     enabled: !!token,
     // 구매내역은 자주 변경되지 않지만 결제 후 즉시 반영되어야 함
-    staleTime: 30 * 1000, // 30초 (짧지만 0은 아님)
-    gcTime: 5 * 60 * 1000, // 5분
+    staleTime: 60 * 1000, // 1분으로 증가 (더 안정적)
+    gcTime: 10 * 60 * 1000, // 10분으로 증가
     // 페이지 포커스 시 자동 새로고침 (결제 완료 후 확인용)
     refetchOnWindowFocus: true,
     // 네트워크 재연결 시 새로고침
@@ -99,9 +99,11 @@ export function useReceipts(token: string | null) {
       if (error?.status && error.status >= 400 && error.status < 500) {
         return false;
       }
-      // 최대 2번까지만 재시도
-      return failureCount < 2;
+      // 최대 3번까지 재시도 (더 안정적)
+      return failureCount < 3;
     },
+    // 캐시 데이터가 있을 때도 즉시 반환하되 백그라운드에서 업데이트
+    refetchOnMount: 'always',
   });
 }
 

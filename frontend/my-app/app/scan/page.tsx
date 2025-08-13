@@ -5,6 +5,7 @@
 import { useRouter } from "next/navigation";
 import { useBasketStore } from "@/store/useBasketStore";
 import QrScannerComponent from '@/components/QrScanner';
+import { motion } from 'framer-motion';
 
 export default function ScanPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function ScanPage() {
 
 
   // QrScanner용 핸들러
-  const handleQrScannerScan = (decodedText: string) => {
+  const handleQrScannerScan = async (decodedText: string) => {
     console.log("QrScanner QR 스캔 성공:", decodedText);
     
     try {
@@ -35,6 +36,9 @@ export default function ScanPage() {
       
       // 활성화 이후에 SSE가 연결되도록 스캔 단계에서는 연결을 보류
       console.log('[ScanPage] QR 스캔 성공 - SSE 연결은 활성화 이후에 수행');
+      
+      // 카메라 정리가 완료될 시간을 주기 위해 약간의 지연
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // 페이지 이동
       router.replace('/baskets');
@@ -66,14 +70,8 @@ export default function ScanPage() {
       }}
     >
       <div className="w-full max-w-md">
-        {/* 헤더 */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <h1 className="text-3xl font-bold">QR 스캔</h1>
-          </div>
-          <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-            장바구니 QR 코드를 스캔하여 연결하세요
-          </p>
+
         </div>
 
 
@@ -81,8 +79,20 @@ export default function ScanPage() {
 
 
         {/* QrScanner 컴포넌트 - 카메라 프레임 */}
-        <div className="mt-6">
+        <div className="flex flex-col items-center justify-center mb-6" style={{ minHeight: '60vh' }}>
           <QrScannerComponent onScan={handleQrScannerScan} />
+          
+          {/* 안내 문구 */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="mt-4 text-center"
+          >
+            <p className="text-base font-medium" style={{ color: 'var(--text-secondary)' }}>
+              SOBI에 있는 QR 코드를 스캔하여<br /> 편리한 쇼핑을 시작하세요!
+            </p>
+          </motion.div>
         </div>
 
         {/* 테스트용 버튼 - 작은 크기 */}
