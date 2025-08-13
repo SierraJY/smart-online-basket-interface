@@ -23,24 +23,6 @@ pipeline {
             }
         }
 
-        // 헬스 체크 테스트는 주석 처리 상태 유지
-        /*
-        stage('Test') {
-            steps {
-                dir("${PROJECT_DIR}") {
-                    sh "docker compose -f ${COMPOSE_FILE} up -d"
-                    script {
-                        def code = sh(script: "docker exec sobi-backend curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health", returnStdout: true).trim()
-                        if (code != '200') {
-                            error "Health check failed with status ${code}"
-                        }
-                    }
-                    sh "docker compose -f ${COMPOSE_FILE} down"
-                }
-            }
-        }
-        */
-
         stage('Deploy') {
             steps {
                 dir("${PROJECT_DIR}") {
@@ -56,10 +38,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Build and Deploy 완료!"
+            echo "✅ Build and Deploy Success!"
         }
         failure {
-            echo "❌ 실패. 롤백 또는 확인 필요."
+            echo "❌ Failed. Rollback or verification required."
             sh "docker compose -f ${COMPOSE_FILE} -p ${PROJECT_NAME} down --remove-orphans || true"
         }
     }
