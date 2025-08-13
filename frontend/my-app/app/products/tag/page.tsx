@@ -37,14 +37,15 @@ export default function TagPage() {
   const tagFromURL = useMemo(() => searchParams.get('tag') || '', [searchParams])
   const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const sortFromURL = useMemo(() => (searchParams.get('sort') as SortOption) || 'id', [searchParams])
+  const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
   
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
   const [sort, setSort] = useState<SortOption>(sortFromURL)
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState<boolean>(false)
+  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
   
   const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const [itemsPerPage, setItemsPerPage] = useState<number>(12) // 기본값 12
-  const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(false)
 
   // 화면 크기에 따른 페이지당 아이템 수 설정
   useEffect(() => {
@@ -76,7 +77,8 @@ export default function TagPage() {
   useEffect(() => {
     setKeyword(keywordFromURL)
     setSort(sortFromURL)
-  }, [keywordFromURL, sortFromURL])
+    setExcludeOutOfStock(excludeOutOfStockFromURL)
+  }, [keywordFromURL, sortFromURL, excludeOutOfStockFromURL])
 
   const onKeywordChange = (val: string) => {
     setKeyword(val)
@@ -92,6 +94,18 @@ export default function TagPage() {
     const params = new URLSearchParams(searchParams)
     params.set('sort', val)
     params.set('page', '1') // 정렬 변경 시 첫 페이지로 이동
+    router.replace(`?${params.toString()}`)
+  }
+
+  const onExcludeOutOfStockChange = (checked: boolean) => {
+    setExcludeOutOfStock(checked)
+    const params = new URLSearchParams(searchParams)
+    if (checked) {
+      params.set('excludeOutOfStock', 'true')
+    } else {
+      params.delete('excludeOutOfStock')
+    }
+    params.set('page', '1') // 필터 변경 시 첫 페이지로 이동
     router.replace(`?${params.toString()}`)
   }
 
@@ -224,7 +238,7 @@ export default function TagPage() {
                 type="checkbox"
                 id="excludeOutOfStock"
                 checked={excludeOutOfStock}
-                onChange={e => setExcludeOutOfStock(e.target.checked)}
+                onChange={e => onExcludeOutOfStockChange(e.target.checked)}
                 className="sr-only peer"
               />
               <div className={`w-5 h-5 border-2 rounded transition-all peer-focus:outline-none ${
@@ -244,7 +258,7 @@ export default function TagPage() {
               </div>
             </div>
             <span className="text-base font-semibold transition-colors duration-200 text-[var(--foreground)]">
-              품절 상품 제외
+              품절 상품 포함
             </span>
           </label>
         </div>
