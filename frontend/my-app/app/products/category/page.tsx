@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useDeferredValue } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
@@ -14,20 +14,12 @@ import { FaExclamationTriangle } from "react-icons/fa"
 import SearchBar from '@/components/SearchBar'
 import Image from 'next/image';
 import { replaceCategoryName, formatPrice, calculateDiscountedPrice } from '@/utils/stringUtils'
+import { filterProducts, paginateProducts, SORT_OPTIONS, SortOption, sortProducts } from '@/utils/products/listing'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CATEGORY_ICONS, CategoryName } from '@/components/categoryIcons'
 
 // 정렬 옵션 타입 정의
-type SortOption = 'id' | 'sales' | 'discount_rate' | 'price_high' | 'price_low'
-
-// 정렬 옵션 상수
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'id', label: '최신순' },
-  { value: 'sales', label: '판매순' },
-  { value: 'discount_rate', label: '할인율 높은순' },
-  { value: 'price_high', label: '가격높은순' },
-  { value: 'price_low', label: '가격낮은순' }
-]
+// 정렬 옵션/유틸은 공통 모듈 사용
 
 export default function CategoryPage() {
   const { products, loading, error } = useProducts()
@@ -59,6 +51,7 @@ export default function CategoryPage() {
   const sortFromURL = useMemo(() => (searchParams.get('sort') as SortOption) || 'id', [searchParams])
   
   const [keyword, setKeyword] = useState<string>(keywordFromURL)
+  const deferredKeyword = useDeferredValue(keyword)
   const [category, setCategory] = useState<CategoryName>(categoryFromURL as CategoryName)
   const [sort, setSort] = useState<SortOption>(sortFromURL)
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState<boolean>(false)
@@ -122,12 +115,17 @@ export default function CategoryPage() {
     setExcludeOutOfStock(excludeOutOfStockFromURL)
   }, [keywordFromURL, categoryFromURL, sortFromURL, excludeOutOfStockFromURL])
 
+  // 디바운스 적용 (300ms)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const onKeywordChange = (val: string) => {
     setKeyword(val)
-    const params = new URLSearchParams(searchParams)
-    params.set('keyword', val)
-    params.set('page', '1') // 검색 시 첫 페이지로 이동
-    router.replace(`?${params.toString()}`)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams)
+      params.set('keyword', val)
+      params.set('page', '1')
+      router.replace(`?${params.toString()}`)
+    }, 300)
   }
   
   const onCategoryChange = (val: CategoryName) => {
@@ -183,43 +181,12 @@ export default function CategoryPage() {
   }
 
   // 필터링
-  const filtered: Product[] = products.filter(
-    (item: Product) =>
-      (category === '전체' || item.category === category) &&
-      [item.name, item.description, item.category].join(' ').toLowerCase().includes(keyword.toLowerCase()) &&
-      (excludeOutOfStock || item.stock > 0)
-  )
+  const filtered: Product[] = filterProducts(products, deferredKeyword, category, excludeOutOfStock, false)
 
   // 정렬 함수
-  const sortedProducts = useMemo(() => {
-    const sorted = [...filtered]
-    
-    switch (sort) {
-      case 'id':
-        // 최신순 (id 내림차순)
-        return sorted.sort((a, b) => b.id - a.id)
-      case 'sales':
-        // 판매순 (sales 내림차순)
-        return sorted.sort((a, b) => (b.sales || 0) - (a.sales || 0))
-      case 'discount_rate':
-        // 할인율 높은순 (discount_rate 내림차순)
-        return sorted.sort((a, b) => (b.discountRate || 0) - (a.discountRate || 0))
-      case 'price_high':
-        // 가격높은순 (price 내림차순)
-        return sorted.sort((a, b) => b.price - a.price)
-      case 'price_low':
-        // 가격낮은순 (price 오름차순)
-        return sorted.sort((a, b) => a.price - b.price)
-      default:
-        return sorted
-    }
-  }, [filtered, sort])
+  const sortedProducts = useMemo(() => sortProducts(filtered, sort), [filtered, sort])
 
-  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / itemsPerPage))
-  const pagedProducts: Product[] = sortedProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
+  const { totalPages, pageItems: pagedProducts } = paginateProducts(sortedProducts, currentPage, itemsPerPage)
 
   const cardClass = "item-card w-full max-w-[120px] h-[160px] md:h-[180px] flex flex-col items-center px-1 pt-3 pb-1 transition-all relative bg-transparent"
 
@@ -241,7 +208,7 @@ export default function CategoryPage() {
         color: 'var(--foreground)' 
       }}
     >
-      <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">{replaceCategoryName(category)} 상품 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>

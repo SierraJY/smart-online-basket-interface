@@ -253,8 +253,8 @@ export default function BasketsPage() {
         // 버튼 초기화 (다음 사용 시 다시 노출)
         if (basketId) resetIntroSeen(basketId);
         
-        // 스캔 페이지로 이동
-        router.push('/scan');
+        // 메인 페이지로 이동
+        router.push('/');
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('장바구니 취소 실패:', errorData);
@@ -293,7 +293,7 @@ export default function BasketsPage() {
         </div>
         
         <div className="relative z-10">
-          <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+          <AlertCircle className="block mx-auto w-12 h-12 text-red-500 mb-4" />
           <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
           <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>장바구니를 사용하려면 먼저 로그인해주세요.</p>
           <button 
@@ -333,7 +333,7 @@ export default function BasketsPage() {
         </div>
         
         <div className="relative z-10">
-          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
           <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
         </div>
@@ -635,7 +635,7 @@ export default function BasketsPage() {
           <div className="mt-3">
             {sseStatus === 'connecting' && (
               <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-                <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
                 연결 중...
               </div>
             )}
@@ -660,7 +660,7 @@ export default function BasketsPage() {
             )}
             {sseStatus === 'connecting' && (
               <div className="flex items-center justify-center gap-2 text-sm text-orange-600">
-                <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
                 연결 중...
               </div>
             )}
@@ -675,7 +675,7 @@ export default function BasketsPage() {
 
         {/* 초기 진입: 중앙 원형 버튼 */}
         {!uiStarted && (
-          <div className="flex flex-col items-center justify-center mb-6" style={{ minHeight: '40vh' }}>
+          <div className="flex flex-col items-center justify-center mb-6" style={{ minHeight: '60vh' }}>
             <motion.div
               className="relative"
               initial={{ opacity: 1, scale: 1 }}
@@ -856,7 +856,7 @@ export default function BasketsPage() {
             >
               {sseStatus === 'connecting' ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
                   연결 중...
                 </>
               ) : sseStatus === 'connected' ? (

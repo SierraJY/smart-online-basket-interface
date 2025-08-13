@@ -1,6 +1,6 @@
-'use client'
+	'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/utils/hooks/useAuth'
 import { apiClient } from '@/utils/api/apiClient'
@@ -8,17 +8,17 @@ import { config } from '@/config/env'
 import { useBasketId, useActivatedBasketId } from '@/store/useBasketStore'
 
 import LogoutButton from '@/components/buttons/LogoutButton'
-import { 
-  User, 
-  Sparkles
-} from 'lucide-react'
+import { User } from 'lucide-react'
 import { FcSurvey } from "react-icons/fc"
 import { FiUserX } from "react-icons/fi"
+import { RiRobot3Line } from "react-icons/ri"
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import ToastManager from '@/utils/toastManager'
 import WithdrawalModal from '@/components/modals/WithdrawalModal'
+import dynamic from 'next/dynamic'
+const ChatbotModal = dynamic(() => import('@/components/modals/ChatbotModal'), { ssr: false })
 
 interface ProfileData {
   gender: number
@@ -35,6 +35,9 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [withdrawalLoading, setWithdrawalLoading] = useState(false)
+	// 챗봇 모달 상태
+	const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+	const chatbotModalRef = useRef<HTMLDivElement>(null)
   
   // 바구니 상태 확인 (상태 표시용)
   const basketId = useBasketId()
@@ -78,6 +81,22 @@ export default function ProfilePage() {
       router.push('/login')
     }
   }, [mounted, isLoggedIn, router])
+
+	// 챗봇 모달: ESC 닫기
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') setIsChatbotOpen(false)
+		}
+		document.addEventListener('keydown', onKeyDown)
+		return () => document.removeEventListener('keydown', onKeyDown)
+	}, [])
+
+	// 챗봇 모달: 바깥 클릭 닫기
+	const handleChatbotBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+		if (chatbotModalRef.current && !chatbotModalRef.current.contains(e.target as Node)) {
+			setIsChatbotOpen(false)
+		}
+	}
 
   // 로그아웃 성공 시 처리
   const handleLogoutSuccess = () => {
@@ -271,18 +290,15 @@ export default function ProfilePage() {
             </div>
           </Link>
 
-          {/* AI 추천 */}
-          <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+		  {/* SOBI 챗봇 */}
+		  <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]" onClick={() => setIsChatbotOpen(true)}>
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center">
-                <Sparkles size={24} className="text-purple-500" />
+            <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
+                <RiRobot3Line size={24} className="text-[var(--input-foreground)]" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-[var(--foreground)]">AI 추천</h3>
-                <p className="text-sm text-[var(--text-secondary)]">준비 중</p>
-              </div>
-              <div className="text-[var(--text-secondary)]">
-                <span className="text-xs bg-[var(--footer-border)] px-2 py-1 rounded-full">준비중</span>
+                <h3 className="font-semibold text-[var(--foreground)]">SOBI 챗봇</h3>
+                <p className="text-sm text-[var(--text-secondary)]">SOBI에 대해 궁금한 점이 있으신가요?</p>
               </div>
             </div>
           </div>
@@ -309,7 +325,41 @@ export default function ProfilePage() {
         </motion.div>
       </div>
 
-      {/* 회원 탈퇴 확인 모달 */}
+		{/* 챗봇 모달 */}
+		<AnimatePresence>
+			{isChatbotOpen && (
+				<motion.div
+					className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 px-4"
+					onClick={handleChatbotBackdropClick}
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.3 }}
+				>
+					{/* 배경 흐림 */}
+					<motion.div
+						className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.3 }}
+					/>
+					{/* 모달 본문 */}
+					<motion.div
+						ref={chatbotModalRef}
+						className="relative z-10 w-full max-w-md"
+						initial={{ opacity: 0, scale: 0.8, y: 20 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.8, y: 20 }}
+						transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+					>
+						<ChatbotModal onClose={() => setIsChatbotOpen(false)} />
+					</motion.div>
+				</motion.div>
+			)}
+		</AnimatePresence>
+
+		{/* 회원 탈퇴 확인 모달 */}
       <WithdrawalModal
         open={showWithdrawalModal}
         onClose={() => setShowWithdrawalModal(false)}

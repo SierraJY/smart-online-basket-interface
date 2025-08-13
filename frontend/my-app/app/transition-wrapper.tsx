@@ -13,7 +13,7 @@ export default function TransitionWrapper({ children }: { children: ReactNode })
 
     const timeout = setTimeout(() => {
       setShowChildren(true)
-    }, 150) // 애니메이션 끝난 뒤 children 보이기
+    }, 100) // 애니메이션 끝난 뒤 children 보이기
 
     return () => clearTimeout(timeout)
   }, [pathname])

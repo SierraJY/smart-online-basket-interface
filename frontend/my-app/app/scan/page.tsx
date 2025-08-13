@@ -40,8 +40,8 @@ export default function ScanPage() {
       // 카메라 정리가 완료될 시간을 주기 위해 약간의 지연
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // 페이지 이동
-      router.replace('/baskets');
+      // 페이지 이동 - 히스토리 보존을 위해 push 사용
+      router.push('/baskets');
       
     } catch (err) {
       console.error("QR 코드 파싱 실패:", err);
