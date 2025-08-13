@@ -26,6 +26,11 @@ sys.path.insert(0, parent_dir)
 try:
     import mqtt.config as mqtt_config
     import paho.mqtt.client as mqtt
+    try:
+        # Import publisher once and reuse
+        from mqtt.src.mqtt_publisher import publish_message as mqtt_publish_message
+    except Exception:
+        mqtt_publish_message = None
 except ImportError:
     print("Error: MQTT module not found. Please ensure mqtt package is installed.")
     sys.exit(1)
@@ -72,16 +77,16 @@ def run_rfid_system(stop_event):
     try:
         # Create sensor manager
         sensor_manager = MultiSensorManager(
-            polling_count=30,
+            polling_count=15,
             rssi_threshold=-70
         )
         
         # Configure readers with default settings
-        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=26, channel_index=1)
+        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=10, channel_index=1)
         
         # Create cart manager
         cart_manager = CartManager(
-            presence_threshold=2,
+            presence_threshold=1,
             absence_threshold=2,
             rssi_threshold=-70
         )
@@ -91,7 +96,7 @@ def run_rfid_system(stop_event):
         # Run until stop event is set
         while not stop_event.is_set():
             cycle += 1
-            logger.info(f"=== Cycle #{cycle} started ===")
+            logger.info("=== Cycle #%d started ===", cycle)
             
             # Start cart tracking for this cycle
             cart_manager.start_cycle()
@@ -108,13 +113,13 @@ def run_rfid_system(stop_event):
             # Calculate total tags
             total_tags = sum(len(tags) for tags in results.values())
             
-            logger.info(f"=== Cycle #{cycle} completed ===")
-            logger.info(f"Total tags detected: {total_tags}")
+            logger.info("=== Cycle #%d completed ===", cycle)
+            logger.info("Total tags detected: %d", total_tags)
             
             # Get cart summary
             cart_summary = cart_manager.get_cart_summary()
             confirmed_items = cart_summary["confirmed_items"]
-            logger.info(f"Confirmed items: {len(confirmed_items)}, Removed items: {len(cart_summary['removed_items'])}")
+            logger.info("Confirmed items: %d, Removed items: %d", len(confirmed_items), len(cart_summary['removed_items']))
             
             # Format cart data for MQTT publishing
             cart_data = format_cart_for_mqtt(confirmed_items, BASKET_ID)
@@ -123,10 +128,13 @@ def run_rfid_system(stop_event):
             global last_published_cart_data
             if cart_data != last_published_cart_data:
                 try:
-                    from mqtt.src.mqtt_publisher import publish_message
-                    logger.info(f"Cart data changed - Publishing to MQTT: {cart_data}")
-                    publish_result = publish_message(message=cart_data)
-                    
+                    if mqtt_publish_message:
+                        logger.info("Cart data changed - Publishing to MQTT: %s", cart_data)
+                        publish_result = mqtt_publish_message(message=cart_data)
+                    else:
+                        logger.error("MQTT publisher unavailable; skipping publish")
+                        publish_result = False
+
                     if publish_result:
                         logger.info("MQTT publish successful")
                         # Update the last published data only if publish was successful
@@ -139,7 +147,7 @@ def run_rfid_system(stop_event):
                 logger.debug("Cart data unchanged - skipping MQTT publish")
             
             # Short delay between cycles
-            time.sleep(0.5)
+            time.sleep(0.1)
             
     except Exception as e:
         logger.error(f"Error in RFID system: {e}", exc_info=True)
