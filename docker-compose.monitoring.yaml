@@ -6,6 +6,7 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prom_data:/prometheus
     command:
+      - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.path=/prometheus
     ports:
@@ -63,7 +64,7 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: monitor-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: postgresql://sobiuser:sobipass@sobi-db:5432/sobi?sslmode=disable
+      DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@sobi-db:5432/${POSTGRES_DB}?sslmode=disable
     networks:
       - sobi-net
 
