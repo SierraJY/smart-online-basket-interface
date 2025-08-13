@@ -28,7 +28,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers") // /api/customers로 시작하는 모든 요청 처리
-@Tag(name = "Customer", description = "고객 관리 API - 회원가입, 로그인, 프로필 관리")
+@Tag(name = "1. Customer", description = "고객 관리 API - 회원가입, 로그인, 프로필 관리")
 public class CustomerController {
 
     @Autowired
