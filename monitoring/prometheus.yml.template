@@ -32,7 +32,7 @@ scrape_configs:
       username: ${JENKINS_USER}
       password: ${JENKINS_PASSWORD}
     static_configs:
-      - targets: ["jenkins:8080"]
+      - targets: ["s13p11b103-jenkins-1:8080"]
 
 
   - job_name: sobi-backend
