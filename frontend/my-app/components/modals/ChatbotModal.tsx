@@ -48,13 +48,23 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     },
     {
       id: 4,
+      question: '다른 어플처럼 사용할 수는 없어?',
+      answer: '가능합니다! 사용 중인 브라우저의 설정에서 홈 화면에 추가를 하면 실제 어플과 같은 환경에서 서비스를 이용할 수 있어요'
+    },
+    {
+      id: 5,
       question: 'SOBI는 어떻게 사용해?',
       answer: 'SOBI에 있는 QR코드를 스캔하면 앱과 연동되며 구매할 상품을 담으면 자동으로 상품이 추가됩니다'
     },
     {
-      id: 5,
+      id: 6,
       question: '환불은 어떻게 해야 돼?',
       answer: '구매내역에 있는 영수증을 통해 지정된 기간 내에 환불신청을 할 수 있어요!'
+    },
+    {
+      id: 7,
+      question: '회원만 이용할 수 있어??',
+      answer: '게스트 로그인으로도 충분히 SOBI 서비스를 이용할 수 있습니다! 다만, 회원 전용 기능은 이용할 수 없어요 ㅠㅠ'
     }
   ]
 

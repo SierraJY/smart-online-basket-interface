@@ -8,6 +8,7 @@ import Image from 'next/image'
 import ProfileButton from './ProfileButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
+import LogoutButton from './LogoutButton'
 import { useAuth } from '@/utils/hooks/useAuth'
 
 export default function MenuButton() {
@@ -63,11 +64,26 @@ export default function MenuButton() {
         {open && (
           <>
             <motion.div
-              key="qrcode"
+              key="logout"
               initial={{ opacity: 0, translateY: 32 }}
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: 32 }}
               transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              className="mb-3"
+            >
+              <LogoutButton 
+                className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
+                iconSize={24}
+                showTooltip={true}
+              />
+            </motion.div>
+
+            <motion.div
+              key="qrcode"
+              initial={{ opacity: 0, translateY: 32 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              exit={{ opacity: 0, translateY: 32 }}
+              transition={{ delay: 0.1, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
               <ProfileButton inline />
@@ -78,7 +94,7 @@ export default function MenuButton() {
               initial={{ opacity: 0, translateY: 32 }}
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: 32 }}
-              transition={{ delay: 0.1, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              transition={{ delay: 0.1125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
               <SearchButton />

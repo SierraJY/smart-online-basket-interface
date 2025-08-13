@@ -34,6 +34,14 @@ export default function BasketsPage() {
   const sseStatus = useSSEConnectionStatus();
   const sseError = useSSEErrorInfo();
 
+  // 장바구니 페이지 진입 시 다크모드 강제 해제
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, []);
+
   // 2. 토큰/basketId 없으면 스캔으로 (결제 완료 후에는 제외)
   const [isCheckoutCompleted, setIsCheckoutCompleted] = useState(false);
   
@@ -122,21 +130,12 @@ export default function BasketsPage() {
     }
   }, [uiStarted, setHasNewItems]);
   
-  // SSE 에러 발생 시 토스트 알림
+  // SSE 에러 발생 시 토스트 알림 (단순화)
   useEffect(() => {
-    if (sseError && sseError.type !== 'network') {
-      // 네트워크 에러는 너무 빈번할 수 있으므로 제외
-      const errorId = `sse-error-${sseError.timestamp}`;
-      
-      if (sseError.type === 'auth') {
-        ToastManager.sseAuthError(sseError.message, { id: errorId });
-      } else if (sseError.type === 'timeout') {
-        ToastManager.sseTimeoutError(sseError.message, { id: errorId });
-      } else {
-        ToastManager.sseGeneralError(sseError.message, { id: errorId });
-      }
+    if (sseError) {
+      ToastManager.sseGeneralError(sseError.message);
     }
-  }, [sseError, router]);
+  }, [sseError]);
   const handleStartBasket = useCallback(async () => {
     try {
       console.log('[BasketsPage] 장바구니 시작/재연결 요청');
@@ -159,12 +158,8 @@ export default function BasketsPage() {
         if (basketId) markIntroSeen(basketId);
         setLaunching(true);
       } else {
-        // 재연결 피드백 - SSE 상태에 따라 다른 메시지
-        if (sseStatus === 'connected') {
-          ToastManager.basketAlreadyConnected();
-        } else {
-          ToastManager.basketReconnecting();
-        }
+        // 재연결 피드백
+        ToastManager.basketReconnecting();
       }
     } catch (error) {
       console.error('[BasketsPage] 장바구니 시작/재연결 실패:', error);
@@ -471,7 +466,7 @@ export default function BasketsPage() {
         />
         
         {/* 추가 움직이는 오브젝트들 */}
-        <motion.div
+                <motion.div
           className="absolute top-1/6 right-1/6 w-64 h-64 rounded-full opacity-18"
           style={{
             background: 'radial-gradient(circle, rgba(34, 197, 94, 0.3) 0%, transparent 70%)',
@@ -661,22 +656,14 @@ export default function BasketsPage() {
                 {sseError && (
                   <div className="text-xs text-red-500 max-w-md text-center">
                     {sseError.message}
-                    {sseError.type === 'auth' && (
-                      <button 
-                        onClick={() => router.push('/login')}
-                        className="ml-2 underline hover:no-underline"
-                      >
-                        로그인하기
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
             )}
-            {sseStatus === 'reconnecting' && (
+            {sseStatus === 'connecting' && (
               <div className="flex items-center justify-center gap-2 text-sm text-orange-600">
                 <div className="w-3 h-3 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
-                재연결 중...
+                연결 중...
               </div>
             )}
             {sseStatus === 'disconnected' && (
@@ -861,7 +848,7 @@ export default function BasketsPage() {
           <div className="text-center mb-2">
             <button 
               onClick={handleStartBasket}
-              disabled={sseStatus === 'connecting' || sseStatus === 'reconnecting'}
+              disabled={sseStatus === 'connecting'}
               className="w-full max-w-xs inline-flex items-center justify-center gap-3 py-3 px-6 text-base font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: 'var(--sobi-green-light)',
@@ -869,7 +856,7 @@ export default function BasketsPage() {
                 border: '1px solid var(--sobi-green-border)',
               }}
             >
-              {sseStatus === 'connecting' || sseStatus === 'reconnecting' ? (
+              {sseStatus === 'connecting' ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                   연결 중...
