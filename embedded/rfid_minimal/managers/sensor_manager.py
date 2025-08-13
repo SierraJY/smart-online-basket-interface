@@ -176,7 +176,7 @@ class MultiSensorManager:
                 # Check each active reader
                 for reader in list(active_readers):  # Use a copy of the list for safe removal
                     # Check if reader is still polling
-                    if not reader.is_polling:
+                    if not reader.is_polling():
                         self.logger.debug(f"{reader.reader_id} polling completed naturally")
                         active_readers.remove(reader)
                         continue
@@ -194,20 +194,31 @@ class MultiSensorManager:
                 self.logger.warning(f"Polling timed out for {reader.reader_id} after {timeout} seconds")
                 reader.stop_multiple_polling()
         
-        # Collect results from all readers
+        # Collect results from all readers and build best TagInfo map
+        best_tag_info_map: Dict[str, TagInfo] = {}
         for reader in self.readers:
             detected_tags = set(reader.get_detected_tags())
             results[reader.reader_id] = detected_tags
-            
-            # Log more details about detected tags
+
+            # Log per-reader counts at INFO, per-tag details at DEBUG
             if detected_tags:
-                self.logger.info(f"{reader.reader_id}: {len(detected_tags)} tags detected")
+                self.logger.info("%s: %d tags detected", reader.reader_id, len(detected_tags))
                 for tag_id in detected_tags:
                     tag_info = reader.get_tag_info(tag_id)
                     if tag_info:
-                        self.logger.info(f"  - Tag: {tag_id} (RSSI: {tag_info.rssi})")
+                        # Keep strongest RSSI per tag across readers
+                        prev = best_tag_info_map.get(tag_id)
+                        if prev is None or tag_info.rssi > prev.rssi:
+                            best_tag_info_map[tag_id] = tag_info
+                        self.logger.debug("  - Tag: %s (RSSI: %s)", tag_id, tag_info.rssi)
             else:
-                self.logger.info(f"{reader.reader_id}: No tags detected")
+                self.logger.info("%s: No tags detected", reader.reader_id)
+
+        # Expose last cycle's best tag map for downstream consumers (e.g., CartManager)
+        try:
+            self.last_tag_info_map = best_tag_info_map  # type: ignore[attr-defined]
+        except Exception:
+            pass
         
         return results
     
