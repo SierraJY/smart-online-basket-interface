@@ -63,8 +63,10 @@ services:
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: monitor-postgres-exporter
+    env_file:
+      - .env
     environment:
-      DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@sobi-db:5432/${POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@sobi-db:5432/${POSTGRES_DB}?sslmode=disable"
     networks:
       - sobi-net
 
@@ -80,8 +82,9 @@ services:
     image: nginx/nginx-prometheus-exporter:0.11.0
     container_name: monitor-nginx-exporter
     command:
-      - "-nginx.scrape-uri"
-      - "http://sobi-nginx:80/stub_status"
+      - "-nginx.scrape-uri=http://sobi-nginx/stub_status"
+    depends_on:
+      - sobi-nginx
     networks:
       - sobi-net
 
