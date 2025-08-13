@@ -39,6 +39,10 @@ dependencies {
 	// mqtt 의존성 추가
 	implementation 'org.springframework.integration:spring-integration-mqtt'
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
+
+	// Prometheus 의존성 추가
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 }
 
 tasks.named('test') {
