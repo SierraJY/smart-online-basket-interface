@@ -47,7 +47,7 @@ export default function SearchButton() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-72"
+            className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-24"
             onClick={handleBackdropClick}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

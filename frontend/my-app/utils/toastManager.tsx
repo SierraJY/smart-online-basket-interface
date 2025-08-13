@@ -35,9 +35,14 @@ const defaultConfig: ToastConfig = {
   position: 'top-center',
   duration: 3000,
   style: {
-    background: 'var(--footer-background)',
-    color: 'var(--foreground)',
+    background: 'var(--sobi-green)',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '10px 16px',
     border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
   },
 };
 
@@ -48,12 +53,14 @@ const successConfig: ToastConfig = {
   position: 'top-center',
   duration: 3000,
   style: {
-    background: '#10b981',
+    background: 'var(--sobi-green)',
     color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
-    padding: '12px 16px',
-    minWidth: '280px',
+    padding: '10px 16px',
+    border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
   },
 };
 
@@ -69,6 +76,9 @@ const favoriteConfig: ToastConfig = {
     fontSize: '14px',
     fontWeight: '500',
     padding: '10px 16px',
+    border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
   },
 };
 
@@ -79,13 +89,14 @@ const authConfig: ToastConfig = {
   position: 'top-center',
   duration: 2000,
   style: {
-    background: '#ffffff',
-    color: '#333333',
+    background: 'var(--sobi-green)',
+    color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
     padding: '10px 16px',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--footer-border)',
     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
   },
 };
 
@@ -100,9 +111,46 @@ const basketConfig: ToastConfig = {
     color: '#fff',
     fontSize: '14px',
     fontWeight: '500',
-    padding: '6px 10px',
+    padding: '10px 16px',
+    border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
     borderRadius: '100px',
-    boxShadow: '0 4px 12px rgba(66, 184, 131, 0.3)',
+  },
+};
+
+/**
+ * 결제용 toast 설정
+ */
+const paymentConfig: ToastConfig = {
+  position: 'top-center',
+  duration: 2000,
+  style: {
+    background: 'var(--sobi-green)',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '10px 16px',
+    border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
+  },
+};
+
+/**
+ * sse용 toast 설정
+ */
+const SSEConfig: ToastConfig = {
+  position: 'top-center',
+  duration: 2000,
+  style: {
+    background: 'var(--sobi-green)',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '10px 16px',
+    border: '1px solid var(--footer-border)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    borderRadius: '100px',
   },
 };
 
@@ -169,8 +217,16 @@ class ToastManager {
    * 찜 목록에 추가 완료 toast
    */
   static favoriteAdded(config?: ToastConfig) {
-    const finalConfig = { ...favoriteConfig, ...config };
-    return toast.success('찜 목록에 추가되었습니다', finalConfig);
+    const finalConfig = { 
+      ...favoriteConfig, 
+      ...config,
+      style: {
+        ...favoriteConfig.style,
+        ...config?.style,
+        animation: 'bounce-in 0.6s ease-out'
+      }
+    };
+    return toast.success('찜 목록에 추가되었습니다!', finalConfig);
   }
 
   /**
@@ -216,7 +272,7 @@ class ToastManager {
    */
   static logoutSuccess(userId?: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };
-    const defaultMessage = userId ? `${userId}님 다음에 또 뵈요!` : '로그아웃되었습니다';
+    const defaultMessage = userId ? `${userId}님 다음에 또 봐요~` : '로그아웃되었습니다';
     return toast(defaultMessage, finalConfig);
   }
 
@@ -234,7 +290,7 @@ class ToastManager {
    */
   static basketInUse(config?: ToastConfig) {
     const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('장바구니를 사용 중입니다. 먼저 결제를 완료하거나 연결을 해제해주세요.', finalConfig);
+    return toast.error('SOBI를 사용 중입니다! 먼저 결제를 완료하거나 연결을 해제해주세요', finalConfig);
   }
 
   /**
@@ -247,15 +303,15 @@ class ToastManager {
    * 장바구니 활성화 진행 중 toast
    */
   static basketActivationPending(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('장바구니 활성화가 진행 중입니다. 잠시 후 다시 시도해주세요.', finalConfig);
+    const finalConfig = { ...basketConfig, ...config };
+    return toast.error('SOBI 활성화가 진행 중입니다! 잠시 후 다시 시도해주세요', finalConfig);
   }
 
   /**
    * 장바구니 이미 연결됨 toast
    */
   static basketAlreadyConnected(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...basketConfig, ...config };
     return toast.success('이미 연결되어 있습니다!', { ...finalConfig, duration: 2000 });
   }
 
@@ -263,7 +319,7 @@ class ToastManager {
    * 장바구니 재연결 중 toast
    */
   static basketReconnecting(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...basketConfig, ...config };
     return toast.loading('재연결 중...', { ...finalConfig, id: 'reconnect', duration: 5000 });
   }
 
@@ -271,24 +327,24 @@ class ToastManager {
    * 장바구니 연결 실패 toast
    */
   static basketConnectionFailed(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('연결에 실패했습니다. 다시 시도해주세요.', finalConfig);
+    const finalConfig = { ...basketConfig, ...config };
+    return toast.error('연결에 실패했습니다! 다시 시도해주세요.', finalConfig);
   }
 
   /**
    * 장바구니 사용 시 로그인 필요 toast
    */
   static basketLoginRequired(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('로그인이 필요합니다.', finalConfig);
+    const finalConfig = { ...basketConfig, ...config };
+    return toast.error('SOBI를 사용하기 위해선 로그인이 필요합니다!', finalConfig);
   }
 
   /**
    * 장바구니 비어있음 toast
    */
   static basketEmpty(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('장바구니가 비어있습니다.', finalConfig);
+    const finalConfig = { ...basketConfig, ...config };
+    return toast.error('SOBI가 비어있습니다', finalConfig);
   }
 
   /**
@@ -301,7 +357,7 @@ class ToastManager {
    * 결제 처리 중 toast
    */
   static basketCheckoutProcessing(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...paymentConfig, ...config };
     return toast.loading('결제 처리 중...', { ...finalConfig, id: 'checkout' });
   }
 
@@ -309,7 +365,7 @@ class ToastManager {
    * 결제 완료 성공 toast
    */
   static basketCheckoutSuccess(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...paymentConfig, ...config };
     return toast.success('결제가 완료되었습니다!', { ...finalConfig, id: 'checkout' });
   }
 
@@ -317,7 +373,7 @@ class ToastManager {
    * 결제 중 데이터베이스 오류 toast
    */
   static basketCheckoutDatabaseError(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...paymentConfig, ...config };
     return toast.error('결제 처리 중 데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', { ...finalConfig, id: 'checkout' });
   }
 
@@ -325,7 +381,7 @@ class ToastManager {
    * 결제 실패 toast
    */
   static basketCheckoutFailed(errorMessage: string, config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...paymentConfig, ...config };
     return toast.error(`결제 실패: ${errorMessage}`, { ...finalConfig, id: 'checkout' });
   }
 
@@ -333,7 +389,7 @@ class ToastManager {
    * 결제 네트워크 오류 toast
    */
   static basketCheckoutNetworkError(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...paymentConfig, ...config };
     return toast.error('결제 요청 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', { ...finalConfig, id: 'checkout' });
   }
 
@@ -344,50 +400,50 @@ class ToastManager {
    */
 
   /**
-   * 연결 해제 기능 준비 중 toast
-   */
-  static basketDisconnectPreparing(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast('연결 해제 기능은 준비 중입니다.', { ...finalConfig, duration: 3000 });
-  }
-
-  /**
    * 연결 해제 시 장바구니 비우기 필요 toast
    */
   static basketDisconnectRequiresEmpty(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('연결 해제를 위해선 장바구니를 비워주세요', { ...finalConfig, duration: 3000 });
+    const finalConfig = { 
+      ...SSEConfig, 
+      ...config,
+      style: {
+        ...SSEConfig.style,
+        ...config?.style,
+        animation: 'shake-intense 0.5s ease-in-out'
+      }
+    };
+    return toast.error('연결 해제 전에 SOBI를 먼저 비워주세요!', { ...finalConfig, duration: 3000 });
   }
 
   /**
    * 장바구니 연결 해제 처리 중 toast
    */
   static basketCancelProcessing(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.loading('장바구니 연결을 해제하는 중...', { ...finalConfig, id: 'basket-cancel' });
+    const finalConfig = { ...SSEConfig, ...config };
+    return toast.loading('SOBI 연결을 해제하는 중...', { ...finalConfig, id: 'basket-cancel' });
   }
 
   /**
    * 장바구니 연결 해제 성공 toast
    */
   static basketCancelSuccess(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.success('장바구니 연결이 해제되었습니다.', { ...finalConfig, id: 'basket-cancel' });
+    const finalConfig = { ...SSEConfig, ...config };
+    return toast.success('SOBI 연결이 해제되었습니다.', { ...finalConfig, id: 'basket-cancel' });
   }
 
   /**
    * 장바구니 연결 해제 실패 toast
    */
   static basketCancelFailed(message: string, config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
-    return toast.error(`장바구니 연결 해제 실패: ${message}`, { ...finalConfig, id: 'basket-cancel' });
+    const finalConfig = { ...SSEConfig, ...config };
+    return toast.error(`SOBI 연결 해제 실패: ${message}`, { ...finalConfig, id: 'basket-cancel' });
   }
 
   /**
    * 장바구니 연결 해제 네트워크 오류 toast
    */
   static basketCancelNetworkError(config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...SSEConfig, ...config };
     return toast.error('연결 해제 요청 중 오류가 발생했습니다. 네트워크 연결을 확인해주세요.', { ...finalConfig, id: 'basket-cancel' });
   }
 
@@ -401,7 +457,7 @@ class ToastManager {
    * SSE 인증 오류 toast
    */
   static sseAuthError(message: string, config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...SSEConfig, ...config };
     return toast.error(`${message} 로그인 페이지로 이동하세요.`, { ...finalConfig, duration: 5000 });
   }
 
@@ -409,7 +465,7 @@ class ToastManager {
    * SSE 타임아웃 오류 toast
    */
   static sseTimeoutError(message: string, config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...SSEConfig, ...config };
     return toast.error(message, { ...finalConfig, duration: 4000 });
   }
 
@@ -417,7 +473,7 @@ class ToastManager {
    * SSE 일반 오류 toast
    */
   static sseGeneralError(message: string, config?: ToastConfig) {
-    const finalConfig = { ...defaultConfig, ...config };
+    const finalConfig = { ...SSEConfig, ...config };
     return toast.error(message, { ...finalConfig, duration: 3000 });
   }
 
@@ -484,16 +540,16 @@ class ToastManager {
           textAlign: 'left'
         }}>
           <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '2px' }}>
-            장바구니에 추가되었습니다
+            SOBI에 새로운 상품이 추가되었습니다!
           </div>
-          <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400' }}>
+          <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '300' }}>
             {productName}
           </div>
         </div>
       </div>
     );
     
-    return toast.success(toastContent, finalConfig);
+    return toast(toastContent, finalConfig);
   }
 
 
