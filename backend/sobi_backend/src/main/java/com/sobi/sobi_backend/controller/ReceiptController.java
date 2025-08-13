@@ -7,6 +7,13 @@ import com.sobi.sobi_backend.entity.Product;
 import com.sobi.sobi_backend.service.ReceiptService;
 import com.sobi.sobi_backend.service.ProductService;
 import com.sobi.sobi_backend.config.filter.JwtAuthenticationFilter;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +30,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/receipts") // /api/receipts로 시작하는 모든 요청 처리
+@Tag(name = "7. Receipt", description = "영수증 관리 API - 구매 기록 조회")
 public class ReceiptController {
 
     @Autowired
@@ -35,6 +43,85 @@ public class ReceiptController {
 
     // 내 구매 기록 전체 조회 (GET /api/receipts/my)
     @GetMapping("/my")
+    @Operation(
+            summary = "내 구매 기록 조회",
+            description = "현재 로그인한 사용자의 모든 구매 기록을 최신순으로 조회합니다. 구매한 상품 정보와 수량이 포함됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "구매 기록 조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "구매 기록 조회 완료",
+                      "customerId": 1,
+                      "count": 2,
+                      "receipts": [
+                        {
+                          "id": 123,
+                          "purchasedAt": "2024-12-30T15:30:00",
+                          "purchasedProducts": [
+                            {
+                              "product": {
+                                "id": 1,
+                                "name": "[12brix 당도선별] 고당도 프리미엄 복숭아 4kg 8-12과",
+                                "price": 15000,
+                                "discountRate": 10,
+                                "discountedPrice": 13500
+                              },
+                              "quantity": 2
+                            },
+                            {
+                              "product": {
+                                "id": 3,
+                                "name": "미국산 냉동 블루베리 1.5kg 봉",
+                                "price": 12000,
+                                "discountRate": 0,
+                                "discountedPrice": 12000
+                              },
+                              "quantity": 1
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패 - 로그인 필요",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "로그인이 필요합니다"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "구매 기록 조회 중 오류가 발생했습니다: Database connection failed"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<?> getMyReceipts(Authentication authentication) {
         try {
             System.out.println("내 구매 기록 조회 요청");

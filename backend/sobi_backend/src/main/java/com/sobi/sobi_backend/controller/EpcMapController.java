@@ -2,6 +2,15 @@ package com.sobi.sobi_backend.controller;
 
 import com.sobi.sobi_backend.entity.EpcMap;
 import com.sobi.sobi_backend.service.EpcMapService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +22,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/epc-maps") // /api/epc-maps로 시작하는 모든 요청 처리
+@Tag(name = "8. EPC Map", description = "RFID/EPC 매핑 API - RFID 태그 스캔으로 상품 식별")
 public class EpcMapController {
 
     @Autowired
@@ -20,7 +30,84 @@ public class EpcMapController {
 
     // RFID 스캔으로 상품 조회 (GET /api/epc-maps/scan/{epcPattern})
     @GetMapping("/scan/{epcPattern}")
-    public ResponseEntity<?> scanProduct(@PathVariable String epcPattern) {
+    @Operation(
+            summary = "RFID 스캔으로 상품 조회",
+            description = "RFID 태그의 EPC 패턴을 스캔하여 해당 상품 정보를 조회합니다. 바구니에서 상품 추가/제거 시 사용됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "RFID 스캔 성공 - 상품 식별됨",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "RFID 스캔 성공 - 상품 식별됨",
+                      "epcMap": {
+                        "id": 1,
+                        "productId": 1,
+                        "epcPattern": "PCH4"
+                      }
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "RFID 스캔 실패 - 등록되지 않은 EPC 패턴",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Map.class),
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "message": "등록되지 않은 EPC 패턴입니다",
+                      "epcMap": null
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 - EPC 패턴 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "EPC 패턴을 입력해주세요"
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "서버 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                      "error": "RFID 스캔 처리 중 오류가 발생했습니다: Database connection failed"
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @SecurityRequirement(name = "")
+    public ResponseEntity<?> scanProduct(
+            @Parameter(
+                    description = "스캔된 RFID 태그의 EPC 패턴 (4글자 상품 타입 식별자)",
+                    example = "PCH4",
+                    required = true
+            )
+            @PathVariable String epcPattern) {
         try {
             System.out.println("RFID 스캔 요청: " + epcPattern);
 
