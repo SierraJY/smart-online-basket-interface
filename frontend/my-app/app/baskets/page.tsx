@@ -2,11 +2,11 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBasketId, useActivatedBasketId, useBasketData, useBasketStore, useSetHasNewItems } from '@/store/useBasketStore';
 import { useAuth } from '@/utils/hooks/useAuth';
 import { useActivateBasket } from '@/utils/hooks/useActivateBasket';
@@ -127,6 +127,139 @@ export default function BasketsPage() {
       console.log("[BasketsPage] 새로운 상품 알림 해제");
     }
   }, [uiStarted, setHasNewItems]);
+
+  // 상품 선택 상태 관리
+  const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
+
+  // 상품 클릭 핸들러
+  const handleProductClick = (productId: number) => {
+    if (selectedProduct === productId) {
+      // 두 번째 클릭 - 상세 페이지로 이동
+      router.push(`/products/${productId}`);
+    } else {
+      // 첫 번째 클릭 - 말풍선 표시
+      setSelectedProduct(productId);
+    }
+  };
+
+  // 외부 클릭 시 말풍선 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.product-card') && selectedProduct) {
+        setSelectedProduct(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [selectedProduct]);
+
+  // 말풍선 컴포넌트
+  const ProductTooltip = ({ product }: { product: Product; quantity: number; totalPrice: number }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isScrolling, setIsScrolling] = useState(false);
+    const [scrollDistance, setScrollDistance] = useState(0);
+
+    useEffect(() => {
+      const checkTextOverflow = () => {
+        if (textRef.current && containerRef.current) {
+          const textWidth = textRef.current.scrollWidth;
+          const containerWidth = containerRef.current.clientWidth;
+          
+          if (textWidth > containerWidth) {
+            setScrollDistance(textWidth - containerWidth + 10);
+            setTimeout(() => {
+              setIsScrolling(true);
+            }, 1000);
+          }
+        }
+      };
+
+      checkTextOverflow();
+      window.addEventListener('resize', checkTextOverflow);
+      
+      return () => {
+        window.removeEventListener('resize', checkTextOverflow);
+        setIsScrolling(false);
+      };
+    }, [product.name]);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="absolute -top-20 left-1/2 transform -translate-x-1/2 z-10"
+      >
+        {/* 말풍선 */}
+        <div 
+          className="px-4 py-3 rounded-2xl text-sm font-medium whitespace-nowrap min-w-[100px] max-w-[140px]"
+          style={{
+            background: 'var(--footer-background)',
+            border: '1px solid var(--footer-border)',
+            backdropFilter: 'blur(10px) saturate(140%)',
+            color: 'var(--foreground)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)'
+          }}
+        >
+          {/* 상품명 - 스크롤 가능 */}
+          <div 
+            ref={containerRef}
+            className="overflow-hidden whitespace-nowrap mb-1"
+          >
+            <motion.div
+              ref={textRef}
+              animate={{ 
+                x: isScrolling ? [-scrollDistance, 0] : 0 
+              }}
+              transition={{
+                duration: isScrolling ? scrollDistance / 30 : 0,
+                repeat: isScrolling ? Infinity : 0,
+                repeatType: "reverse",
+                repeatDelay: 1,
+                ease: "linear"
+              }}
+              className="text-sm font-semibold text-[var(--foreground)] inline-block"
+            >
+              {product.name}
+            </motion.div>
+          </div>
+          
+                     {/* 개별 가격 */}
+           {product.discountRate > 0 ? (
+             <div className="flex items-center justify-center gap-2 text-center">
+               <span className="text-[11px] text-gray-400 line-through opacity-70">
+                 {product.price?.toLocaleString?.() || product.price}원
+               </span>
+               <span className="text-sm text-red-600 font-bold">
+                 {Math.floor(product.price * (1 - product.discountRate / 100)).toLocaleString()}원
+               </span>
+             </div>
+           ) : (
+             <div className="text-sm text-[var(--sobi-green)] font-bold text-center">
+               {product.price?.toLocaleString?.() || product.price}원
+             </div>
+           )}
+        </div>
+        
+        {/* 말풍선 화살표 */}
+        <div 
+          className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0"
+          style={{
+            borderLeft: '8px solid transparent',
+            borderRight: '8px solid transparent',
+            borderTop: `8px solid var(--footer-background)`,
+            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+          }}
+        />
+      </motion.div>
+    );
+  };
   
   // SSE 에러 발생 시 토스트 알림 (단순화)
   useEffect(() => {
@@ -333,7 +466,7 @@ export default function BasketsPage() {
         </div>
         
         <div className="relative z-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
         </div>
@@ -635,7 +768,7 @@ export default function BasketsPage() {
           <div className="mt-3">
             {sseStatus === 'connecting' && (
               <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                 연결 중...
               </div>
             )}
@@ -660,7 +793,7 @@ export default function BasketsPage() {
             )}
             {sseStatus === 'connecting' && (
               <div className="flex items-center justify-center gap-2 text-sm text-orange-600">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                 연결 중...
               </div>
             )}
@@ -856,7 +989,7 @@ export default function BasketsPage() {
             >
               {sseStatus === 'connecting' ? (
                 <>
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                   연결 중...
                 </>
               ) : sseStatus === 'connected' ? (
@@ -921,8 +1054,7 @@ export default function BasketsPage() {
         )}
 
         {uiStarted && (
-        <div className="p-4 rounded-lg shadow-sm mb-4"
-        >
+        <div className="p-4 rounded-lg shadow-sm mb-4">
           <h2 className="text-lg font-semibold mb-4 flex items-center">
             상품 목록
           </h2>
@@ -934,55 +1066,98 @@ export default function BasketsPage() {
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>상품을 장바구니에 담아보세요!</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {validItems.map((item: BasketItem) => (
-                item.product && (
-                  <div key={item.product.id} className="flex items-center p-3 rounded-lg hover:shadow-sm transition-all"
-                  >
-                    <Link href={`/products/${item.product.id}`} className="flex-shrink-0">
-                      <Image
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
-                        width={64}
-                        height={64}
-                        className="w-16 h-16 object-cover rounded-lg bg-white dark:bg-gray-600 hover:opacity-80 transition-opacity cursor-pointer"
-                      />
-                    </Link>
-                    <div className="flex-1 ml-4 min-w-0">
-                      <Link href={`/products/${item.product.id}`} className="block hover:opacity-80 transition-opacity">
-                        <h3 className="font-semibold text-lg truncate cursor-pointer">{item.product.name}</h3>
-                      </Link>
-                      <p className="text-base mt-1" style={{ color: 'var(--text-secondary)' }}>
-                      {(item.totalPrice || 0).toLocaleString()}원 x {item.quantity}개
-                      </p>
-                      
-                      {/* 태그 */}
-                      {item.product.tag && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {item.product.tag.split(' ').slice(0, 2).map((tag: string, index: number) => (
-                            <span
-                              key={index}
-                              className="text-xs px-2 py-1 rounded-full"
-                              style={{
-                                backgroundColor: 'var(--sobi-green-light)',
-                                color: 'var(--sobi-green)',
-                                border: '1px solid var(--sobi-green-border)',
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
+            <div className="w-full max-w-4xl px-4">
+              <div className="grid grid-cols-3 gap-3 md:gap-4">
+                {validItems.map((item: BasketItem) => (
+                  item.product && (
+                    <div
+                      key={item.product.id}
+                      className="relative flex flex-col items-center"
+                      style={{ minHeight: '100px' }}
+                    >
+                      {/* 말풍선 표시 */}
+                      <AnimatePresence>
+                        {selectedProduct === item.product.id && (
+                          <ProductTooltip product={item.product} quantity={item.quantity} totalPrice={item.totalPrice} />
+                        )}
+                      </AnimatePresence>
+
+                      {/* 상품 카드 */}
+                      <motion.div
+                        className="relative cursor-pointer group product-card"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        animate={{ 
+                          scale: selectedProduct === item.product.id ? 1.1 : 1,
+                        }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => item.product && handleProductClick(item.product.id)}
+                      >
+                        {/* 원형 상품 이미지 */}
+                        <div className="relative">
+                          <Image
+                            src={item.product.imageUrl}
+                            alt={item.product.name}
+                            width={80}
+                            height={80}
+                            className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-full shadow-lg group-hover:shadow-xl transition-shadow duration-300"
+                            style={{ 
+                              backgroundColor: 'var(--input-background)',
+                              border: selectedProduct === item.product.id ? '3px solid var(--sobi-green)' : '2px solid transparent'
+                            }}
+                            priority
+                          />
+
+                          {/* 할인 배지 */}
+                          {item.product.discountRate > 0 && (
+                            <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full shadow-lg z-10">
+                              {item.product.discountRate}%
+                            </div>
+                          )}
+
+                          {/* 수량 표시 - 좌측 상단 */}
+                          <div className="absolute -top-2 -left-2 bg-[var(--sobi-green)] text-white text-sm font-bold px-2 py-1 rounded-full shadow-lg z-10 min-w-[24px] text-center">
+                            {item.quantity}개
+                          </div>
+
+                          {/* 선택된 상태 흐림 효과 */}
+                          {selectedProduct === item.product.id && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="absolute inset-0 rounded-full backdrop-blur-sm border-2 border-[var(--sobi-green)]"
+                              style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                            />
+                          )}
                         </div>
-                      )}
+
+                        {/* 총액 표시 */}
+                        <div className="mt-3 text-center">
+                          <div className="font-bold text-base" style={{ color: 'var(--sobi-green)' }}>
+                            총 {(item.totalPrice || 0).toLocaleString()}원
+                          </div>
+                        </div>
+
+                        {/* 호버 시 간단한 정보 표시 (말풍선이 없을 때만) */}
+                        {selectedProduct !== item.product.id && (
+                          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="text-xs text-center text-[var(--text-secondary)] whitespace-nowrap">
+                              클릭해서 정보 보기
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
                     </div>
-                    <div className="text-right ml-4 flex-shrink-0">
-                      <div className="font-bold text-xl" style={{ color: 'var(--sobi-green)' }}>
-                        {(item.totalPrice || 0).toLocaleString()}원
-                      </div>
-                    </div>
-                  </div>
-                )
-              ))}
+                  )
+                ))}
+              </div>
+
+              {/* 클릭 안내 메시지 */}
+              <div className="text-center mt-8 text-sm text-[var(--text-secondary)]">
+                <div className="mb-1">상품을 <span className="text-[var(--sobi-green)] font-semibold">한 번 클릭</span>하면 정보를 볼 수 있어요</div>
+                <div><span className="text-[var(--sobi-green)] font-semibold">두 번 클릭</span>하면 상세 페이지로 이동합니다</div>
+              </div>
             </div>
           )}
         </div>

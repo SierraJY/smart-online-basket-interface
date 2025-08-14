@@ -311,7 +311,7 @@ export default function Home() {
           color: 'var(--foreground)' 
         }}
     >
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">메인 페이지로 이동 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
@@ -336,7 +336,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen py-6 flex flex-col items-center"
+    <main className="pb-28 min-h-screen py-6 flex flex-col items-center"
       style={{ 
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)',

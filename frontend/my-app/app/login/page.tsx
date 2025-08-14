@@ -176,7 +176,7 @@ const handleModalSignup = () => {
             >
               {loginLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                   로그인 중...
                 </div>
               ) : "로그인"}

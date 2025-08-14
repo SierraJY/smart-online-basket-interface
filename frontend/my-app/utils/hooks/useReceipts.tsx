@@ -38,6 +38,8 @@ interface ReceiptItem {
   productId: number;
   productName: string;
   productPrice: number;
+  originalPrice: number;
+  discountRate: number;
   quantity: number;
   totalPrice: number;
   imageUrl: string;
