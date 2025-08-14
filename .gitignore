@@ -37,3 +37,5 @@ Thumbs.db
 # json 파일 모두 무시
 *.json
 
+# 특정 파일은 다시 추적
+!/frontend/sobi-front/package.json
