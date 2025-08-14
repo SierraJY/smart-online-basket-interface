@@ -39,4 +39,3 @@ Thumbs.db
 
 # 모니터링 관련 환경변수
 monitoring/.env
-monitoring/prometheus.yml
