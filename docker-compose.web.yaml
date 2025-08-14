@@ -34,7 +34,7 @@ services:
       - JPA_DDL_AUTO=update
       - JPA_OPEN_IN_VIEW=false
       - JWT_SECRET=sobi_b103_103b_park_yang_yang_hwang_kim_jjang_jjang
-      - MQTT_BROKER_URL=tcp://172.26.6.236:1883
+      - MQTT_BROKER_URL=tcp://mqtt:1883
       - BASKET_CACHE_TTL_SECONDS=7200
       - REDIS_HOST=redis
       - REDIS_PORT=6379
