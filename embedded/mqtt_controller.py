@@ -82,7 +82,7 @@ def run_rfid_system(stop_event):
         )
         
         # Configure readers with default settings
-        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=10, channel_index=1)
+        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=12, channel_index=1)
         
         # Create cart manager
         cart_manager = CartManager(
