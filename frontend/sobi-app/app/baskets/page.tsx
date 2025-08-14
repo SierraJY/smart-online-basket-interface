@@ -73,7 +73,7 @@ export default function BasketsPage() {
         } catch (e) {
           console.warn('[BasketsPage] 활성화 실패 시 정리 중 경고:', e);
         }
-        setActivateError('장바구니 활성화 실패! QR을 다시 찍어주세요.');
+        setActivateError('SOBI 활성화 실패! QR을 다시 찍어주세요.');
         router.replace('/scan');
       }
     });
@@ -428,7 +428,7 @@ export default function BasketsPage() {
         <div className="relative z-10">
           <AlertCircle className="block mx-auto w-12 h-12 text-red-500 mb-4" />
           <h2 className="text-lg font-semibold mb-2 text-center">로그인이 필요합니다</h2>
-          <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>장바구니를 사용하려면 먼저 로그인해주세요.</p>
+          <p className="text-sm text-center mb-6" style={{ color: 'var(--text-secondary)' }}>SOBI를 사용하려면 먼저 로그인해주세요.</p>
           <button 
             className="w-full max-w-xs py-3 px-6 rounded-lg shadow-sm hover:opacity-80 transition-all"
             style={{
@@ -467,7 +467,7 @@ export default function BasketsPage() {
         
         <div className="relative z-10">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <h2 className="text-lg font-semibold mb-2">장바구니 활성화 중...</h2>
+          <h2 className="text-lg font-semibold mb-2">SOBI 활성화 중...</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
         </div>
       </main>
@@ -765,45 +765,63 @@ export default function BasketsPage() {
       <div className="w-full max-w-3xl pt-8 relative z-10">
         <div className="text-center mb-8">
           {/* SSE 연결 상태 표시 */}
-          <div className="mt-3">
+          <div className="mt-3 flex items-center justify-center gap-4">
             {sseStatus === 'connecting' && (
-              <div className="flex items-center justify-center gap-2 text-sm text-blue-600">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
                 연결 중...
               </div>
             )}
             {sseStatus === 'connected' && (
-              <div className="flex items-center justify-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm text-green-600">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 연결됨
               </div>
             )}
             {sseStatus === 'error' && (
-              <div className="flex flex-col items-center justify-center gap-1">
-                <div className="flex items-center gap-2 text-sm text-red-600">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  연결 오류 발생
-                </div>
-                {sseError && (
-                  <div className="text-xs text-red-500 max-w-md text-center">
-                    {sseError.message}
-                  </div>
-                )}
-              </div>
-            )}
-            {sseStatus === 'connecting' && (
-              <div className="flex items-center justify-center gap-2 text-sm text-orange-600">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
-                연결 중...
+              <div className="flex items-center gap-2 text-sm text-red-600">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                연결 오류 발생
               </div>
             )}
             {sseStatus === 'disconnected' && (
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-gray-500">
                 <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
                 연결 끊김
               </div>
             )}
+            
+            {/* 재연결 버튼 */}
+            {uiStarted && (
+              <button 
+                onClick={handleStartBasket}
+                disabled={sseStatus === 'connecting'}
+                className="inline-flex items-center justify-center gap-2 py-1 px-3 text-xs font-medium rounded-full shadow-sm hover:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'var(--sobi-green-light)',
+                  color: 'var(--sobi-green)',
+                  border: '1px solid var(--sobi-green-border)',
+                }}
+              >
+                {sseStatus === 'connecting' ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-500"></div>
+                    연결 중...
+                  </>
+                ) : (
+                  '재연결'
+                )}
+              </button>
+            )}
+
           </div>
+          
+          {/* 에러 메시지 (별도 표시) */}
+          {sseStatus === 'error' && sseError && (
+            <div className="text-xs text-red-500 max-w-md text-center mt-2">
+              {sseError.message}
+            </div>
+          )}
         </div>
 
         {/* 초기 진입: 중앙 원형 버튼 */}
@@ -968,48 +986,19 @@ export default function BasketsPage() {
               className="mt-4 text-center"
             >
               <p className="text-base font-medium" style={{ color: 'var(--text-secondary)' }}>
-                버튼을 눌러 스마트 장바구니와 함께<br /> 편리한 쇼핑을 시작하세요!
+                버튼을 눌러 SOBI와 함께<br /> 편리한 쇼핑을 시작하세요!
               </p>
             </motion.div>
           </div>
         )}
 
-        {/* 시작 이후: 상단 재연결 버튼 */}
-        {uiStarted && (
-          <div className="text-center mb-2">
-            <button 
-              onClick={handleStartBasket}
-              disabled={sseStatus === 'connecting'}
-              className="w-full max-w-xs inline-flex items-center justify-center gap-3 py-3 px-6 text-base font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: 'var(--sobi-green-light)',
-                color: 'var(--sobi-green)',
-                border: '1px solid var(--sobi-green-border)',
-              }}
-            >
-              {sseStatus === 'connecting' ? (
-                <>
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
-                  연결 중...
-                </>
-              ) : sseStatus === 'connected' ? (
-                '장바구니 재연결'
-              ) : (
-                '장바구니 연결'
-              )}
-            </button>
-          </div>
-        )}
+
 
         {uiStarted && (
         <div className="mb-3 p-3 rounded-lg">
           <div className="flex justify-center items-center gap-8 mb-1">
-            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
-              <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{basket?.totalCount || 0}</span>개 품목
-            </span>
-            <span className="text-[18px]" style={{ color: 'var(--text-secondary)' }}>
-              총 상품 <span style={{ color: 'var(--sobi-green)', fontWeight: 'bold' }}>{validItems.reduce((sum, item) => sum + item.quantity, 0)}개</span>
-            </span>
+            <span className="text-[24px]" style={{ color: 'var(--text-secondary)' }}>총 상품</span>
+            <span className="text-[28px] font-bold" style={{ color: 'var(--sobi-green)' }}>{validItems.reduce((sum, item) => sum + item.quantity, 0)}개</span>
           </div>
           <div className="flex justify-center items-center gap-8 p-2 rounded-lg">
             <span className="text-[24px]" style={{ color: 'var(--text-secondary)' }}>총 결제금액</span>
@@ -1062,8 +1051,8 @@ export default function BasketsPage() {
           {(basket?.items || []).length === 0 ? (
             <div className="text-center py-8">
               <ShoppingBasket className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-base" style={{ color: 'var(--text-secondary)' }}>장바구니에 담긴 상품이 없습니다.</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>상품을 장바구니에 담아보세요!</p>
+              <p className="text-base" style={{ color: 'var(--text-secondary)' }}>SOBI에 담긴 상품이 없습니다.</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>상품을 SOBI에 담아보세요!</p>
             </div>
           ) : (
             <div className="w-full max-w-4xl px-4">
@@ -1167,13 +1156,13 @@ export default function BasketsPage() {
         <div className="p-4 rounded-lg shadow-sm mb-4"
         >
           <h2 className="text-lg font-semibold mb-4 flex items-center">
-            AI 추천 상품
+            SOBI AI 추천 상품
           </h2>
           
           {recommendations.length > 0 ? (
             <>
               <p className="text-sm mb-3 text-center" style={{ color: 'var(--text-secondary)' }}>
-                AI가 당신의 장바구니를 분석해서 추천하는 상품들입니다! 실시간으로 업데이트됩니다
+                SOBIAI가 당신의 SOBI를 분석해서 추천한 상품이며 실시간으로 변화합니다
               </p>
               
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
@@ -1283,7 +1272,7 @@ export default function BasketsPage() {
               </div>
               <h3 className="text-base font-semibold mb-1">AI 추천 상품</h3>
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                장바구니에 상품을 담으면 추천 상품이 나옵니다!
+                SOBI에 상품을 담으면 추천 상품이 나옵니다!
               </p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                 AI가 사용자의 구매 패턴을 분석해서 맞춤 상품을 추천해드려요
