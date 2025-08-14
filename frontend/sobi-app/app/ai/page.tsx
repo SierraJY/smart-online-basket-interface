@@ -843,7 +843,7 @@ export default function AIPage() {
       
       <div className="w-full max-w-4xl pt-16 relative z-10">
 
-        {/* 헤더 */}
+        {/* SOBI 로고 */}
         <motion.div 
           className="text-center mb-8"
           initial={{ opacity: 0, y: -30 }}
@@ -853,14 +853,270 @@ export default function AIPage() {
             ease: "easeOut"
           }}
         >
-          <h1 className="text-3xl font-bold mb-2">
-            {basketRecommendations.length > 0 ? '장바구니 맞춤 추천' : 'AI 추천 상품'}
-          </h1>
+          <div className="text-[65px] flex justify-center items-center mb-4">
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: -28,
+                x: [0, -2, 2, -1, 0],
+                y: [0, -1, 1, -0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.5, 
+                  repeat: Infinity, 
+                  repeatDelay: 8,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.5, 
+                  repeat: Infinity, 
+                  repeatDelay: 8,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.6,
+                rotate: -8,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.5,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              S
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: 25,
+                x: [0, 2, -2, 1, 0],
+                y: [0, 1, -1, 0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.4, 
+                  repeat: Infinity, 
+                  repeatDelay: 10,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.4, 
+                  repeat: Infinity, 
+                  repeatDelay: 10,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.6,
+                rotate: -15,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.7,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              O
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: 10,
+                x: [0, -1.5, 1.5, -0.75, 0],
+                y: [0, -0.75, 0.75, -0.375, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.6, 
+                  repeat: Infinity, 
+                  repeatDelay: 12,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.6, 
+                  repeat: Infinity, 
+                  repeatDelay: 12,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.4,
+                rotate: -10,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.3,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              B
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: -13,
+                x: [0, 1.5, -1.5, 0.75, 0],
+                y: [0, -1, 1, -0.5, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.35, 
+                  repeat: Infinity, 
+                  repeatDelay: 9,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.35, 
+                  repeat: Infinity, 
+                  repeatDelay: 9,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.8,
+                rotate: 10,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.6,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              I
+            </motion.span>
+            
+            {/* SOBI와 AI 사이 간격 */}
+            <div className="w-8"></div>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: 12,
+                x: [0, -1.8, 1.8, -0.9, 0],
+                y: [0, 0.8, -0.8, 0.4, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.45, 
+                  repeat: Infinity, 
+                  repeatDelay: 11,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.45, 
+                  repeat: Infinity, 
+                  repeatDelay: 11,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.5,
+                rotate: -5,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.4,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              A
+            </motion.span>
+            
+            <motion.span
+              style={{ 
+                color: 'var(--sobi-green)',
+                fontFamily: 'LOTTERIACHAB, sans-serif',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTextStroke: '1px rgba(0,0,0,0.8)',
+                filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+              }}
+              animate={{ 
+                rotate: -8,
+                x: [0, 1.2, -1.2, 0.6, 0],
+                y: [0, -0.6, 0.6, -0.3, 0]
+              }}
+              transition={{
+                rotate: { duration: 0 },
+                x: { 
+                  duration: 0.55, 
+                  repeat: Infinity, 
+                  repeatDelay: 13,
+                  ease: "easeInOut"
+                },
+                y: { 
+                  duration: 0.55, 
+                  repeat: Infinity, 
+                  repeatDelay: 13,
+                  ease: "easeInOut"
+                }
+              }}
+              whileTap={{
+                scale: 1.7,
+                rotate: 12,
+                color: '#1d783e',
+                transition: {
+                  duration: 0.5,
+                  ease: "easeOut"
+                }
+              }}
+            >
+              I
+            </motion.span>
+          </div>
           <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-            {basketRecommendations.length > 0 
-              ? 'AI가 분석한 맞춤 상품을 확인해보세요' 
-              : '인기 상품들을 둘러보세요'
-            }
+            AI가 분석한 맞춤 상품을 확인해보세요
           </p>
         </motion.div>
 
@@ -899,7 +1155,7 @@ export default function AIPage() {
                 추천할 상품이 없습니다.
               </p>
               <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
-                장바구니에 상품을 담아보세요!
+                SOBI에 상품을 담아보세요!
               </p>
             </motion.div>
           )}
