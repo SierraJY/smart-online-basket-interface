@@ -38,6 +38,17 @@ services:
     networks:
       - sobi-net
 
+  mqtt:
+    image: eclipse-mosquitto:2.0.18
+    container_name: sobi-mqtt
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+    networks:
+      - sobi-net
+
 volumes:
   db_data:
 
