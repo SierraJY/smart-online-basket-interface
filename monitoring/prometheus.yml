@@ -26,6 +26,10 @@ scrape_configs:
     static_configs:
       - targets: ["monitor-redis-exporter:9121"]
 
+  - job_name: mqtt
+    static_configs:
+      - targets: ['monitor-mqtt-exporter:9641']
+
   - job_name: jenkins
     metrics_path: /prometheus
     static_configs:
