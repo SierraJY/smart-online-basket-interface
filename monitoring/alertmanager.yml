@@ -1,8 +1,8 @@
 global:
-  smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: '${ALERT_SMTP_FROM}'
-  smtp_auth_username: '${ALERT_SMTP_USER}'
-  smtp_auth_password: '${ALERT_SMTP_PASS}'
+  smtp_smarthost: smtp.gmail.com:587
+  smtp_from: ${ALERT_SMTP_FROM}
+  smtp_auth_username: ${ALERT_SMTP_USER}
+  smtp_auth_password: ${ALERT_SMTP_PASS}
   smtp_require_tls: true
 
 route:
