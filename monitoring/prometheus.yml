@@ -26,10 +26,10 @@ scrape_configs:
     static_configs:
       - targets: ["monitor-redis-exporter:9121"]
 
-  - job_name: jenkins
+  - job_name: 'jenkins'
     metrics_path: /prometheus
     static_configs:
-      - targets: ["s13p11b103-jenkins-1:8080"]
+      - targets: ['jenkins:8080']
 
   - job_name: sobi-backend
     metrics_path: /actuator/prometheus
