@@ -535,7 +535,7 @@ export default function AIPage() {
         </div>
         
         <div className="relative z-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto block"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <h2 className="text-lg font-semibold mb-2">AI 추천 상품을 분석 중...</h2>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>잠시만 기다려주세요.</p>
         </div>

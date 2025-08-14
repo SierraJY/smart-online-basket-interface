@@ -202,7 +202,7 @@ export default function SearchPage() {
         color: 'var(--foreground)' 
       }}
     >
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">검색 결과를 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>

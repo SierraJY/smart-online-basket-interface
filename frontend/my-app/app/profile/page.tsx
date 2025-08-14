@@ -143,7 +143,7 @@ export default function ProfilePage() {
         style={{ backgroundColor: 'var(--background)' }}
       >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">로딩 중...</p>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function ProfilePage() {
         style={{ backgroundColor: 'var(--background)' }}
       >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">로그인 페이지로 이동 중...</p>
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function ProfilePage() {
         style={{ backgroundColor: 'var(--background)' }}
       >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">프로필 정보를 불러오는 중...</p>
         </div>
       </div>
