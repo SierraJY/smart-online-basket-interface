@@ -3,28 +3,34 @@ FROM python:3.10-slim
 # 기본 설정
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-# wkhtmltopdf 경로 명시 (pdfkit에서 사용)
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
 ENV WKHTMLTOPDF_PATH=/usr/bin/wkhtmltopdf
+ENV MPLBACKEND=Agg
 
-# 필수 패키지 설치
-RUN apt-get update && \
-    apt-get install -y \
+# 시스템 의존성
+RUN apt-get update && apt-get install -y --no-install-recommends \
     wkhtmltopdf \
+    fonts-nanum \
     fonts-noto-color-emoji \
-    build-essential \
-    libxrender1 libxext6 libfontconfig1 && \
-    apt-get clean
+    libgomp1 \
+    libxrender1 libxext6 libfontconfig1 \
+    ca-certificates \
+    gcc g++ \
+ && rm -rf /var/lib/apt/lists/*
 
-# 작업 디렉토리
 WORKDIR /app
 
-# 로컬 코드 복사
+# 의존성 설치
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir wheel && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 앱 코드
 COPY . .
 
-# 의존성 설치
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# 출력/템플릿 디렉토리
+RUN mkdir -p output templates && chmod -R 777 output templates
 
-# 실행 예시 (테스트용)
-CMD ["python", "daily_report/generate_report.py"]
+CMD ["python", "generate_report.py"]

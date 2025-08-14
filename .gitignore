@@ -37,3 +37,5 @@ Thumbs.db
 # json 파일 모두 무시
 *.json
 
+# 모니터링 관련 환경변수
+monitoring/.env

@@ -1,28 +1,41 @@
 import os
 from openai import OpenAI
-from dotenv import load_dotenv
-
-# .env 파일에서 OPENAI_API_KEY 로드
-load_dotenv()
-
+from typing import Optional
 
 def summarize_with_llm(
     raw_text: str,
-    model: str = "gpt-4.1-nano",
     system_message: str = "다음 분석 내용을 마케팅 보고서용으로 정리해줘.",
+    model: Optional[str] = None,
 ) -> str:
     """
     GMS(OpenAI SDK) 기반 LLM 요약 함수.
-    .env에 GMS키(OPENAI_API_KEY) 보관, GMS OpenAI 엔드포인트로 호출.
+    Docker 환경변수에서 설정값을 가져옴.
+
+    Args:
+        raw_text (str): 요약할 원문 텍스트
+        system_message (str): LLM에게 전달할 시스템 메시지
+        model (Optional[str]): 사용할 모델명. 없으면 환경변수에서 가져옴
+
+    Returns:
+        str: 요약된 텍스트 또는 에러 메시지
     """
     try:
+        # 환경 변수에서 설정 가져오기
+        api_key = os.environ.get("OPENAI_API_KEY")
+        base_url = os.environ.get("GMS_BASE_URL", "https://gms.ssafy.io/gmsapi/api.openai.com/v1")
+        default_model = os.environ.get("GMS_MODEL", "gpt-4.1-nano")
+
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+
         # GMS 엔드포인트로 OpenAI 클라이언트 생성
         client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            base_url="https://gms.ssafy.io/gmsapi/api.openai.com/v1",
+            api_key=api_key,
+            base_url=base_url,
         )
+
         response = client.chat.completions.create(
-            model=model,
+            model=model or default_model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": raw_text},
@@ -30,14 +43,18 @@ def summarize_with_llm(
             temperature=0.6,
             max_tokens=600,
         )
-        return response.choices[0].message.content.strip()
+        
+        summary = response.choices[0].message.content.strip()
+        if not summary:
+            raise ValueError("LLM이 빈 응답을 반환했습니다.")
+            
+        return summary
+
+    except ValueError as ve:
+        error_msg = f"[설정 오류] {str(ve)}"
+        print(error_msg)
+        return error_msg
     except Exception as e:
-        print(f"LLM 요약 실패: {e}")
+        error_msg = f"[LLM 요약 실패] {str(e)}"
+        print(error_msg)
         return raw_text
-
-
-# 예시 테스트 (단독 실행 시)
-if __name__ == "__main__":
-    sample = "이 상품은 지난주 대비 판매량이 급증하였고, 주말 동안 추가적으로 많은 고객이 구매하였습니다."
-    result = summarize_with_llm(sample)
-    print(result)
