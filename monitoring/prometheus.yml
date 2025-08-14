@@ -28,12 +28,8 @@ scrape_configs:
 
   - job_name: jenkins
     metrics_path: /prometheus
-    basic_auth:
-      username: ${JENKINS_USER}
-      password: ${JENKINS_PASSWORD}
     static_configs:
       - targets: ["s13p11b103-jenkins-1:8080"]
-
 
   - job_name: sobi-backend
     metrics_path: /actuator/prometheus
