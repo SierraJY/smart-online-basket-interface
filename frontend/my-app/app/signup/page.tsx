@@ -119,7 +119,7 @@ export default function SignupPage() {
             >
               {signupLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                   가입 중...
                 </div>
               ) : "다음 단계"}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import QrScanner from 'qr-scanner';
+// 동적 import로 본체/워커를 런타임 로드하여 초기 번들에서 분리
+// import QrScanner from 'qr-scanner';
 
 // QRScanner Props 타입 정의
 interface QrScannerProps {
@@ -11,7 +12,7 @@ interface QrScannerProps {
 // QRScanner 컴포넌트
 export default function QrScannerComponent({ onScan }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<QrScanner | null>(null);
+  const qrScannerRef = useRef<any | null>(null);
   const stoppedRef = useRef(false);
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -67,10 +68,18 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
       console.log('[QrScanner] 카메라 정리 완료');
     }
 
-    // QR 스캐너 인스턴스 생성
-    const qrScannerInstance = new QrScanner(
+    // 런타임에 모듈/워커 로드
+    let QrScannerCls: any;
+    let qrScannerInstance: any;
+    const init = async () => {
+      const mod = await import('qr-scanner');
+      QrScannerCls = mod.default;
+      // 워커 경로 설정 (public에 위치시키거나 CDN 사용 가능)
+      (QrScannerCls as any).WORKER_PATH = '/qr-scanner-worker.min.js';
+
+      qrScannerInstance = new QrScannerCls(
       videoRef.current,
-      async (result) => {
+      async (result: { data: string }) => {
         if (stoppedRef.current) return;
         console.log('[QrScanner] QR 스캔 성공:', result.data);
         
@@ -91,7 +100,7 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
         }
       },
       {
-        onDecodeError: (error) => {
+        onDecodeError: (error: unknown) => {
           // stopped 상태면 에러 무시
           if (stoppedRef.current) return;
           // 에러는 무시 (연속 스캔을 위해)
@@ -105,7 +114,8 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
       }
     );
 
-    qrScannerRef.current = qrScannerInstance;
+      qrScannerRef.current = qrScannerInstance;
+    };
 
     // iOS Safari 호환성을 위한 지연된 시작
     const startScanner = async () => {
@@ -153,7 +163,7 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
       }
     };
 
-    startScanner();
+    init().then(startScanner);
 
     // 컴포넌트 언마운트 시 정리
     return () => { 
@@ -171,15 +181,15 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
       });
       
       // 추가 안전장치: 1초 후 강제 정리
+      const cleanupVideoElement = videoElement; // effect 내부에서 캡처한 노드 사용
       cleanupTimeoutRef.current = setTimeout(() => {
         console.log('[QrScanner] 강제 정리 실행');
-        const videoElement = videoRef.current;
-        if (videoElement) {
-          const stream = videoElement.srcObject as MediaStream;
+        if (cleanupVideoElement) {
+          const stream = cleanupVideoElement.srcObject as MediaStream;
           if (stream) {
             stream.getTracks().forEach(track => track.stop());
           }
-          videoElement.srcObject = null;
+          cleanupVideoElement.srcObject = null;
         }
       }, 1000);
     };

@@ -10,6 +10,7 @@ import { getPerformanceMonitor, logPerformanceInDev } from '@/utils/performance'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import ShakeWrapper from '@/components/ShakeWrapper'
 import ProfileButton from '@/components/buttons/ProfileButton'
 import ChatbotButton from '@/components/buttons/ChatbotButton'
@@ -21,6 +22,7 @@ import { CategoryName } from '@/components/categoryIcons'
 
 export default function Home() {
   const { products, loading, error } = useProducts()
+  const router = useRouter()
   
   // 검색 관련 상태
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -275,8 +277,7 @@ export default function Home() {
     if (!searchKeyword.trim()) return
     const query = new URLSearchParams()
     query.set('keyword', searchKeyword)
-    // 검색 페이지로 이동
-    window.location.href = `/products?${query.toString()}`
+    router.push(`/products/search?${query.toString()}`)
   }
 
   // 마우스 드래그 스크롤 핸들러들
@@ -310,7 +311,7 @@ export default function Home() {
           color: 'var(--foreground)' 
         }}
     >
-      <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">메인 페이지로 이동 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
@@ -335,7 +336,7 @@ export default function Home() {
   );
 
   return (
-    <main className="min-h-screen py-6 flex flex-col items-center"
+    <main className="pb-28 min-h-screen py-6 flex flex-col items-center"
       style={{ 
         backgroundColor: 'var(--background)',
         color: 'var(--foreground)',
@@ -408,8 +409,8 @@ export default function Home() {
         </div>
 
         {/* 카테고리 섹션 */}
-        <div className="mb-8 pt-2 px-5">
-          <div className="grid grid-cols-5 gap-3 max-w-2xl mx-auto">
+        <div className="mb-8 pt-2 px-6">
+          <div className="grid grid-cols-5 gap-3 sm:gap-4 md:gap-6 lg:gap-8 max-w-4xl mx-auto">
             {categories.map((category, index) => {
               const categoryName = category.replace(/_/g, '/')
               const backgroundColor = categoryColors[index]
@@ -475,13 +476,13 @@ export default function Home() {
                 {/* 좌우 네비게이션 버튼 */}
                 <button
                   onClick={goToPrev}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 hover:scale-110 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button
                   onClick={goToNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 hover:scale-110 text-white rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
                 >
                   <ChevronRight size={20} />
                 </button>

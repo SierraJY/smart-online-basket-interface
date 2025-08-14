@@ -176,7 +176,7 @@ const handleModalSignup = () => {
             >
               {loginLoading ? (
                 <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                   로그인 중...
                 </div>
               ) : "로그인"}
@@ -214,7 +214,7 @@ const handleModalSignup = () => {
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500" style={{ backgroundColor: 'var(--search-modal-bg)' }}>
+              <span className="px-2 bg-white text-gray-500" style={{ backgroundColor: 'var(--search-modal-bg, rgba(255,255,255,0.85))' }}>
                 또는
               </span>
             </div>

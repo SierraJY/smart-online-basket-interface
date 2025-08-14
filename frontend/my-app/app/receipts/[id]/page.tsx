@@ -39,14 +39,23 @@ export default function ReceiptDetailPage() {
       if (foundReceipt) {
         console.log('Found receipt:', foundReceipt);
         // 데이터 변환
-        const items = foundReceipt.purchasedProducts?.map((purchasedProduct) => ({
-          productId: purchasedProduct.product.id,
-          productName: purchasedProduct.product.name,
-          productPrice: purchasedProduct.product.price,
-          quantity: purchasedProduct.quantity,
-          totalPrice: purchasedProduct.product.price * purchasedProduct.quantity,
-          imageUrl: purchasedProduct.product.imageUrl
-        })) || [];
+        const items = foundReceipt.purchasedProducts?.map((purchasedProduct) => {
+          // 할인가 계산
+          const discountedPrice = purchasedProduct.product.discountRate > 0 
+            ? Math.floor(purchasedProduct.product.price * (1 - purchasedProduct.product.discountRate / 100))
+            : purchasedProduct.product.price;
+          
+          return {
+            productId: purchasedProduct.product.id,
+            productName: purchasedProduct.product.name,
+            productPrice: discountedPrice, // 할인가 적용
+            originalPrice: purchasedProduct.product.price, // 원가 보존
+            discountRate: purchasedProduct.product.discountRate || 0,
+            quantity: purchasedProduct.quantity,
+            totalPrice: discountedPrice * purchasedProduct.quantity, // 할인가로 총액 계산
+            imageUrl: purchasedProduct.product.imageUrl
+          };
+        }) || [];
 
         const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
         const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -94,7 +103,7 @@ export default function ReceiptDetailPage() {
           color: 'var(--foreground)' 
         }}
       >
-        <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
         <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
         <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
       </div>
@@ -163,7 +172,7 @@ export default function ReceiptDetailPage() {
             color: 'var(--foreground)' 
           }}
         >
-          <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <div className="text-lg font-semibold">구매내역을 불러오는 중...</div>
           <div className="text-sm text-gray-500 mt-2">잠시만 기다려주세요</div>
         </div>
@@ -298,9 +307,9 @@ export default function ReceiptDetailPage() {
                     >
                       {item.productName}
                     </Link>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {item.productPrice.toLocaleString()}원 × {item.quantity}개 
-                    </div>
+                                         <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                       {item.productPrice.toLocaleString()}원 × {item.quantity}개
+                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold text-lg" style={{ color: 'var(--sobi-green)' }}>

@@ -124,12 +124,20 @@ export default function ReceiptsPage() {
     // purchasedProducts를 items로 변환하고 총액, 총 개수 계산
     const items = receipt.purchasedProducts?.map((purchasedProduct, itemIndex) => {
       console.log(`  상품 ${itemIndex + 1}:`, purchasedProduct);
+      
+      // 할인가 계산
+      const discountedPrice = purchasedProduct.product.discountRate > 0 
+        ? Math.floor(purchasedProduct.product.price * (1 - purchasedProduct.product.discountRate / 100))
+        : purchasedProduct.product.price;
+      
       return {
         productId: purchasedProduct.product.id,
         productName: purchasedProduct.product.name,
-        productPrice: purchasedProduct.product.price,
+        productPrice: discountedPrice, // 할인가 적용
+        originalPrice: purchasedProduct.product.price, // 원가 보존
+        discountRate: purchasedProduct.product.discountRate || 0,
         quantity: purchasedProduct.quantity,
-        totalPrice: purchasedProduct.product.price * purchasedProduct.quantity,
+        totalPrice: discountedPrice * purchasedProduct.quantity, // 할인가로 총액 계산
         imageUrl: purchasedProduct.product.imageUrl
       };
     }) || [];
@@ -234,7 +242,7 @@ export default function ReceiptsPage() {
           color: 'var(--foreground)' 
         }}
       >
-        <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
         <div className="text-lg font-semibold text-[var(--foreground)]">구매내역을 불러오는 중...</div>
         <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
       </div>

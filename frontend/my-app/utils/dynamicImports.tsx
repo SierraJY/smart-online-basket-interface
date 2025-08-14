@@ -8,7 +8,7 @@ import React from 'react';
  */
 const DefaultLoading: React.FC = () => (
   <div className="flex items-center justify-center p-4">
-    <div className="w-6 h-6 border-2 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
   </div>
 );
 

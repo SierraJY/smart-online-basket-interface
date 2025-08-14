@@ -272,7 +272,7 @@ class ToastManager {
    */
   static logoutSuccess(userId?: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };
-    const defaultMessage = userId ? `${userId}님 다음에 또 봐요~` : '로그아웃되었습니다';
+    const defaultMessage = userId ? `${userId}님 다음에 또 봐요~` : '이미 로그아웃 상태입니다';
     return toast(defaultMessage, finalConfig);
   }
 
@@ -290,7 +290,7 @@ class ToastManager {
    */
   static basketInUse(config?: ToastConfig) {
     const finalConfig = { ...defaultConfig, ...config };
-    return toast.error('SOBI를 사용 중입니다! 먼저 결제를 완료하거나 연결을 해제해주세요', finalConfig);
+    return toast.error('먼저 결제를 완료하거나 SOBI 연결을 해제해주세요', finalConfig);
   }
 
   /**

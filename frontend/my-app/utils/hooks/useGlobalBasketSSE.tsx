@@ -45,19 +45,18 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
     console.log('[Global SSE] 연결 URL:', url);
     console.log('[Global SSE] JWT 토큰 확인:', token ? `${token.substring(0, 20)}...` : '토큰 없음');
     
-    // EventSourcePolyfill 사용
+    // EventSourcePolyfill 사용 (헤더 최소화: Authorization만)
     globalEventSource = new EventSourcePolyfill(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Authorization: `Bearer ${token}`,
       },
-      heartbeatTimeout: 300000, // 5분 heartbeat 타임아웃
-      connectionTimeout: 30000, // 30초 연결 타임아웃
-      retryInterval: 5000, // 재연결 간격 5초
-      maxRetries: 10, // 최대 재연결 시도 횟수
-      withCredentials: true, // 쿠키 포함
+      // 인프라 유휴 타임아웃보다 짧게 설정 (예: 2분)
+      heartbeatTimeout: 120000,
+      // 초기 연결 타임아웃/재시도 주기
+      connectionTimeout: 30000,
+      retryInterval: 3000,
+      // withCredentials는 쿠키를 쓰지 않으므로 생략
+      // maxRetries는 기본 동작에 맡김(무한 재시도) 또는 필요 시 값 지정
     });
 
     // EventSource 이벤트 리스너 설정
@@ -201,25 +200,9 @@ async function connectGlobalSSE(basketId: string | null, token: string | null): 
       });
 
           globalEventSource.onerror = (error: Event) => {
-      console.error("[Global SSE] 연결 에러:", error);
+      console.warn("[Global SSE] 에러 발생(폴리필 자동 재시도 대기):", error);
+      // 폴리필이 내부적으로 재시도하므로 수동 close/재연결하지 않음
       isConnecting = false;
-      
-      if (globalEventSource) {
-        const readyState = globalEventSource.readyState;
-        console.log("[Global SSE] EventSource 상태:", readyState);
-        globalEventSource.close();
-        globalEventSource = null;
-      }
-      
-      // 자동 재연결 시도 (3초 후)
-      setTimeout(() => {
-        const store = useBasketStore.getState();
-        const currentActivatedBasketId = store?.activatedBasketId || null;
-        if (basketId && token && currentActivatedBasketId === basketId) {
-          console.log("[Global SSE] 자동 재연결 시도");
-          connectGlobalSSE(basketId, token);
-        }
-      }, 3000);
     };
     }
 
@@ -290,9 +273,15 @@ export function disconnectGlobalSSE(): void {
 export function reconnectGlobalSSE(): void {
   console.log('[Global SSE] 수동 재연결 요청');
   
-  // 기존 연결 정리
+  // 이미 OPEN 상태면 재연결 스킵 (중복 연결 방지)
+  if (globalEventSource && globalEventSource.readyState === EventSource.OPEN) {
+    console.log('[Global SSE] 이미 OPEN 상태 - 재연결 스킵');
+    return;
+  }
+
+  // 기존 연결이 존재하지만 OPEN이 아니라면 정리 후 재시도
   if (globalEventSource) {
-    globalEventSource.close();
+    try { globalEventSource.close(); } catch {}
     globalEventSource = null;
   }
   

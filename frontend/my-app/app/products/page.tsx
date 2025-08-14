@@ -45,13 +45,14 @@ export default function ProductsPage() {
       }
     }, [showTooltip])
 
-  const keywordFromURL = useMemo(() => searchParams.get('keyword') || '', [searchParams])
   const categoryFromURL = useMemo(() => searchParams.get('category') || '전체', [searchParams])
-  const [keyword, setKeyword] = useState<string>(keywordFromURL)
   const [category, setCategory] = useState<CategoryName>(categoryFromURL as CategoryName)
 
   const excludeOutOfStockFromURL = useMemo(() => searchParams.get('excludeOutOfStock') === 'true', [searchParams])
   const [excludeOutOfStock, setExcludeOutOfStock] = useState<boolean>(excludeOutOfStockFromURL)
+
+  // 검색을 위한 상태
+  const [keyword, setKeyword] = useState<string>('')
 
   // 카테고리 스크롤을 위한 상태
   const [isDragging, setIsDragging] = useState(false)
@@ -75,18 +76,10 @@ export default function ProductsPage() {
 
   // 쿼리스트링이 바뀌면 input값 동기화!
   useEffect(() => {
-    setKeyword(keywordFromURL)
     setCategory(categoryFromURL as CategoryName)
     setExcludeOutOfStock(excludeOutOfStockFromURL)
-  }, [keywordFromURL, categoryFromURL, excludeOutOfStockFromURL])
+  }, [categoryFromURL, excludeOutOfStockFromURL])
 
-  // 검색창 입력 시 쿼리스트링 변경
-  const onKeywordChange = (val: string) => {
-    setKeyword(val)
-    const params = new URLSearchParams(searchParams)
-    params.set('keyword', val)
-    router.replace(`?${params.toString()}`)
-  }
   const onCategoryChange = (val: CategoryName) => {
     setCategory(val)
     const params = new URLSearchParams(searchParams)
@@ -130,14 +123,9 @@ export default function ProductsPage() {
 
   // 필터링
   const filtered: Product[] = products.filter((item: Product) => {
-    const matchesKeyword =
-      [item.name, item.description, item.category]
-        .join(' ')
-        .toLowerCase()
-        .includes(keyword.toLowerCase())
     const matchesCategory = category === '전체' || item.category === category
     const matchesStock = excludeOutOfStock || item.stock > 0
-    return matchesKeyword && matchesCategory && matchesStock
+    return matchesCategory && matchesStock
   })
 
   // 카테고리 추출 (유틸리티 함수 사용)
@@ -165,7 +153,7 @@ export default function ProductsPage() {
         color: 'var(--foreground)' 
       }}
     >
-      <div className="w-12 h-12 border-4 border-gray-300 dark:border-gray-600 border-t-green-600 dark:border-t-green-400 rounded-full animate-spin mb-4"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
       <div className="text-lg font-semibold text-[var(--foreground)]">전체 상품 목록을 불러오는 중...</div>
       <div className="text-sm text-gray-400 mt-1">조금만 기다려 주세요!</div>
     </div>
@@ -257,10 +245,15 @@ export default function ProductsPage() {
       </div>
       <SearchBar
         keyword={keyword}
-        setKeyword={onKeywordChange}
+        setKeyword={setKeyword}
         category={category}
         setCategory={onCategoryChange}
-        onSearch={() => {}}
+        onSearch={() => {
+          if (keyword.trim()) {
+            const searchUrl = `/products/search?keyword=${encodeURIComponent(keyword.trim())}`
+            router.push(searchUrl)
+          }
+        }}
         showCategorySelect={true}
         showResultButton={false}
       />

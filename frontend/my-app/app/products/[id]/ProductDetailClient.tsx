@@ -16,7 +16,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
       <main className="min-h-screen flex items-center justify-center"
         style={{ backgroundColor: 'var(--background)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">상품 정보를 불러오는 중...</p>
         </div>
       </main>
@@ -183,9 +183,7 @@ export default function ProductDetailClient({ id }: { id: string }) {
           ) : (
             <div className="mt-8">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--sobi-green)]/10 flex items-center justify-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-[var(--sobi-green)]/30 border-t-[var(--sobi-green)] animate-spin"></div>
-                </div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
                 <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">
                   상세설명 준비 중
                   <span className="inline-block ml-1">
