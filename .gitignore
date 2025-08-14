@@ -42,3 +42,4 @@ monitoring/.env
 
 # 특정 파일은 다시 추적
 !/frontend/sobi-front/package.json
+!/frontend/sobi-front/tsconfig.json
