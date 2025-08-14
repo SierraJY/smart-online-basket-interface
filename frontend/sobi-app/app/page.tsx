@@ -214,7 +214,7 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [isMobile, adBanners.length])
 
-  // 테마별 상품 분류 (극한 성능 최적화 v2)
+  // 테마별 상품 분류 (성능 최적화 ㅇ)
   const themeProducts = useMemo(() => {
     if (!products || !Array.isArray(products)) return {}
     
@@ -238,29 +238,23 @@ export default function Home() {
       // 원본 배열을 1번만 반복하여 메모리 사용량 극한 줄임
       return array.length > 0 ? [...array, ...array] : []
     }
-    
-    // AI 추천 상품 (10개 → 8개로 줄임)
-    const aiRecommendedBase = getRandomItems(availableProducts, 8)
-    
-    // 할인 상품 (10개 → 8개로 줄임)
+
+    // 할인 상품 (30개 이하)
     const discountBase = getRandomItems(
-      availableProducts.filter(p => p.discountRate >= 9 && p.stock <= 10), 8
+      availableProducts.filter(p => p.discountRate >= 9 && p.stock <= 30), 8
     )
     
-    // 인기 상품 (10개 → 8개로 줄임)
+    // 인기 상품 (판매량 100개 이상)
     const popularBase = getRandomItems(
       availableProducts.filter(p => p.sales >= 100), 8
     )
     
-    // 건강 관리 제품 (10개 → 8개로 줄임)
+    // 건강 관리 제품 (태그 건강 포함, 5만원 이상)
     const featuredBase = getRandomItems(
       availableProducts.filter(p => p.tag?.includes('건강') && p.price >= 50000), 8
     )
     
     return {
-      // AI 추천 상품 (무한 스크롤)
-      aiRecommended: createInfiniteArray(aiRecommendedBase),
-      
       // 할인 상품 (무한 스크롤)
       discount: createInfiniteArray(discountBase),
       

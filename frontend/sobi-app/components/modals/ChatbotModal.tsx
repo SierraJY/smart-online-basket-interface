@@ -43,8 +43,8 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     },
     {
       id: 3,
-      question: '에낙은 안 팔아?',
-      answer: '안 팔아'
+      question: '상품이 왜 흔들려?',
+      answer: '현재 재고가 얼마 남지 않은 상품들이에요, 품절되기 전에 얼른 구매하세요!'
     },
     {
       id: 4,
