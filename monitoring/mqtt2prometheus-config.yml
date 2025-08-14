@@ -1,0 +1,164 @@
+mqtt:
+  server: tcp://sobi-mqtt:1883
+  qos: 0
+  clientID: mqtt_exporter
+  keepAlive: 60
+
+metrics:
+  # 기본 브로커 정보
+  - name: mqtt_broker_uptime_seconds
+    help: "MQTT broker uptime in seconds"
+    type: gauge
+    mqttName: "$SYS/broker/uptime"
+
+  - name: mqtt_broker_version_info
+    help: "MQTT broker version (string as label)"
+    type: gauge
+    mqttName: "$SYS/broker/version"
+
+  # 클라이언트 상태
+  - name: mqtt_broker_clients_total
+    help: "Total number of clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/total"
+
+  - name: mqtt_broker_clients_active
+    help: "Number of active clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/active"
+
+  - name: mqtt_broker_clients_inactive
+    help: "Number of inactive clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/inactive"
+
+  - name: mqtt_broker_clients_connected
+    help: "Number of currently connected clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/connected"
+
+  - name: mqtt_broker_clients_disconnected
+    help: "Number of disconnected clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/disconnected"
+
+  - name: mqtt_broker_clients_expired
+    help: "Number of expired clients"
+    type: gauge
+    mqttName: "$SYS/broker/clients/expired"
+
+  - name: mqtt_broker_clients_maximum
+    help: "Maximum number of clients seen"
+    type: gauge
+    mqttName: "$SYS/broker/clients/maximum"
+
+  # 메시지 처리량
+  - name: mqtt_broker_messages_received_total
+    help: "Total number of messages received"
+    type: counter
+    mqttName: "$SYS/broker/messages/received"
+
+  - name: mqtt_broker_messages_sent_total
+    help: "Total number of messages sent"
+    type: counter
+    mqttName: "$SYS/broker/messages/sent"
+
+  - name: mqtt_broker_messages_stored
+    help: "Number of messages stored"
+    type: gauge
+    mqttName: "$SYS/broker/messages/stored"
+
+  # 퍼블리시 메시지 처리량
+  - name: mqtt_broker_publish_messages_received_total
+    help: "Total number of publish messages received"
+    type: counter
+    mqttName: "$SYS/broker/publish/messages/received"
+
+  - name: mqtt_broker_publish_messages_sent_total
+    help: "Total number of publish messages sent"
+    type: counter
+    mqttName: "$SYS/broker/publish/messages/sent"
+
+  - name: mqtt_broker_publish_messages_dropped_total
+    help: "Total number of publish messages dropped"
+    type: counter
+    mqttName: "$SYS/broker/publish/messages/dropped"
+
+  # 바이트 처리량
+  - name: mqtt_broker_bytes_received_total
+    help: "Total bytes received"
+    type: counter
+    mqttName: "$SYS/broker/bytes/received"
+
+  - name: mqtt_broker_bytes_sent_total
+    help: "Total bytes sent"
+    type: counter
+    mqttName: "$SYS/broker/bytes/sent"
+
+  - name: mqtt_broker_publish_bytes_received_total
+    help: "Total publish bytes received"
+    type: counter
+    mqttName: "$SYS/broker/publish/bytes/received"
+
+  - name: mqtt_broker_publish_bytes_sent_total
+    help: "Total publish bytes sent"
+    type: counter
+    mqttName: "$SYS/broker/publish/bytes/sent"
+
+  # 구독 수
+  - name: mqtt_broker_subscriptions_count
+    help: "Number of subscriptions"
+    type: gauge
+    mqttName: "$SYS/broker/subscriptions/count"
+
+  - name: mqtt_broker_shared_subscriptions_count
+    help: "Number of shared subscriptions"
+    type: gauge
+    mqttName: "$SYS/broker/shared_subscriptions/count"
+
+  - name: mqtt_broker_retained_messages_count
+    help: "Number of retained messages"
+    type: gauge
+    mqttName: "$SYS/broker/retained messages/count"
+
+  # 스토리지
+  - name: mqtt_broker_store_messages_count
+    help: "Number of stored messages"
+    type: gauge
+    mqttName: "$SYS/broker/store/messages/count"
+
+  - name: mqtt_broker_store_messages_bytes
+    help: "Total bytes of stored messages"
+    type: gauge
+    mqttName: "$SYS/broker/store/messages/bytes"
+
+  # 부하(load) 지표 - 1분/5분/15분 평균
+  - name: mqtt_broker_load_messages_received_1min
+    help: "Messages received rate over 1 minute"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/received/1min"
+
+  - name: mqtt_broker_load_messages_sent_1min
+    help: "Messages sent rate over 1 minute"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/sent/1min"
+
+  - name: mqtt_broker_load_messages_received_5min
+    help: "Messages received rate over 5 minutes"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/received/5min"
+
+  - name: mqtt_broker_load_messages_sent_5min
+    help: "Messages sent rate over 5 minutes"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/sent/5min"
+
+  - name: mqtt_broker_load_messages_received_15min
+    help: "Messages received rate over 15 minutes"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/received/15min"
+
+  - name: mqtt_broker_load_messages_sent_15min
+    help: "Messages sent rate over 15 minutes"
+    type: gauge
+    mqttName: "$SYS/broker/load/messages/sent/15min"
