@@ -148,7 +148,6 @@ class CartManager:
         """
         Register a tag detected in the current cycle. This is now an internal method.
         """
-        self.current_cycle_tags.add(tag_id)
         
         now = datetime.now()
         
@@ -157,6 +156,8 @@ class CartManager:
             self.logger.debug(f"Tag {tag_id} ignored due to low RSSI: {tag_info.rssi} < {self.rssi_threshold}")
             return
             
+        self.current_cycle_tags.add(tag_id)
+        
         # Update or create cart item
         if tag_id in self.cart_items:
             item = self.cart_items[tag_id]

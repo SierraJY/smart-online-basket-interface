@@ -78,17 +78,17 @@ def run_rfid_system(stop_event):
         # Create sensor manager
         sensor_manager = MultiSensorManager(
             polling_count=15,
-            rssi_threshold=-70
+            rssi_threshold=-58
         )
         
         # Configure readers with default settings
-        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=10, channel_index=1)
+        sensor_manager.configure_readers(work_area=6, freq_hopping=1, power_dbm=12, channel_index=1)
         
         # Create cart manager
         cart_manager = CartManager(
             presence_threshold=1,
             absence_threshold=2,
-            rssi_threshold=-70
+            rssi_threshold=-58
         )
         
         cycle = 0
