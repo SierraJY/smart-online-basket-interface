@@ -1,7 +1,7 @@
 services:
   frontend:
     build:
-      context: ./frontend/sobi-app
+      context: ./frontend/my-app
       dockerfile: Dockerfile
     image: sobi/frontend
     container_name: sobi-frontend
