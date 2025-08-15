@@ -9,23 +9,62 @@ import ProfileButton from './ProfileButton'
 import SearchButton from './SearchButton'
 import DarkModeButton from './DarkModeButton'
 import LogoutButton from './LogoutButton'
+import GuestLogoutModal from '@/components/modals/GuestLogoutModal'
 import { useAuth } from '@/utils/hooks/useAuth'
+import ToastManager from '@/utils/toastManager'
 
 export default function MenuButton() {
   const [open, setOpen] = useState(false)
+  const [showGuestLogoutModal, setShowGuestLogoutModal] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, isGuestUser, logout } = useAuth()
 
   // 찜 목록 버튼 클릭 핸들러
   const handleFavoriteClick = () => {
+    if (isGuestUser) {
+      // 게스트 사용자는 찜 기능 사용 불가
+      ToastManager.guestFavoriteRestricted()
+      return
+    }
     if (isLoggedIn) {
       router.push('/favorite')
     } else {
       router.push('/login')
     }
     setOpen(false)
+  }
+
+  // 게스트 로그아웃 모달 표시
+  const handleShowGuestModal = () => {
+    setShowGuestLogoutModal(true)
+    setOpen(false) // 메뉴 닫기
+  }
+
+  // 모달에서 로그아웃 처리
+  const handleModalLogout = async () => {
+    try {
+      await logout()
+      ToastManager.logoutSuccess('게스트') // 명시적으로 사용자명 전달
+      setShowGuestLogoutModal(false)
+      router.push('/login')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
+  }
+
+  // 모달에서 회원가입 처리
+  const handleModalSignup = async () => {
+    try {
+      await logout()
+      setShowGuestLogoutModal(false)
+      router.push('/signup')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
   }
 
 
@@ -68,22 +107,23 @@ export default function MenuButton() {
               initial={{ opacity: 0, translateY: 32 }}
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: 32 }}
-              transition={{ duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              transition={{ delay: 0.125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
               <LogoutButton 
                 className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
                 iconSize={24}
                 showTooltip={true}
+                onShowGuestModal={handleShowGuestModal}
               />
             </motion.div>
 
             <motion.div
-              key="qrcode"
+              key="profile"
               initial={{ opacity: 0, translateY: 32 }}
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: 32 }}
-              transition={{ delay: 0.1, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              transition={{ delay: 0.125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
               <ProfileButton inline />
@@ -94,7 +134,7 @@ export default function MenuButton() {
               initial={{ opacity: 0, translateY: 32 }}
               animate={{ opacity: 1, translateY: 0 }}
               exit={{ opacity: 0, translateY: 32 }}
-              transition={{ delay: 0.1125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
+              transition={{ delay: 0.125, duration: 0.26, ease: [0.45, 0.01, 0.51, 1.1] }}
               className="mb-3"
             >
               <SearchButton />
@@ -110,14 +150,14 @@ export default function MenuButton() {
             >
               <motion.button
                 onClick={handleFavoriteClick}
-                className="w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm"
-                whileHover={{ 
+                className={`w-10 h-10 flex items-center justify-center rounded-full shadow-sm bg-white/60 backdrop-blur-sm ${isGuestUser ? 'opacity-30' : ''}`}
+                whileHover={isGuestUser ? {} : { 
                   scale: 1.1,
                   boxShadow: "0 8px 25px rgba(0,0,0,0.15)"
                 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label={isLoggedIn ? "찜 목록" : "로그인하고 찜 목록 보기"}
-                title={isLoggedIn ? "찜 목록" : "로그인이 필요합니다"}
+                whileTap={isGuestUser ? {} : { scale: 0.95 }}
+                aria-label={isGuestUser ? "게스트는 찜 기능을 사용할 수 없습니다" : (isLoggedIn ? "찜 목록" : "로그인하고 찜 목록 보기")}
+                title={isGuestUser ? "게스트는 찜 기능을 사용할 수 없습니다" : (isLoggedIn ? "찜 목록" : "로그인이 필요합니다")}
               >
                 <Image
                   src="/icon/favorite.png"
@@ -163,6 +203,35 @@ export default function MenuButton() {
           <Package size={28} color="var(--foreground)" strokeWidth={1} />
         )}
       </button>
+
+      {/* 게스트 로그아웃 모달 */}
+      <AnimatePresence>
+        {showGuestLogoutModal && (
+          <motion.div 
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowGuestLogoutModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GuestLogoutModal 
+                onClose={() => setShowGuestLogoutModal(false)} 
+                onLogout={handleModalLogout}
+                onSignup={handleModalSignup}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -17,14 +17,19 @@ export default function LoginPage() {
   const { login, loginLoading, loginError, guestLogin, guestLoginLoading, guestLoginError } = useAuth()
   const router = useRouter()
 
+// 에러 객체 타입 정의
+interface ErrorWithMessage {
+  message?: string;
+}
+
 // 백엔드 에러 메시지 기반 세분화 함수
-const getLoginErrorMessage = (error: any): string => {
+const getLoginErrorMessage = (error: unknown): string => {
   // 에러 메시지 추출
   let errorMsg = ''
   if (error instanceof Error) {
     errorMsg = error.message
-  } else if (error?.message) {
-    errorMsg = error.message
+  } else if ((error as ErrorWithMessage)?.message) {
+    errorMsg = (error as ErrorWithMessage).message || ''
   } else if (loginError?.message) {
     errorMsg = loginError.message
   }
@@ -102,7 +107,7 @@ const handleGuestLogin = async () => {
     }, 0)
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 
-                        (err as { message?: string })?.message || 
+                        (err as ErrorWithMessage)?.message || 
                         guestLoginError?.message || 
                         '게스트 로그인 실패';
     setMessage(errorMessage);
@@ -151,6 +156,7 @@ const handleModalSignup = () => {
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
+                autoComplete="username"
                 required
               />
             </div>
@@ -162,6 +168,7 @@ const handleModalSignup = () => {
                 onChange={(e) => setUserPasswd(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-base border-2 border-gray-200 focus:border-[var(--sobi-green)] focus:outline-none transition-all duration-300 ease-in-out focus:scale-[1.02] focus:shadow-lg"
                 style={{ backgroundColor: 'var(--input-background)' }}
+                autoComplete="current-password"
                 required
               />
             </div>

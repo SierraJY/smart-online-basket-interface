@@ -94,7 +94,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
         >
             {/* 닫기 버튼 */}
             <button
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="absolute top-4 right-4 text-gray-400rounded-full transition-colors"
               onClick={onClose}
               type="button"
               aria-label="닫기"
@@ -119,7 +119,7 @@ export default function CategoryModal({ onClose }: CategoryModalProps) {
               {categories.map((category) => (
                 <div
                   key={category}
-                  className="flex items-center w-full gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                  className="flex items-center w-full gap-3 px-4 py-3 rounded-xl transition-colors hover:scale-105 cursor-pointer"
                   onClick={() => {
                     if (category === '전체') {
                       router.push('/products')

@@ -15,7 +15,9 @@ interface LogoutButtonProps {
   /** 로그아웃 성공 후 실행할 콜백 함수 */
   onLogoutSuccess?: () => void
   /** 로그아웃 실패 시 실행할 콜백 함수 */
-  onLogoutError?: (error: any) => void
+  onLogoutError?: (error: unknown) => void
+  /** 게스트 회원 모달 표시 콜백 함수 */
+  onShowGuestModal?: () => void
 }
 
 export default function LogoutButton({
@@ -23,9 +25,10 @@ export default function LogoutButton({
   iconSize = 18,
   showTooltip = true,
   onLogoutSuccess,
-  onLogoutError
+  onLogoutError,
+  onShowGuestModal
 }: LogoutButtonProps) {
-  const { logout, userId } = useAuth()
+  const { logout, userId, isGuestUser } = useAuth()
   
   // 바구니 상태 확인
   const basketId = useBasketId()
@@ -44,6 +47,13 @@ export default function LogoutButton({
       return
     }
     
+    // 게스트 회원인 경우 모달 표시 콜백 호출
+    if (isGuestUser && onShowGuestModal) {
+      onShowGuestModal()
+      return
+    }
+    
+    // 일반 회원인 경우 즉시 로그아웃
     try {
       await logout()
       ToastManager.logoutSuccess(userId || undefined)

@@ -267,15 +267,17 @@ export default function SearchPage() {
       </div>
 
       {/* SearchBar (카테고리 페이지와 동일하게 선택 드롭다운은 별도) */}
-      <SearchBar
-        keyword={keyword}
-        setKeyword={onKeywordChange}
-        category={category}
-        setCategory={onCategoryChange}
-        onSearch={() => {}}
-        showCategorySelect={false}
-        showResultButton={false}
-      />
+      <div className="w-full max-w-2xl mx-auto">
+        <SearchBar
+          keyword={keyword}
+          setKeyword={onKeywordChange}
+          category={category}
+          setCategory={onCategoryChange}
+          onSearch={() => {}}
+          showCategorySelect={false}
+          showResultButton={false}
+        />
+      </div>
 
       {/* 카테고리 필터 섹션 */}
       <div className="w-full max-w-4xl mb-2 mt-4">
