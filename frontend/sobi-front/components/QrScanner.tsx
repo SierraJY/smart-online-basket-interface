@@ -12,7 +12,7 @@ interface QrScannerProps {
 // QRScanner 컴포넌트
 export default function QrScannerComponent({ onScan }: QrScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const qrScannerRef = useRef<any | null>(null);
+  const qrScannerRef = useRef<{ stop: () => Promise<void>; destroy: () => void } | null>(null);
   const stoppedRef = useRef(false);
   const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,13 +69,15 @@ export default function QrScannerComponent({ onScan }: QrScannerProps) {
     }
 
     // 런타임에 모듈/워커 로드
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let QrScannerCls: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let qrScannerInstance: any;
     const init = async () => {
       const mod = await import('qr-scanner');
       QrScannerCls = mod.default;
       // 워커 경로 설정 (public에 위치시키거나 CDN 사용 가능)
-      (QrScannerCls as any).WORKER_PATH = '/qr-scanner-worker.min.js';
+      (QrScannerCls as { WORKER_PATH?: string }).WORKER_PATH = '/qr-scanner-worker.min.js';
 
       qrScannerInstance = new QrScannerCls(
       videoRef.current,

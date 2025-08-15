@@ -385,7 +385,7 @@ export default function Home() {
         {/* 상단 헤더 */}
         <div className="flex justify-between items-center mb-6 px-6 relative">
           {/* 왼쪽: 검색바 */}
-          <div className="flex-1 max-w-md mr-4">
+          <div className="flex-1 max-w-md md:max-w-lg lg:max-w-3xl mr-4">
             <SearchBar
               keyword={searchKeyword}
               setKeyword={setSearchKeyword}

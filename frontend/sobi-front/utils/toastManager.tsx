@@ -272,8 +272,17 @@ class ToastManager {
    */
   static logoutSuccess(userId?: string, config?: ToastConfig) {
     const finalConfig = { ...authConfig, ...config };
-    const defaultMessage = userId ? `${userId}님 다음에 또 봐요~` : '이미 로그아웃 상태입니다';
+    const defaultMessage = userId ? `${userId}님 다음에 또 봐요~` : '로그아웃 되었습니다';
     return toast(defaultMessage, finalConfig);
+  }
+
+  /**
+   * 게스트 로그아웃 성공 toast (토스트 대신 모달 사용)
+   */
+  static guestLogoutSuccess() {
+    // 게스트 로그아웃의 경우 토스트를 표시하지 않음
+    // 대신 모달을 통해 회원가입을 유도
+    return null;
   }
 
   /**
@@ -337,6 +346,22 @@ class ToastManager {
   static basketLoginRequired(config?: ToastConfig) {
     const finalConfig = { ...basketConfig, ...config };
     return toast.error('SOBI를 사용하기 위해선 로그인이 필요합니다!', finalConfig);
+  }
+
+  /**
+   * 게스트 사용자 찜 기능 제한 toast
+   */
+  static guestFavoriteRestricted(config?: ToastConfig) {
+    const finalConfig = { 
+      ...favoriteConfig, 
+      ...config,
+      style: {
+        ...favoriteConfig.style,
+        ...config?.style,
+        animation: 'shake-intense 0.5s ease-in-out'
+      }
+    };
+    return toast('찜 기능은 회원 전용 기능입니다', finalConfig);
   }
 
   /**

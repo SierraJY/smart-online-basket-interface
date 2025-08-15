@@ -2,15 +2,18 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from "next/navigation";
 import { useBasketStore } from "@/store/useBasketStore";
 import QrScannerComponent from '@/components/QrScanner';
+import InputBasketNumberModal from '@/components/modals/InputBasketNumberModal';
 import { motion } from 'framer-motion';
 
 export default function ScanPage() {
   const router = useRouter();
   const setBasketId = useBasketStore(s => s.setBasketId);
   const setActivatedBasketId = useBasketStore(s => s.setActivatedBasketId);
+  const [showInputModal, setShowInputModal] = useState(false);
 
 
 
@@ -48,16 +51,27 @@ export default function ScanPage() {
     }
   };
 
-  // 테스트용 버튼 ('1' 전달)
-  const testScan = () => {
-    console.log("테스트 QR 스캔 실행");
-    const testData = {
-      basketId: "1",
-      boardMac: "test-mac-001",
-      timestamp: Date.now()
-    };
-    handleQrScannerScan(JSON.stringify(testData));
+  // 장바구니 번호 입력 연결 핸들러
+  const handleBasketNumberConnect = async (basketNumber: string) => {
+    console.log("장바구니 번호 입력 연결:", basketNumber);
+    
+    try {
+      // 입력된 번호로 데이터 생성
+      const basketData = {
+        basketId: basketNumber,
+        boardMac: `manual-input-${basketNumber.padStart(3, '0')}`,
+        timestamp: Date.now()
+      };
+      
+      // 기존 QR 스캔 핸들러와 동일한 로직 사용
+      await handleQrScannerScan(JSON.stringify(basketData));
+      
+    } catch (err) {
+      console.error("장바구니 번호 입력 연결 실패:", err);
+    }
   };
+
+
 
 
 
@@ -95,21 +109,27 @@ export default function ScanPage() {
           </motion.div>
         </div>
 
-        {/* 테스트용 버튼 - 작은 크기 */}
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={testScan}
-            className="px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 flex items-center justify-center shadow-sm hover:opacity-80"
-            style={{
-              border: '1px solid var(--input-border)',
-              backgroundColor: 'var(--input-background)',
-              color: 'var(--foreground)',
-            }}
+        {/* 연결 도움말 */}
+        <div className="mt-6 text-center">
+          <motion.button
+            onClick={() => setShowInputModal(true)}
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--sobi-green)] transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            테스트 장바구니 1번 연결
-          </button>
+            혹시 연결이 안되시나요?
+          </motion.button>
         </div>
+
+
       </div>
+
+      {/* 장바구니 번호 입력 모달 */}
+      <InputBasketNumberModal
+        isOpen={showInputModal}
+        onClose={() => setShowInputModal(false)}
+        onConnect={handleBasketNumberConnect}
+      />
     </main>
   );
 }
