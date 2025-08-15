@@ -15,7 +15,7 @@ const eslintConfig = [
   // 특정 규칙 끄기
   {
     rules: {
-      "@typescript-eslint/no-explicit-any": "off", // any 타입 허용
+      // "@typescript-eslint/no-explicit-any": "off", // any 타입 허용 X
       "react/no-unescaped-entities": "off",        // 따옴표 문자 그대로 허용
     },
   },

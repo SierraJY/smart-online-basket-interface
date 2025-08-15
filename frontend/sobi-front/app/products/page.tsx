@@ -243,20 +243,22 @@ export default function ProductsPage() {
           </AnimatePresence>
         </div>
       </div>
-      <SearchBar
-        keyword={keyword}
-        setKeyword={setKeyword}
-        category={category}
-        setCategory={onCategoryChange}
-        onSearch={() => {
-          if (keyword.trim()) {
-            const searchUrl = `/products/search?keyword=${encodeURIComponent(keyword.trim())}`
-            router.push(searchUrl)
-          }
-        }}
-        showCategorySelect={true}
-        showResultButton={false}
-      />
+      <div className="w-full max-w-2xl mx-auto">
+        <SearchBar
+          keyword={keyword}
+          setKeyword={setKeyword}
+          category={category}
+          setCategory={onCategoryChange}
+          onSearch={() => {
+            if (keyword.trim()) {
+              const searchUrl = `/products/search?keyword=${encodeURIComponent(keyword.trim())}`
+              router.push(searchUrl)
+            }
+          }}
+          showCategorySelect={true}
+          showResultButton={false}
+        />
+      </div>
       
       {/* 카테고리 필터 섹션 */}
       <div className="w-full max-w-4xl mb-2 mt-4">

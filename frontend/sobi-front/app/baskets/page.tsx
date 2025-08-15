@@ -1254,8 +1254,11 @@ export default function BasketsPage() {
                       boxShadow: '0 4px 12px rgba(66, 184, 131, 0.3)'
                     }}
                   >
-                    <span>더 많은 AI 추천 상품 보기</span>
-                    <span className="text-sm opacity-90">({recommendations.length}개)</span>
+                    <span>
+                      <span className="text-sm opacity-90">{recommendations.length}개</span>
+                      의 모든 AI 추천 상품 보기
+                      </span>
+                    
                   </Link>
                 </div>
               )}

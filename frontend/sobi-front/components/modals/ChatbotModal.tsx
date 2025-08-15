@@ -44,7 +44,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 3,
       question: '상품이 왜 흔들려?',
-      answer: '현재 재고가 얼마 남지 않은 상품들이에요, 품절되기 전에 얼른 구매하세요!'
+      answer: '현재 재고가 얼마 남지 않은 상품들이에요,\n품절되기 전에 얼른 구매하세요!'
     },
     {
       id: 4,
@@ -54,7 +54,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 5,
       question: 'SOBI는 어떻게 사용해?',
-      answer: '초록색 장바구니 버튼을 클릭한 뒤 SOBI에 있는 QR코드를 스캔하면 앱과 연동되며 구매할 상품을 담으면 자동으로 상품이 추가됩니다'
+      answer: '초록색 장바구니 버튼을 클릭한 뒤 SOBI에 있는 QR코드를 스캔하면 앱과 연동되며,\nSOBI 안에 구매할 상품을 담으면 자동으로 상품이 추가됩니다'
     },
     {
       id: 6,
@@ -64,7 +64,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
     {
       id: 7,
       question: '회원만 이용할 수 있어?',
-      answer: '게스트 로그인으로도 충분히 SOBI 서비스를 이용할 수 있습니다! 다만, 일부 회원 전용 서비스는 이용할 수 없어요 ㅠㅠ'
+      answer: '아뇨 게스트 회원도 충분히 SOBI의 많은 서비스를 이용하실 수 있습니다!\n다만, 일부 회원 전용 서비스는 이용할 수 없어요 ㅠㅠ'
     }
   ]
 
@@ -165,7 +165,7 @@ export default function ChatbotModal({ onClose }: ChatbotModalProps) {
             }}
           />
           
-          <div ref={messagesContainerRef} className="h-full overflow-y-auto p-4 space-y-4">
+          <div ref={messagesContainerRef} className="h-full overflow-y-auto p-4 pt-8 space-y-4">
           {/* 초기 환영 메시지 */}
           {messages.length === 0 && (
             <div className="flex items-start gap-3">

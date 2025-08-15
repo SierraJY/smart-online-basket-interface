@@ -218,15 +218,17 @@ export default function TagPage() {
         {tagFromURL.replace('#', '# ')}
       </h1>
       {/* SearchBar */}
-      <SearchBar
-        keyword={keyword}
-        setKeyword={onKeywordChange}
-        category="전체"
-        setCategory={() => {}}
-        onSearch={() => {}}
-        showCategorySelect={false}
-        showResultButton={false}
-      />
+      <div className="w-full max-w-2xl mx-auto">
+        <SearchBar
+          keyword={keyword}
+          setKeyword={onKeywordChange}
+          category="전체"
+          setCategory={() => {}}
+          onSearch={() => {}}
+          showCategorySelect={false}
+          showResultButton={false}
+        />
+      </div>
       
       {/* 필터 옵션들 */}
       <div className="flex items-center gap-4 mb-6 mt-4 w-full max-w-4xl justify-center">

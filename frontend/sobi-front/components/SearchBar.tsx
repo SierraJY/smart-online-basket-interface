@@ -74,7 +74,7 @@ export default function SearchBar({
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-md flex flex-col gap-4"
+      className="w-full flex flex-col gap-4"
     >
       <div
         className="flex items-center w-full"

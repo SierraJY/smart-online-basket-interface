@@ -17,6 +17,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import ToastManager from '@/utils/toastManager'
 import WithdrawalModal from '@/components/modals/WithdrawalModal'
+import GuestLogoutModal from '@/components/modals/GuestLogoutModal'
 import dynamic from 'next/dynamic'
 const ChatbotModal = dynamic(() => import('@/components/modals/ChatbotModal'), { ssr: false })
 
@@ -29,12 +30,13 @@ interface ProfileData {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { isLoggedIn, mounted, isGuestUser, accessToken } = useAuth()
+  const { isLoggedIn, mounted, isGuestUser, accessToken, logout } = useAuth()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
   const [withdrawalLoading, setWithdrawalLoading] = useState(false)
+  const [showGuestLogoutModal, setShowGuestLogoutModal] = useState(false)
 	// 챗봇 모달 상태
 	const [isChatbotOpen, setIsChatbotOpen] = useState(false)
 	const chatbotModalRef = useRef<HTMLDivElement>(null)
@@ -77,7 +79,6 @@ export default function ProfilePage() {
       console.log('프로필 페이지 - API 요청 조건 충족')
       fetchProfile()
     } else if (mounted && !isLoggedIn) {
-      console.log('프로필 페이지 - 로그인되지 않음, 로그인 페이지로 이동')
       router.push('/login')
     }
   }, [mounted, isLoggedIn, router])
@@ -101,6 +102,36 @@ export default function ProfilePage() {
   // 로그아웃 성공 시 처리
   const handleLogoutSuccess = () => {
     router.push('/login')
+  }
+
+  // 게스트 로그아웃 모달 표시
+  const handleShowGuestModal = () => {
+    setShowGuestLogoutModal(true)
+  }
+
+  // 모달에서 로그아웃 처리
+  const handleModalLogout = async () => {
+    try {
+      await logout()
+      ToastManager.logoutSuccess('게스트') // 명시적으로 사용자명 전달
+      setShowGuestLogoutModal(false)
+      router.push('/login')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
+  }
+
+  // 모달에서 회원가입 처리
+  const handleModalSignup = async () => {
+    try {
+      await logout()
+      setShowGuestLogoutModal(false)
+      router.push('/signup')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
   }
 
   // 회원 탈퇴 처리
@@ -214,6 +245,7 @@ export default function ProfilePage() {
           {/* 로그아웃 버튼 */}
           <LogoutButton 
             onLogoutSuccess={handleLogoutSuccess}
+            onShowGuestModal={handleShowGuestModal}
           />
           
           <div className="flex items-center space-x-4">
@@ -238,7 +270,7 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-2 mt-2 p-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                     <p className="text-[var(--text-secondary)]">
-                      {basketId}번 장바구니 사용 중
+                      {basketId}번 SOBI 사용 중
                     </p>
                   </div>
                 )}
@@ -255,8 +287,8 @@ export default function ProfilePage() {
           className="space-y-3"
         >
           {/* 찜목록 */}
-          <Link href="/favorite">
-            <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+          <Link href={isGuestUser ? "#" : "/favorite"}>
+            <div className={`bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02] ${isGuestUser ? 'opacity-30 pointer-events-none' : ''}`}>
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
                   <Image
@@ -269,7 +301,9 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-[var(--foreground)]">찜목록</h3>
-                  <p className="text-sm text-[var(--text-secondary)]">관심 상품들을 확인해보세요</p>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    {isGuestUser ? '회원가입 후 이용 가능합니다' : '관심 상품들을 확인해보세요'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -366,6 +400,35 @@ export default function ProfilePage() {
         onConfirm={confirmWithdrawal}
         loading={withdrawalLoading}
       />
+
+      {/* 게스트 로그아웃 모달 */}
+      <AnimatePresence>
+        {showGuestLogoutModal && (
+          <motion.div 
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowGuestLogoutModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GuestLogoutModal 
+                onClose={() => setShowGuestLogoutModal(false)} 
+                onLogout={handleModalLogout}
+                onSignup={handleModalSignup}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 } 
