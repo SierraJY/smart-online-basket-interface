@@ -93,12 +93,14 @@ services:
     networks:
       - sobi-net
 
-  mqtt2prometheus:
-    image: ghcr.io/hikhvar/mqtt2prometheus:latest
-    container_name: monitor-mqtt-exporter
-    volumes:
-      - ./monitoring/mqtt2prometheus-config.yaml:/config.yaml:ro
-    command: ["--config", "/config.yaml"]
+  mosquitto_exporter:
+    image: sapcc/mosquitto-exporter:0.8.0
+    container_name: monitor-mosquitto-exporter
+    command:
+      - --endpoint
+      - tcp://sobi-mqtt:1883
+      - --bind-address
+      - 0.0.0.0:9234
     networks:
       - sobi-net
 
