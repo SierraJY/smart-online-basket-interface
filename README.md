@@ -13,7 +13,7 @@
 ### 📚 API 문서 및 개발자 도구
 - **서버 환경**: AWS EC2 (13.125.215.242)
 - **REST API 베이스**: https://sobi-basket.app/api
-- **Swagger API 문서**: https://sobi-basket.app/swagger-ui.html
+- **Swagger API 문서**: http://13.125.215.242:8080/swagger-ui/index.html
 - **Grafana 대시보드**: http://13.125.215.242:3001
 
 ## 목차
@@ -52,7 +52,6 @@
   - **회원**: Two-Tower 딥러닝 모델 (ONNX 최적화)
 - 모바일 웹앱을 통한 셀프 결제
 - 실시간 가격 합산 및 할인 적용
-- 매일 자동 모델 재학습 (Airflow 파이프라인)
 
 ## 시스템 아키텍처
 
