@@ -1,0 +1,201 @@
+x-env: &common_env
+  TZ: Asia/Seoul
+
+services:
+  airflow:
+    build:
+      context: ./infra/airflow
+      dockerfile: Dockerfile
+    image: mlops_airflow:latest
+    container_name: mlops_airflow
+    restart: unless-stopped
+    environment:
+      <<: *common_env
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Asia/Seoul
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow123@sobi-db:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW_UID: ${AIRFLOW_UID}
+      AIRFLOW_GID: ${AIRFLOW_GID}
+      DB_SCHEMA: airflow_data
+      DB_URL: postgresql://mlops_reader:mlops_read_only@sobi-db:5432/sobi
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REPORT_SENDER_EMAIL: ${REPORT_SENDER_EMAIL}
+      REPORT_SENDER_PASSWORD: ${REPORT_SENDER_PASSWORD}
+      REPORT_RECEIVER: ${REPORT_RECEIVER}
+      JETSON_USER: ${JETSON_USER:-ssafy}
+      JETSON_HOST: host.docker.internal
+      JETSON_SSH_PORT: "2222"
+      JETSON_DEST_GUEST: ${JETSON_DEST_GUEST:-/opt/app/guest_model}
+      JETSON_DEST_MEMBER: ${JETSON_DEST_MEMBER:-/opt/app/member_model}
+      OUTPUT_DIR: /opt/mlops/recommender/models/member
+    user: "${AIRFLOW_UID}:${AIRFLOW_GID}"
+    group_add:
+      - docker
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./infra/airflow/dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./infra/airflow/plugins:/opt/airflow/plugins
+      - ./preprocessing:/opt/mlops/preprocessing
+      - ./recommender:/opt/mlops/recommender
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - ./weekly_report:/opt/mlops/weekly_report
+      - ./data:/opt/mlops/data
+      - ./jetson_sync:/opt/jetson_sync
+      - ./secrets/ssh:/tmp/ssh
+      - /srv/mlops/models:/srv/mlops/models  # 모델 저장 디렉토리 마운트
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com &&
+        airflow scheduler & airflow webserver
+      "
+    depends_on:
+      - mlflow
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sobi-net
+
+  weekly_report:
+    build:
+      context: ./weekly_report
+      dockerfile: Dockerfile
+    image: mlops_weekly_report:latest
+    container_name: mlops_weekly_report
+    environment:
+      <<: *common_env
+      DB_URL: postgresql://airflow:airflow123@sobi-db:5432/airflowdb
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REPORT_SENDER_EMAIL: ${REPORT_SENDER_EMAIL}
+      REPORT_SENDER_PASSWORD: ${REPORT_SENDER_PASSWORD}
+      REPORT_RECEIVER: ${REPORT_RECEIVER}
+      CSV_PATH: /app/data/purchased_history.csv
+      WKHTMLTOPDF_PATH: /usr/bin/wkhtmltopdf
+      REPORT_OUT_DIR: /app/output
+    volumes:
+      - ./weekly_report:/app
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - sobi-net
+
+  # === 전처리 서비스 ===
+  preprocessing:
+    build:
+      context: ./preprocessing
+      dockerfile: Dockerfile
+    image: mlops_preprocessing:latest
+    container_name: mlops_preprocessing
+    working_dir: /app
+    environment:
+      <<: *common_env
+      DB_HOST: sobi-db
+      DB_NAME: sobi
+      DB_USER: mlops_reader
+      DB_PASSWORD: mlops_read_only
+      DB_PORT: 5432
+    volumes:
+      - ./preprocessing:/app
+      - ./data:/app/data
+    depends_on:
+      - mlflow
+    networks:
+      - sobi-net
+
+  # === 트레이너 (멤버/게스트 둘 다 이 컨테이너에서 실행) ===
+  trainer:
+    user: "0:0" 
+    build:
+      context: ./recommender
+      dockerfile: Dockerfile
+    image: mlops_trainer:latest
+    container_name: mlops_trainer
+    working_dir: /app
+    environment:
+      <<: *common_env
+      APP_HOME: /app
+      DB_URL: postgresql://mlops_reader:mlops_read_only@sobi-db:5432/sobi
+      CSV_PATH: /app/data/purchased_history.csv
+
+      # 산출물 경로(컨테이너 기준)
+      OUTPUT_DIR: /opt/airflow/models/member
+      GUEST_OUTPUT_DIR: /opt/airflow/models/guest
+
+      # Jetson 접속 정보(컨테이너가 직빵으로 읽게 명시)
+      JETSON_HOST: host.docker.internal
+      JETSON_SSH_PORT: "2222"
+      JETSON_USER: ${JETSON_USER:-ssafy}
+      JETSON_PUSH: 1
+      JETSON_DEST_MEMBER: "/home/ssafy/Desktop/recommend/parameters/member_model"
+      JETSON_DEST_GUEST: "/home/ssafy/Desktop/recommend/parameters/guest_model"
+
+    volumes:
+      - ./recommender:/app
+      - ./data:/app/data
+      # 모델 저장 디렉토리 마운트 (Airflow 컨테이너에서 쓰기 가능한 경로)
+      - ./models:/opt/airflow/models
+      # SSH 키 마운트(호스트에서 권한 600로 맞춰두면 :ro 유지 가능)
+      - ./secrets/ssh/id_ed25519_jetson:/mnt/ssh/id_ed25519_jetson
+    depends_on:
+      - mlflow
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sobi-net
+
+  mlflow:
+    build:
+      context: ./infra/mlflow
+      dockerfile: Dockerfile
+    image: mlops_mlflow:latest
+    container_name: mlops_mlflow
+    command: >
+      mlflow server
+      --backend-store-uri postgresql+psycopg2://mlflow:mlflow@mlflowdb:5432/mlflow
+      --artifacts-destination /mlflow_artifacts
+      --host 0.0.0.0 --port 5000
+    environment:
+      <<: *common_env
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow_artifacts
+    depends_on:
+      - mlflowdb
+    networks:
+      - sobi-net
+
+  mlflowdb:
+    image: postgres:14
+    container_name: mlops_mlflowdb
+    environment:
+      <<: *common_env
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    volumes:
+      - mlflow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - sobi-net
+
+  # Core의 sobi-db에 연결하기 위한 외부 네트워크 설정
+  # 실제 DB는 docker-compose.core.yaml에서 실행됨
+
+volumes:
+  mlflow_artifacts:
+  mlflow_pg:
+
+networks:
+  sobi-net:
+    external: true
+    name: sobi-net

@@ -1,0 +1,1 @@
+INSERT INTO basket (board_mac, usable) VALUES ('2c:cf:67:11:93:6b', TRUE);

@@ -1,0 +1,455 @@
+/* globals.css - 다크모드 변수 완전 대응 버전 */
+
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+
+@font-face {
+  font-family: 'BMJUA';
+  src: url('./font/BMJUA.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Yeongwol';
+  src: url('./font/Yeongwol.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Hangul';
+  src: url('./font/hangul.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Jejudoldam';
+  src: url('./font/jejudoldam.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Ownglyph_daelong-Rg';
+  src: url('./font/Ownglyph_daelong-Rg.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'LOTTERIACHAB';
+  src: url('./font/chab.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.test-font {
+  font-family: 'Jua', 'Cafe24Ssurround', 'Pretendard', Arial, sans-serif;
+  font-size: 0.8rem;
+  color: #215a3b;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+:root {
+  --input-background: #ffffff;
+  --background: #ddeedf;
+  --foreground: #171717;
+  /* --input-foreground: #171717; */
+  --input-border: #cccccc;
+  --text-secondary: #666666;
+  --footer-background: rgba(255,255,255,0.42);  /* 밝은 유리 */
+  --footer-border: rgba(255,255,255,0.18);
+  --toggle-bg: #e2e8f0;     /* light gray */
+  --toggle-knob: #ffffff;
+  --text-link: #34cd55;
+  --search-modal-bg: rgba(255,255,255,0.36);
+  --search-modal-border: rgba(255,255,255,0.18);
+  
+  /* SOBI 브랜드 컬러 */
+  --sobi-green: #2dc07e;
+  --sobi-green-light: rgba(18, 130, 17, 0.1);
+  --sobi-green-lighter: rgba(18, 130, 17, 0.05);
+  --sobi-green-border: rgba(18, 130, 17, 0.2);
+  --sobi-green-border-light: rgba(18, 130, 17, 0.1);
+  
+  /* 게스트 사용자 컬러 */
+  --guest-orange: #f0952d;
+  
+
+}
+
+.dark {
+  --input-background: #222222;
+  --background: #2e2d2d;
+  --foreground: #eeeeee;
+  /* --input-foreground: #ffffff; */
+  --input-border: #444444;
+  --text-secondary: #aaaaaa;
+  --footer-background: rgba(45, 40, 40, 0.34);  /* 어두운 유리 */
+  --footer-border: rgba(160,160,180,0.15);
+  --toggle-bg: #444444;     /* dark gray */
+  --toggle-knob: #eeeeee;
+  --text-link: #eeeeee;
+  --search-modal-bg: rgba(34,34,34,0.32);
+  --search-modal-border: rgba(160,160,180,0.13);
+  
+  /* SOBI 브랜드 컬러 (다크모드) */
+  --sobi-green: #166935;  /* 다크모드에서는 더 밝은 그린 */
+  --sobi-green-light: rgba(74, 222, 128, 0.15);
+  --sobi-green-lighter: rgba(74, 222, 128, 0.08);
+  --sobi-green-border: rgba(74, 222, 128, 0.25);
+  --sobi-green-border-light: rgba(74, 222, 128, 0.15);
+  
+  /* 게스트 사용자 컬러 (다크모드) */
+  --guest-orange: #f0952d;
+  
+
+}
+
+.dark body {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+html {
+  overscroll-behavior: none;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background-color: var(--background);
+  min-height: 100vh;
+  min-height: 100dvh; /* 동적 뷰포트 높이 */
+}
+
+main {
+  background-color: transparent;
+  /* color: var(--input-foreground); */
+}
+
+body {
+  color: var(--foreground);
+  background-color: transparent;
+  font-family: 'Ownglyph_daelong-Rg', Arial, Helvetica, sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Webkit (크롬, 사파리) */
+.your-scroll-list::-webkit-scrollbar {
+  display: none;
+}
+/* Firefox */
+.your-scroll-list {
+  scrollbar-width: none;
+}
+/* IE, Edge */
+.your-scroll-list {
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+
+
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  13% { transform: translateX(-5px) rotate(-2deg);}
+  27% { transform: translateX(6px) rotate(1.6deg);}
+  45% { transform: translateX(-3px) rotate(-1deg);}
+  60% { transform: translateX(2px) rotate(0.5deg);}
+  75% { transform: translateX(-1px) rotate(-0.5deg);}
+  100% { transform: translateX(0); }
+}
+.animate-shake {
+  animation: shake 0.65s infinite cubic-bezier(.4,.09,.62,1.12);
+}
+
+@keyframes shake-random {
+  0% { transform: translateX(0) rotate(0deg);}
+  8% { transform: translateY(-1px) rotate(-3deg);}
+  17% { transform: translateX(7px) rotate(2deg);}
+  33% { transform: translateY(2px) rotate(-4deg);}
+  53% { transform: translateX(-6px) rotate(2.5deg);}
+  70% { transform: translateY(-2px) rotate(-2deg);}
+  85% { transform: translateX(2px) rotate(0.8deg);}
+  100% { transform: translateX(0) rotate(0deg);}
+}
+
+.animate-shake-random {
+  animation: shake-random 0.55s cubic-bezier(.35,.07,.72,1.34);
+}
+
+/* 로고 전용 부드러운 흔들림 애니메이션 */
+@keyframes logo-shake {
+  0% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(-2px) translateY(-1px); }
+  50% { transform: translateX(2px) translateY(1px); }
+  75% { transform: translateX(-1px) translateY(-0.5px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+.animate-logo-shake {
+  animation: logo-shake 0.3s ease-in-out;
+}
+
+/* 점 애니메이션 */
+@keyframes dots {
+  0%, 20% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  80%, 100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.animate-dots {
+  animation: dots 1.5s infinite;
+  display: inline-block;
+}
+
+/* 타자기 애니메이션 */
+@keyframes typewriter {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    border-color: transparent;
+  }
+  51%, 100% {
+    border-color: white;
+  }
+}
+
+.typewriter-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid white;
+  animation: 
+    typewriter 2s steps(12, end) 0.5s forwards,
+    blink 1s 1.5s infinite;
+  width: 0;
+  box-sizing: border-box;
+  max-width: fit-content;
+}
+
+/* 부드러운 흔들림 애니메이션 */
+@keyframes shake-soft {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+/* 강렬한 흔들림 애니메이션 */
+@keyframes shake-intense {
+  0% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-6px) rotate(-2deg); }
+  20% { transform: translateX(6px) rotate(2deg); }
+  30% { transform: translateX(-5px) rotate(-1deg); }
+  40% { transform: translateX(5px) rotate(1deg); }
+  50% { transform: translateX(-4px) rotate(-0.5deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  70% { transform: translateX(-2px) rotate(-0.2deg); }
+  80% { transform: translateX(2px) rotate(0.2deg); }
+  90% { transform: translateX(-1px) rotate(-0.1deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+* {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: background-color 0.4s ease, color 0.8s ease;
+}
+
+/* 이미지 드래그 방지 */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+/* Next.js Image 컴포넌트의 img 태그도 드래그 방지 */
+img[data-nimg] {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+/* 링크 드래그 방지 */
+a {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 내부의 모든 요소 드래그 방지 */
+.overflow-x-auto {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.overflow-x-auto * {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 내부의 모든 요소 드래그 방지 */
+.drag-scroll-container {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.drag-scroll-container * {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* 드래그 스크롤 컨테이너 부드러운 스크롤 */
+.drag-scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 인쇄 스타일 - 영수증 전용 */
+@media print {
+  /* 전체 페이지 리셋 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* 메인 컨테이너 */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+  
+  /* 영수증 컨테이너 */
+  .receipt-container {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+  
+  /* 인쇄 시 숨길 요소들 */
+  .print\\:hidden,
+  .print-button,
+  [class*="print:hidden"] {
+    display: none !important;
+  }
+  
+  /* 영수증 헤더 */
+  .receipt-container .bg-green-600 {
+    background: #42b883 !important;
+    color: white !important;
+  }
+  
+  /* 페이지 나누기 방지 */
+  .receipt-container > div {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  
+  /* 인쇄 시 여백 최소화 */
+  @page {
+    margin: 0.5cm !important;
+    size: A4 !important;
+  }
+  
+  /* 불필요한 요소들 숨기기 */
+  nav, 
+  header, 
+  footer, 
+  .navbar, 
+  .navigation,
+  button[onclick*="print"],
+  /* 하단 네비게이션 관련 요소들 */
+  [role="navigation"],
+  [class*="bottom"],
+  [class*="footer"],
+  [class*="nav"],
+  /* 브라우저 기본 요소들 */
+  ::-webkit-scrollbar,
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-thumb {
+    display: none !important;
+  }
+  
+  /* 하단 여백 제거 */
+  body {
+    padding-bottom: 0 !important;
+  }
+  
+  main {
+    padding-bottom: 0 !important;
+  }
+  
+  /* 영수증 컨테이너 하단 여백 제거 */
+  .receipt-container {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

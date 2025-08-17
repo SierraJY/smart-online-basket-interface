@@ -1,0 +1,113 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    container_name: monitor-prometheus
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - sobi-net
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: monitor-grafana
+    environment:
+      TZ: Asia/Seoul
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_DATE_FORMATS_DEFAULT_TIMEZONE: "Asia/Seoul"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - sobi-net
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: monitor-alertmanager
+    env_file:
+      - ./monitoring/.env                
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - sobi-net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: monitor-cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - sobi-net
+
+  node_exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: monitor-node-exporter
+    pid: "host"
+    command:
+      - "--path.rootfs=/host"
+      - "--web.listen-address=0.0.0.0:9100"
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - sobi-net
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: monitor-postgres-exporter
+    env_file:
+      - .env
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@sobi-db:5432/${POSTGRES_DB}?sslmode=disable"
+    networks:
+      - sobi-net
+
+  redis_exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: monitor-redis-exporter
+    environment:
+      REDIS_ADDR: sobi-redis:6379
+    networks:
+      - sobi-net
+
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:0.11.0
+    container_name: monitor-nginx-exporter
+    command:
+      - "-nginx.scrape-uri=http://sobi-nginx/stub_status"
+    networks:
+      - sobi-net
+
+  mosquitto_exporter:
+    image: sapcc/mosquitto-exporter:0.8.0
+    container_name: monitor-mosquitto-exporter
+    command:
+      - --endpoint
+      - tcp://sobi-mqtt:1883
+      - --bind-address
+      - 0.0.0.0:9234
+    networks:
+      - sobi-net
+
+volumes:
+  prom_data: {}
+  grafana_data: {}
+
+networks:
+  sobi-net:
+    external: true

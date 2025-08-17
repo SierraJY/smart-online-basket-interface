@@ -1,0 +1,434 @@
+	'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/utils/hooks/useAuth'
+import { apiClient } from '@/utils/api/apiClient'
+import { config } from '@/config/env'
+import { useBasketId, useActivatedBasketId } from '@/store/useBasketStore'
+
+import LogoutButton from '@/components/buttons/LogoutButton'
+import { User } from 'lucide-react'
+import { FcSurvey } from "react-icons/fc"
+import { FiUserX } from "react-icons/fi"
+import { RiRobot3Line } from "react-icons/ri"
+import Link from 'next/link'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import ToastManager from '@/utils/toastManager'
+import WithdrawalModal from '@/components/modals/WithdrawalModal'
+import GuestLogoutModal from '@/components/modals/GuestLogoutModal'
+import dynamic from 'next/dynamic'
+const ChatbotModal = dynamic(() => import('@/components/modals/ChatbotModal'), { ssr: false })
+
+interface ProfileData {
+  gender: number
+  id: number
+  userId: string
+  age: number
+}
+
+export default function ProfilePage() {
+  const router = useRouter()
+  const { isLoggedIn, mounted, isGuestUser, accessToken, logout } = useAuth()
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false)
+  const [showGuestLogoutModal, setShowGuestLogoutModal] = useState(false)
+	// 챗봇 모달 상태
+	const [isChatbotOpen, setIsChatbotOpen] = useState(false)
+	const chatbotModalRef = useRef<HTMLDivElement>(null)
+  
+  // 바구니 상태 확인 (상태 표시용)
+  const basketId = useBasketId()
+  const activatedBasketId = useActivatedBasketId()
+  
+  // 바구니 사용 중인지 확인하는 함수 (상태 표시용)
+  const isBasketInUse = () => {
+    return !!(basketId && activatedBasketId)
+  }
+
+  // 프로필 데이터 가져오기
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        console.log('프로필 API 요청 시작')
+        setLoading(true)
+        const response = await apiClient.get(config.API_ENDPOINTS.CUSTOMERS_PROFILE)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log('프로필 데이터 받음:', data)
+          setProfileData(data)
+        } else {
+          throw new Error('프로필 정보를 가져올 수 없습니다.')
+        }
+      } catch (err) {
+        console.error('프로필 조회 오류:', err)
+        setError('프로필 정보를 불러오는데 실패했습니다.')
+        ToastManager.error('프로필 정보를 불러오는데 실패했습니다.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // mounted 상태가 true이고 로그인된 상태일 때만 API 요청
+    if (mounted && isLoggedIn) {
+      console.log('프로필 페이지 - API 요청 조건 충족')
+      fetchProfile()
+    } else if (mounted && !isLoggedIn) {
+      router.push('/login')
+    }
+  }, [mounted, isLoggedIn, router])
+
+	// 챗봇 모달: ESC 닫기
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') setIsChatbotOpen(false)
+		}
+		document.addEventListener('keydown', onKeyDown)
+		return () => document.removeEventListener('keydown', onKeyDown)
+	}, [])
+
+	// 챗봇 모달: 바깥 클릭 닫기
+	const handleChatbotBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+		if (chatbotModalRef.current && !chatbotModalRef.current.contains(e.target as Node)) {
+			setIsChatbotOpen(false)
+		}
+	}
+
+  // 로그아웃 성공 시 처리
+  const handleLogoutSuccess = () => {
+    router.push('/login')
+  }
+
+  // 게스트 로그아웃 모달 표시
+  const handleShowGuestModal = () => {
+    setShowGuestLogoutModal(true)
+  }
+
+  // 모달에서 로그아웃 처리
+  const handleModalLogout = async () => {
+    try {
+      await logout()
+      ToastManager.logoutSuccess('게스트') // 명시적으로 사용자명 전달
+      setShowGuestLogoutModal(false)
+      router.push('/login')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
+  }
+
+  // 모달에서 회원가입 처리
+  const handleModalSignup = async () => {
+    try {
+      await logout()
+      setShowGuestLogoutModal(false)
+      router.push('/signup')
+    } catch (error) {
+      console.error('로그아웃 오류:', error)
+      ToastManager.logoutError()
+    }
+  }
+
+  // 회원 탈퇴 처리
+  const handleWithdrawal = () => {
+    setShowWithdrawalModal(true)
+  }
+
+  // 회원 탈퇴 확인 처리
+  const confirmWithdrawal = async () => {
+    if (!accessToken) {
+      ToastManager.error('인증 정보가 없습니다.')
+      return
+    }
+
+    setWithdrawalLoading(true)
+
+    try {
+      const response = await apiClient.post(config.API_ENDPOINTS.CUSTOMERS_WITHDRAWAI)
+      
+      if (response.ok) {
+        // 탈퇴 완료 페이지로 이동 (접근 권한 부여)
+        sessionStorage.setItem('withdrawalAccess', 'true')
+        router.push('/withdrawal')
+      } else {
+        throw new Error('회원 탈퇴에 실패했습니다.')
+      }
+    } catch (err) {
+      console.error('회원 탈퇴 오류:', err)
+      ToastManager.error('회원 탈퇴 중 오류가 발생했습니다.')
+    } finally {
+      setWithdrawalLoading(false)
+      setShowWithdrawalModal(false)
+    }
+  }
+
+  // mounted 상태 확인 (Hydration 오류 방지)
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
+  if (!isLoggedIn) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">로그인 페이지로 이동 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 로딩 중
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">프로필 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 오류 발생
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" 
+        style={{ backgroundColor: 'var(--background)' }}
+      >
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen pt-15 background-paper"
+    style={{
+      backgroundColor: 'var(--background)',
+    }}
+    >
+      <div className="max-w-md mx-auto px-4 py-6">
+        {/* 프로필 정보 카드 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-[var(--footer-background)] backdrop-blur-xs border border-[var(--footer-border)] rounded-2xl shadow-lg p-6 mb-6 relative"
+        >
+          {/* 로그아웃 버튼 */}
+          <LogoutButton 
+            onLogoutSuccess={handleLogoutSuccess}
+            onShowGuestModal={handleShowGuestModal}
+          />
+          
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{
+              background: isGuestUser 
+                ? `linear-gradient(135deg, var(--guest-orange) 0%, rgba(240, 149, 45, 0.8) 100%)`
+                : `linear-gradient(135deg, var(--sobi-green) 0%, rgba(45, 192, 126, 0.8) 100%)`,
+            }}>
+              <User size={30} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-[var(--foreground)]">
+                {profileData?.userId}
+              </h2>
+              <div className="text-sm text-[var(--text-secondary)] space-y-1 mt-1">
+                <p>나이: {profileData?.age === 0 ? '선택안함' : `${profileData?.age}세`}</p>
+                <p>성별: {profileData?.gender === 0 ? '선택안함' : profileData?.gender === 1 ? '남성' : '여성'}</p>
+                <p>회원번호: {profileData?.id}</p>
+                
+                {/* 바구니 사용 상태 표시 */}
+                {isBasketInUse() && (
+                  <div className="flex items-center gap-2 mt-2 p-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <p className="text-[var(--text-secondary)]">
+                      {basketId}번 SOBI 사용 중
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 메뉴 리스트 */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="space-y-3"
+        >
+          {/* 찜목록 */}
+          <Link href={isGuestUser ? "#" : "/favorite"}>
+            <div className={`bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02] ${isGuestUser ? 'opacity-30 pointer-events-none' : ''}`}>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
+                  <Image
+                    src="/icon/favorite.png"
+                    alt="찜목록"
+                    width={24}
+                    height={24}
+                    className="object-contain"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[var(--foreground)]">찜목록</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    {isGuestUser ? '회원가입 후 이용 가능합니다' : '관심 상품들을 확인해보세요'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* 구매내역 */}
+          <Link href={"/receipts"}>
+            <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]">
+              <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
+                  <FcSurvey size={24} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[var(--foreground)]">구매내역</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">구매내역을 확인해보세요</p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+		  {/* SOBI 챗봇 */}
+		  <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 cursor-pointer group hover:scale-[1.02]" onClick={() => setIsChatbotOpen(true)}>
+            <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center group-hover:bg-[var(--sobi-green)] transition-colors">
+                <RiRobot3Line size={24} className="text-[var(--input-foreground)]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-[var(--foreground)]">SOBI 챗봇</h3>
+                <p className="text-sm text-[var(--text-secondary)]">SOBI에 대해 궁금한 점이 있으신가요?</p>
+              </div>
+            </div>
+          </div>
+
+          {/* 구분선 */}
+          <div className="border-t border-[var(--footer-border)] my-4"></div>
+
+          {/* 회원 탈퇴 - 게스트 사용자에게는 표시하지 않음 */}
+          {!isGuestUser && (
+            <button onClick={handleWithdrawal} className="w-full">
+              <div className="bg-[var(---background)] rounded-xl p-4 transition-all duration-200 group hover:scale-[1.02] hover:bg-red-50 dark:hover:bg-red-900/10 opacity-50">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center transition-colors">
+                    <FiUserX size={24} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-semibold text-[var(--foreground)]">회원 탈퇴</h3>
+                    <p className="text-sm text-[var(--text-secondary)]">계정을 영구적으로 삭제합니다</p>
+                  </div>
+                </div>
+              </div>
+            </button>
+          )}
+        </motion.div>
+      </div>
+
+		{/* 챗봇 모달 */}
+		<AnimatePresence>
+			{isChatbotOpen && (
+				<motion.div
+					className="fixed inset-0 z-50 flex items-start justify-center pt-8 pb-8 px-4"
+					onClick={handleChatbotBackdropClick}
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.3 }}
+				>
+					{/* 배경 흐림 */}
+					<motion.div
+						className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.3 }}
+					/>
+					{/* 모달 본문 */}
+					<motion.div
+						ref={chatbotModalRef}
+						className="relative z-10 w-full max-w-md"
+						initial={{ opacity: 0, scale: 0.8, y: 20 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.8, y: 20 }}
+						transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+					>
+						<ChatbotModal onClose={() => setIsChatbotOpen(false)} />
+					</motion.div>
+				</motion.div>
+			)}
+		</AnimatePresence>
+
+		{/* 회원 탈퇴 확인 모달 */}
+      <WithdrawalModal
+        open={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        onConfirm={confirmWithdrawal}
+        loading={withdrawalLoading}
+      />
+
+      {/* 게스트 로그아웃 모달 */}
+      <AnimatePresence>
+        {showGuestLogoutModal && (
+          <motion.div 
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setShowGuestLogoutModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GuestLogoutModal 
+                onClose={() => setShowGuestLogoutModal(false)} 
+                onLogout={handleModalLogout}
+                onSignup={handleModalSignup}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+} 

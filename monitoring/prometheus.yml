@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["monitor-prometheus:9090"]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["monitor-cadvisor:8080"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["monitor-node-exporter:9100"]
+
+  - job_name: nginx
+    static_configs:
+      - targets: ["monitor-nginx-exporter:9113"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["monitor-postgres-exporter:9187"]
+
+  - job_name: redis
+    static_configs:
+      - targets: ["monitor-redis-exporter:9121"]
+
+  - job_name: mosquitto
+    static_configs:
+      - targets: ['monitor-mosquitto-exporter:9234']
+
+  - job_name: jenkins
+    metrics_path: /prometheus
+    static_configs:
+      - targets: ['jenkins:8080']
+
+  - job_name: sobi-backend
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["sobi-backend:8080"]
