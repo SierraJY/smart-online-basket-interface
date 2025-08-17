@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>주간 스마트 바스켓 리포트</title>
+  <style>
+    /* ===== Design Tokens ===== */
+    :root{
+      --bg: #f7f8fb;
+      --card: #fff;
+      --text: #1f2a38;
+      --muted: #707e96;
+      --border: #e5e9f2;
+      --primary: #3366ff;
+      --radius: 14px;
+      --shadow: 0 6px 18px rgba(0,0,0,.06);
+      --shadow-hover: 0 10px 26px rgba(0,0,0,.10);
+      --space-1: 8px; --space-2: 12px; --space-3: 16px;
+      --space-4: 24px; --space-5: 32px; --space-6: 48px;
+      --maxw: 900px;
+    }
+
+    /* Webfont: WOFF2 우선, 없으면 시스템 폰트 */
+    @font-face{
+      font-family:'NanumGothic';
+      src: url('/fonts/NanumGothic.woff2') format('woff2'),
+           url('/fonts/NanumGothic.woff') format('woff');
+      font-display: swap;
+    }
+
+    html,body{margin:0;padding:0;background:var(--bg);}
+    body{font-family:'NanumGothic','Noto Sans KR',system-ui, -apple-system, sans-serif;
+         color:var(--text); display:flex; justify-content:center; padding:30px 16px;}
+
+    .container{max-width:var(--maxw); width:100%; background:var(--card);
+      border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:40px 40px 60px; box-sizing:border-box;}
+
+    /* Hero */
+    .hero{display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-6);}
+    .hero h1{margin:0; font-size:2.2rem; letter-spacing:-.02em; font-weight:800;}
+    .sub{color:var(--muted); font-size:.98rem;}
+    {#    <div class="kpis">
+      <div class="kpi"><div class="label">총 세션</div><div class="value">{{ kpi.sessions }}</div></div>
+      <div class="kpi"><div class="label">재구매율</div><div class="value">{{ kpi.repeat_rate }}%</div></div>
+      <div class="kpi"><div class="label">Top 연관쌍</div><div class="value">{{ kpi.top_pair }}</div></div>
+      <div class="kpi"><div class="label">예측 변화</div><div class="value">{{ kpi.forecast_delta }}</div></div>
+    </div>#}
+
+    section{background:var(--card); border-radius:12px; padding:28px;
+      border:1px solid var(--border); margin-bottom:var(--space-6);
+      transition: box-shadow .2s ease;}
+    section:hover{box-shadow:var(--shadow-hover);}
+    section h2{margin:0 0 var(--space-3) 0; font-size:1.4rem; font-weight:800;
+      border-left:6px solid var(--primary); padding-left:12px; letter-spacing:-.01em;}
+
+    figure{margin:0 0 var(--space-3) 0;}
+    img{width:100%; height:auto; display:block; border-radius:10px; border:1px solid var(--border);
+        box-shadow:0 4px 14px rgba(51,102,255,.08); object-fit:contain;
+        transition:transform .2s ease; background:#fff;}
+    img:hover{transform:scale(1.01);}
+    figcaption{margin-top:10px; color:var(--muted); font-size:.9rem;}
+
+    .desc{font-size:1.06rem; line-height:1.75; letter-spacing:.01em; white-space:pre-wrap;}
+
+    @media (max-width: 700px){
+      .container{padding:28px 18px 44px;}
+      .hero h1{font-size:1.8rem;}
+      .kpis{grid-template-columns:repeat(2,1fr);}
+      section{padding:20px;}
+      section h2{font-size:1.2rem; border-left-width:4px;}
+      .desc{font-size:1rem;}
+    }
+
+    /* Print */
+    @media print{
+      body{background:#fff; padding:0;}
+      .container{box-shadow:none; padding:0;}
+      section{break-inside:avoid; box-shadow:none;}
+      a{text-decoration:underline; color:#000;}
+      img{box-shadow:none;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1>주간 스마트 바스켓 리포트</h1>
+      <div class="sub">{{ week_range }} · 생성 {{ today }}</div>
+      {#    <div class="kpis">
+        <div class="kpi"><div class="label">총 세션</div><div class="value">{{ kpi.sessions }}</div></div>
+        <div class="kpi"><div class="label">재구매율</div><div class="value">{{ kpi.repeat_rate }}%</div></div>
+        <div class="kpi"><div class="label">Top 연관쌍</div><div class="value">{{ kpi.top_pair }}</div></div>
+        <div class="kpi"><div class="label">예측 변화</div><div class="value">{{ kpi.forecast_delta }}</div></div>
+      </div>#}
+    </header>
+
+    <section>
+      <h2>1. 고객 군집 분석</h2>
+      <figure>
+        <img src="{{ images.customer }}" alt="고객 군집 분포 차트" loading="lazy" decoding="async" fetchpriority="low"/>
+        <figcaption>클러스터별 고객 비율 및 특성 요약</figcaption>
+      </figure>
+      <div class="desc">{{ summaries.customer | replace('\n','<br>') | safe }}</div>
+    </section>
+
+    <section>
+      <h2>2. 상품 트렌드 예측</h2>
+      <figure>
+        <img src="{{ images.prophet }}" alt="월별 판매 추이 및 향후 예측" loading="lazy" decoding="async"/>
+        <figcaption>최근 추세 기반의 24개월 전망</figcaption>
+      </figure>
+      <div class="desc">{{ summaries.prophet | replace('\n','<br>') | safe }}</div>
+    </section>
+
+    <section>
+      <h2>3. 발주 및 재고 예측</h2>
+      <figure>
+        <img src="{{ images.restock }}" alt="발주/재고 예측 막대그래프" loading="lazy" decoding="async"/>
+        <figcaption>최근 4주 평균 대비 다음 주 예측값</figcaption>
+      </figure>
+      <div class="desc">{{ summaries.restock | replace('\n','<br>') | safe }}</div>
+    </section>
+
+    <section>
+      <h2>4. 연관 구매 분석</h2>
+      <figure>
+        <img src="{{ images.association }}" alt="연관 규칙 상위 Top10" loading="lazy" decoding="async"/>
+        <figcaption>단일→단일 규칙(Confidence) 상위 목록</figcaption>
+      </figure>
+      <div class="desc">{{ summaries.association | replace('\n','<br>') | safe }}</div>
+    </section>
+  </div>
+</body>
+</html>

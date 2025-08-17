@@ -1,0 +1,37 @@
+# 데이터/모델/로그
+data/
+logs/
+mlflow_runs/mlruns/
+models/
+jetson_sync/
+weekly_report/output/
+infra/airflow/logs/
+infra/airflow/airflow.db
+infra/airflow/airflow-webserver.pid
+infra/airflow/dags/__pycache__/
+preprocessing/__pycache__/
+recommender/__pycache__/
+recommender/models/
+
+# 환경/보안
+secrets/
+.env
+infra/airflow/ssh/
+infra/airflow/plugins/
+infra/db/*.log
+
+# 파이썬/에디터 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+*.db
+*.DS_Store
+*.egg-info/
+
+# 기타
+*.bak
+*.swp
+*.tmp
