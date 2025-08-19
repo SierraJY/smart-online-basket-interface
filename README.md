@@ -4,6 +4,25 @@
 
 장바구니/카트에 부착된 AIoT 디바이스를 통해 실시간 가격 합산, 개인화 상품 추천, 셀프 결제를 제공하는 AIoT 리테일 시스템입니다.
 
+<table>
+  <tr>
+    <td align="center"><strong>양지웅</strong></td>
+    <td align="center"><strong>박주연</strong></td>
+    <td align="center"><strong>김영우</strong></td>
+    <td align="center"><strong>양동환</strong></td>
+    <td align="center"><strong>김강산</strong></td>
+    <td align="center"><strong>황희준</strong></td>
+  </tr>
+  <tr>
+    <td align="center">PM/IoT</td>
+    <td align="center">BackEnd</td>
+    <td align="center">IoT</td>
+    <td align="center">Infra/AI</td>
+    <td align="center">FrontEnd</td>
+    <td align="center">AI</td>
+  </tr>
+</table>
+
 ### 🖥️ 웹 애플리케이션
 ![Health Check](https://img.shields.io/website?url=https://sobi-basket.app&label=service%20status)
 
